@@ -22,10 +22,9 @@ import pandas as pd
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC * Beta subset
+# MAGIC * Beta and Release subsets
 # MAGIC   - Version 68
 # MAGIC   - First five weeks
-# MAGIC   - Remove profiles in both Beta and Release? 
 # MAGIC   - focus on en-US first!
 
 # COMMAND ----------
@@ -48,7 +47,7 @@ DATA_PATH = 'cdowhygelund/beta_release_matching/V2'
 
 # COMMAND ----------
 
-# MAGIC %md ## Methods
+# MAGIC %md ## Metrics
 
 # COMMAND ----------
 
@@ -88,6 +87,12 @@ probe_ms_map = {
   'histogram_content_composite_time': 'COMPOSITE_TIME_CONTENT'  
 }
 
+# COMMAND ----------
+
+# MAGIC %md ## Methods
+
+# COMMAND ----------
+
 def gen_hist_metrics(df):
   metrics = [F.collect_list(x).alias(y) for 
             x, y in probe_ms_map.items()]  
@@ -105,7 +110,7 @@ def gen_metrics(df):
 
   return metrics
 
-def get_df(tbl, channel, start_date, sample_ids, version, metrics, rename_cid=False):
+def get_df(tbl, channel, start_date, sample_ids, version, metrics, rename_cid=False, add_label=True):
   channel_end_date = start_date + dt.timedelta(weeks=NUM_WEEKS)
   channel_client_end_date = channel_end_date - dt.timedelta(NUM_DAYS)
 
@@ -131,6 +136,9 @@ def get_df(tbl, channel, start_date, sample_ids, version, metrics, rename_cid=Fa
     .groupBy(df.client_id)
     .agg(*metrics(df))
   )
+  
+  if add_label:
+    agg_df = agg_df.withColumn('label', F.lit(channel))
   
   if rename_cid:
     df = df.withColumnRenamed('client_id', 'cid')
@@ -211,7 +219,7 @@ beta = get_df(cd, 'beta', BETA_START_DATE, (str(x) for x in range(1, 1+sample_fr
 beta_meta = get_meta(beta['df'])
 beta_df = add_meta(beta['agg'], beta_meta)
 beta_ms = beta_ms = get_df(ms, 'beta', BETA_START_DATE, (str(x) for x in range(1, 1+sample_frac)), BETA_VERSION,
-                           gen_hist_metrics, rename_cid=True)['agg'] 
+                           gen_hist_metrics, rename_cid=True, add_label=False)['agg'] 
 beta_ms = mean_probes(beta_ms)
 beta_df = add_meta(beta_df, beta_ms, reduce_size=True)
 
@@ -246,13 +254,13 @@ beta_pd = beta_df.toPandas()
 
 # COMMAND ----------
 
-sample_frac = ('43')
+sample_frac = ('43', )
 
 release = get_df(cd, 'release', RELEASE_START_DATE, sample_frac, RELEASE_VERSION, gen_metrics)
 release_meta = get_meta(release['df'])
 release_df = add_meta(release['agg'], release_meta)
 release_ms = get_df(ms, 'release', RELEASE_START_DATE, sample_frac, RELEASE_VERSION, 
-                    gen_hist_metrics, rename_cid=True)['agg'] 
+                    gen_hist_metrics, rename_cid=True, add_label=False)['agg'] 
 release_ms = mean_probes(release_ms)
 release_df = add_meta(release_df, release_ms, reduce_size=True)
 
