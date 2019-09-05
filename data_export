@@ -17,7 +17,7 @@ import pandas as pd
 
 # COMMAND ----------
 
-# MAGIC %md # Methodology
+# MAGIC %md # Methodology 1
 
 # COMMAND ----------
 
@@ -35,7 +35,7 @@ ms = spark.table('main_summary_v4')
 # COMMAND ----------
 
 NUM_DAYS = 14
-NUM_WEEKS  = 5
+NUM_WEEKS  = 4
 BETA_START_DATE = dt.datetime(2019, 5, 21)
 BETA_VERSION = '68'
 
@@ -209,7 +209,7 @@ def mean_probes(df):
 
 # COMMAND ----------
 
-# MAGIC %md # Beta Data Pull
+# MAGIC %md ## Beta Data Pull
 
 # COMMAND ----------
 
@@ -250,7 +250,7 @@ beta_pd = beta_df.toPandas()
 
 # COMMAND ----------
 
-# MAGIC %md # Release Data Pull
+# MAGIC %md ## Release Data Pull
 
 # COMMAND ----------
 
@@ -289,7 +289,7 @@ release_pd = release_df.toPandas()
 
 # COMMAND ----------
 
-# MAGIC %md # Export 
+# MAGIC %md ## Export 
 
 # COMMAND ----------
 
@@ -313,6 +313,57 @@ with StringIO() as f:
 
 # COMMAND ----------
 
-# MAGIC %md # TODO
+# MAGIC %md # Methodology 2
+
+# COMMAND ----------
+
+# MAGIC %md Same as 1 save,
 # MAGIC 
-# MAGIC * Increase sampling to higher values for release and beta for modeling
+# MAGIC * Utilize _last_ five weeks of Beta as this is more representative of Release
+
+# COMMAND ----------
+
+BETA_START_DATE = dt.datetime(2019, 6, 4)
+
+DATA_PATH = 'cdowhygelund/beta_release_matching/V3'
+
+# COMMAND ----------
+
+sample_frac = 25
+
+beta = get_df(cd, 'beta', BETA_START_DATE, (str(x) for x in range(1, 1+sample_frac)), BETA_VERSION, gen_metrics)
+beta_meta = get_meta(beta['df'])
+beta_df = add_meta(beta['agg'], beta_meta)
+beta_ms = beta_ms = get_df(ms, 'beta', BETA_START_DATE, (str(x) for x in range(1, 1+sample_frac)), BETA_VERSION,
+                           gen_hist_metrics, rename_cid=True, add_label=False)['agg'] 
+beta_ms = mean_probes(beta_ms)
+beta_df = add_meta(beta_df, beta_ms, reduce_size=True)
+
+beta_df.cache()
+beta_df.count()
+
+# COMMAND ----------
+
+beta_df = filter_covariates(beta_df)
+beta_df.count()
+
+# COMMAND ----------
+
+s3_path = "s3://{}/{}".format(DATA_BUCKET, DATA_PATH)
+
+beta_df.write.parquet(s3_path + '/beta_f', mode='overwrite')
+beta['df'].write.parquet(s3_path + '/beta',  mode='overwrite')
+beta_pd = beta_df.toPandas()
+
+# COMMAND ----------
+
+df_pd = pd.concat([beta_pd, release_pd])
+df_pd.shape
+
+# COMMAND ----------
+
+s3_resource = boto3.resource('s3')
+with StringIO() as f:
+  df_pd.to_csv(f, index=False)
+  file_path = '{}/df_pd.csv'.format(DATA_PATH)
+  s3_resource.Object(DATA_BUCKET, file_path).put(Body=f.getvalue())    
