@@ -24,13 +24,13 @@ import pandas as pd
 # MAGIC %md
 # MAGIC * Beta and Release subsets
 # MAGIC   - Version 68
-# MAGIC   - First five weeks
-# MAGIC   - focus on en-US first!
+# MAGIC   - First four weeks
+# MAGIC   - en-US, en-GB locales
 
 # COMMAND ----------
 
 cd = spark.table('clients_daily')
-ms = spark.table('main_summary_v4')
+ms = spark.table('main_summary')
 
 # COMMAND ----------
 
@@ -43,7 +43,7 @@ RELEASE_START_DATE = dt.datetime(2019, 7, 9)
 RELEASE_VERSION = BETA_VERSION
 
 DATA_BUCKET = "net-mozaws-prod-us-west-2-pipeline-analysis"
-DATA_PATH = 'cdowhygelund/beta_release_matching/V2'
+DATA_PATH = 'cdowhygelund/beta_release_matching/4week/V2'
 
 # COMMAND ----------
 
@@ -319,13 +319,13 @@ with StringIO() as f:
 
 # MAGIC %md Same as 1 save,
 # MAGIC 
-# MAGIC * Utilize _last_ five weeks of Beta as this is more representative of Release
+# MAGIC * Utilize _last_ four weeks of Beta as this is more representative of Release
 
 # COMMAND ----------
 
 BETA_START_DATE = dt.datetime(2019, 6, 4)
 
-DATA_PATH = 'cdowhygelund/beta_release_matching/V3'
+DATA_PATH = 'cdowhygelund/beta_release_matching/4week/V3'
 
 # COMMAND ----------
 
