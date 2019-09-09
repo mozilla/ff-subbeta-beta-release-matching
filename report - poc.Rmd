@@ -1,0 +1,216 @@
+---
+title: "Beta to Release Matching"
+author: "Corey Dow-Hygelund, Mozilla Data Science"
+date: 'Last Updated: `r format(Sys.time(), "%B %d, %Y")`'
+output: 
+  html_document:
+    theme: cosmo
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r imports, message=FALSE, warning=FALSE, echo=FALSE}
+load('data/4week/US/analysis_09072019.RData')
+source('supporting_funcs.R')
+library(cowplot)
+```
+
+
+```{r data_load, message=FALSE, warning=FALSE, echo=FALSE}
+exp_4x_all.nearest.ma.df <- match.data(exp_4x_all.nearest.ma)
+
+# single dataframe for plotting
+df_f <- exp_4x.nearest.ma.df %>% 
+  select(-c(distance, weights)) %>%
+  filter(label == 'beta') %>%
+  mutate(label =  'beta - matched') %>%
+  rbind(df_4x_sm)
+```
+
+## tl;dr
+
+[Statistical matching](https://en.wikipedia.org/wiki/Matching_(statistics)) methods were employed to investigate the posssibility of finding a subset of Beta clients that are representative of Release. The specific use-case of this proof-of-concept is utilizing engagement, configuration, and environment client fields (covariates) for matching. Validation of the matching is performed on a hold-out set of Firefox performance covariates, as an illustration of a potential real-world use-case. The following tables represent the relative difference between Beta and Release for the mean and median respectively. These initial results are promising and suggest that such techniques can work. 
+
+```{r tldr_summary, message=FALSE, warning=FALSE, echo=FALSE}
+
+stats_pre <- calc_delta(df_4x_sm, NULL, holdout_covariates) %>%
+  select(-'content_crashes')
+stats_post <- calc_delta(exp_4x_all.nearest.ma.df, NULL, holdout_covariates) %>%
+  select(-'content_crashes')
+
+stats_mean <- stats_pre[1, ] %>% 
+  rbind(stats_post[1, ]) %>%
+  set_rownames(c('pre-matching', 'post-matching'))
+
+stats_median <- stats_pre[2, ] %>% 
+  rbind(stats_post[2, ]) %>%
+  set_rownames(c('pre-matching', 'post-matching'))
+```
+
+### Beta-Release Difference: Mean
+```{r tldr_summary_mean, message=FALSE, warning=FALSE, echo=FALSE}
+library(kableExtra)
+
+knitr::kable(stats_mean) %>%
+  kable_styling() %>%
+  scroll_box(width = "750px", height = "200px")
+```
+
+### Beta-Release Difference: Mean
+
+```{r tldr_summary_median, message=FALSE, warning=FALSE, echo=FALSE}
+knitr::kable(stats_median) %>%
+  kable_styling() %>%
+  scroll_box(width = "750px", height = "200px")
+```
+
+## Problem Statement
+It is highly desirable to utilize the Beta versions of Firefox to determine the behaviour of Release before it is launched. However, it is well known that the Beta population has distinctly differently characteristics than Release, such as country distribution and having higher incidents of crashes. Therefore, directly utilizing Beta to inform Release is not statistical valid.
+
+One possible approach to deal with this discrepency is to use statistical matching techniques to find a subset of Beta that is representative of Release. What connotates "representative" depends upon the desirec use-case (outcome), such as performance characteristics, or crash rates. In this work we focus on the application of performance metrics. 
+
+## Methodology
+### Data Preparation
+The code that exported the data is available [here](https://dbc-caf9527b-e073.cloud.databricks.com/#notebook/172123/command/172124). This work specifically focuses on desktop Firefox. The following filters are applied:
+
+* Version 68
+* Beta dates: last four weeks (06/04/2019 - 07/09/2019)
+* Release dates: first four weeks (07/09/2019 - 08/06/2019)
+* Two weeks of collection per profile, starting with first observed ping within date window
+* en-US, en-GB locales
+* US, GB countries
+
+Preliminary work utilized all countries. However, the results of the statistical matching were poor. Therefore, the dominant two countries in Release were selected to reduce the problem scope. This significantly limited the available population for matching to ~100K. 
+
+### Covariates
+The following covariates are collected. These are categorized under training, and hold-out. The former are used for training a statistical matching model. The latter are not included in training and are used for determining model performance. The covariates are further subcategorized as to the what they measure. 
+
+#### Training
+The sum of <  > ....
+(build markdown table)
+
+#### Holdout
+The following are the performance metrics used for validation. The 
+
+
+### Covariate Selection {#cov_sel}
+
+As statistical matching typically trains a machine learning (ML) model for calculation of propensity scores, variable selection should be employed. However, the literature suggests that typical ML techniques of limiting covariates to those that best predict the response (i.e., Beta or Release) are not helpful for statistical matching. Rather, covariates that best describe the outcome (i.e., performance metrics) should be utilized. Please refer to the following papers for reference. 
+
+* [Variable Selection for Propensity Scores](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1513192/) (Brookhart et al. 2007)
+* [Variable Selectgion for Propensity Score Estimation via Balancing Covariates](https://journals.lww.com/epidem/FullText/2015/03000/Variable_Selection_for_Propensity_Score_Estimation.25.aspx) (Zhu et al. 2015)
+
+In this work, due to time considerations, sets of covariates were manually chosen from each measure type that were not highly correlated. The following plot shows the correlation of the continuous covariates. 
+
+```{r corrplot, fig.width=14, fig.height=14, echo=FALSE}
+corrplot(cor(df[, c(cont_log_covariates, cont_covariates)], use='complete.obs'), method = 'ellipse')
+```
+
+
+## Models
+A range of statistical matching models were reviewed, using the _R_ library [Matchit](https://cran.r-project.org/web/packages/MatchIt/index.html):
+
+* Coarsened Exact Matching (CEM)
+* Nearest neighbor matching
+* Nearest neighbor matching, with Mahalanobis distance measure
+
+In addition, various sets of covariates were utilized, under the conditions described [above](#cov_sel). 
+
+Finally, a range of Beta overrepresentations were tested. In the following, 2x means there were twice as many Beta samples as Release.
+
+* 1x Beta to Release
+* 2x Beta to Release
+* 4x Beta to Release
+
+The best performing model was Nearest Neighbors with Mahalanobis distance measure, with 4x Beta to Release. This is in vein to the findings of [King et al. 2018](https://gking.harvard.edu/files/gking/files/psnot.pdf). However, this works finds that CEM is sub-optimal, with respect to Neight neighbors matching. 
+
+Mahalanobis distance matching requires continuous covariates. The following were found to be the most performant:
+
+< covariates>
+
+## Results
+
+The following plots show the covariate distributions for the following subsets: 
+
+
+* Beta: pre-matching
+* Beta: matched and subsetted
+* Release
+
+**NOTE**: Guiding lines have been added for the following:
+
+* <span style="color:red">red</span> dashed: Release mean
+* <span style="color:blue">blue</span> dashed: Release median
+* <span style="color:green">green</span> dashed line: subsetted Beta _mean_. 
+
+
+### Covariates: Performance Holdout
+
+The following plot shows the holdout performance metrics distributions for the following subsets. Overall, the matching greatly reduces the  differences in the distributions between Beta and Release. For several metrics, such as `CONTENT_PAINT_TIME_CONTENT`, the subsetting results in very comparable distributions. For cases such as `TIME_TO_DOM_CONTENT_LOADED_MS`, the improvement is significant, though differences between the two channels are significant.
+
+However, for `MEMORY_TOTAL` and `startup_ms`, the improvement is marginal and the resultant matched distrubution are poor. `MEMORY_TOTAL` has the greatest observable difference between Beta and Release pre and post matching. `startup_ms` doesn't appear to be highly distinct across channels for these metrics. 
+
+Combined, these results suggest that matching can make small, but limited, improvements to the distributions. 
+
+```{r perf_holdout, fig.width=10, fig.height=100, echo=FALSE}
+ho_other_cov <- c('content_crashes')
+ho_log_cov <- holdout_covariates[!holdout_covariates %in% ho_other_cov]
+
+stats <- calc_stats(exp_4x.nearest.ma.df, holdout_covariates, add_1 = TRUE)
+plots <- list()
+
+for (covariate in ho_log_cov) {
+  stats_rel <- stats %>% filter(label == 'release') %>% select(covariate, metric)
+  means <- stats_rel[stats_rel$metric == 'mean', covariate]
+  medians <- stats_rel[stats_rel$metric == 'median', covariate]
+  ho_means <- stats %>% filter(label == 'beta' & metric == 'mean') %>% select(covariate)
+  
+  plots[[covariate]] <- compare_log_cont(df_f, covariate, means, medians, as.numeric(ho_means), print=FALSE) 
+}
+
+plot_grid(plotlist = plots, ncol = 1)
+```
+
+### Covariates: Engagement Holdout
+
+The following engagement covariates were not used training, as they are relatively correlated to those metrics used.
+
+```{r engagment_plot, fig.width=10, fig.height=50, echo=FALSE}
+stats <- calc_stats(exp_4x.nearest.ma.df, cont_log_covariates, add_1 = TRUE)
+plots <- list()
+
+model_covs <- c('search_count', 'daily_max_tabs', 'daily_num_sessions_started', 'num_addons', 
+                                        'num_bookmarks', 'profile_age', 'timezone_offset', 'cpu_speed_mhz', 'memory_mb', 
+                                        'cpu_cores')
+
+for (covariate in cont_log_covariates[!cont_log_covariates %in% model_covs]) {
+  stats_rel <- stats %>% filter(label == 'release') %>% select(covariate, metric)
+  means <- stats_rel[stats_rel$metric == 'mean', covariate]
+  medians <- stats_rel[stats_rel$metric == 'median', covariate]
+  ho_means <- stats %>% filter(label == 'beta' & metric == 'mean') %>% select(covariate)
+  
+  plots[[covariate]] <- compare_log_cont(df_f, covariate, means, medians, as.numeric(ho_means), print=FALSE) 
+  
+}
+
+plot_grid(plotlist = plots, ncol = 1)
+```
+
+
+## Discussion
+
+The matching did an adequate job in finding a representative subset of Beta, especially concerning the performance metrics task. There are many avenues to further this analsysis, in order to utilize such a methodology in a production setting:
+
+* Covariate/ Variable selection
+  * This needs to be actively researched, especially in regards to real-world Firefox use-cases. 
+* Compare histogram distributions
+  * Client means were utilized in this above analysis. Instead, aggregating the client distributions needs to be addressed.
+* Feature generation
+  * The covariates utilized above are limited subset. A much more rigorous analysis of covariates needs to be applied.
+* All countries used in matching
+  * This is required for most general uses of the Beta subset.
+  * The US and GB Beta population is quite small. As noted above, overrepresentation of Beta in matching results in higher performant models. Therefore, to obtain greater training sample sizes requires at minimum for India to be considered. 
