@@ -1,0 +1,402 @@
+---
+title: 'Beta to Release Matching: Modeling'
+author: "Corey Dow-Hygelund"
+date: "9/3/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## tl;dr
+
+[Statistical matching](https://en.wikipedia.org/wiki/Matching_(statistics)) methods were employed to investigate the posssibility of finding a subset of Beta clients that are representative of Release. The specific use-case of this proof-of-concept is utilizing engagement, configuration, and environment covariates of the clients for matching. Validation of the matching is performed on a hold-out set of Firefox performance covariates. Such a a use-case has real-world analogies. 
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+source('supporting_funcs.R')
+```
+
+## Data Loading/Preparation
+```{r}
+# define response field
+label <- 'is_release'
+
+# load up dataset
+df <- read.csv('data/4week/US/df.csv') %>%
+  select(-c(CONTENT_PAINT_TIME_PARENT, COMPOSITE_TIME_CONTENT, COMPOSITE_TIME_PARENT, CONTENT_FRAME_TIME_PARENT)) %>% # All NAs 
+  select(-e10s_enabled) %>% # All True
+  mutate(default_search_engine = as.factor(normalize_search_engine(default_search_engine))) %>%
+  mutate(profile_age_cat = as.factor(normalize_profile_age(profile_age))) %>%
+  mutate(distro_id_norm = as.factor(normalize_distro_id(distribution_id))) %>%
+  mutate(timezone_cat = as.factor(normalize_timezone(timezone_offset))) %>%
+  mutate(memory_cat = as.factor(normalize_memory(memory_mb))) %>% 
+  mutate(cpu_speed_cat = as.factor(normalize_cpu_speed(cpu_speed_mhz))) %>% 
+  mutate(cpu_cores_cat = as.factor(normalize_cpu_cores(cpu_cores))) %>% 
+  mutate(!!label := case_when(
+    label == 'beta' ~ FALSE,
+    TRUE ~ TRUE)) %>%
+  filter(startup_ms >= 0 & profile_age >= 0)
+  # filter(country %in% c('US', 'GB'))
+
+# complete cases (specifically targets perf metrics)
+df_c <- df %>% na.omit()
+```
+
+
+```{r}
+# Various sampling for beta overrepresentation
+df_beta <- df_c %>% filter(is_release == FALSE)
+df_rel <- df_c %>% filter(is_release == TRUE)
+n_beta <- nrow(df_beta)
+
+build_df <- function(multiple){
+  df <- df_rel %>%
+    sample_n(size = round(n_beta / multiple)) %>%
+    rbind(df_beta)
+}
+
+df_1x <- build_df(1)
+df_2x <- build_df(2)
+df_4x <- build_df(4)
+
+```
+
+
+Downsample to allow nearest neighbors to complete within the year. 
+```{r}
+df_1x_sm <- df_1x %>% sample_n(size = 70000)
+df_2x_sm <- df_2x %>% sample_n(size = 70000)
+df_4x_sm <- df_4x %>% sample_n(size = 70000)
+```
+
+## Covariates
+
+Define the covariates for modeling and validation.
+
+```{r}
+cont_log_covariates <- c('active_hours', 'daily_max_tabs', 'daily_tabs_opened', 'search_count', 'daily_unique_domains',
+                     'num_bookmarks', 'num_addons', 'num_active_days', 'num_pages', 'uri_count', 'session_length')
+
+cont_covariates <- c('profile_age', 'cpu_cores', 'cpu_speed_mhz', 'daily_num_sessions_started', 'timezone_offset')
+
+cat_covariates <- c('country', 'timezone_cat', 'distribution_id', 'profile_age_cat')
+
+
+holdout_covariates <- c("CONTENT_PAINT_TIME_CONTENT", "TIME_TO_DOM_CONTENT_LOADED_END_MS", 
+                        "MEMORY_TOTAL", "TIME_TO_DOM_COMPLETE_MS", "FX_PAGE_LOAD_MS_2_PARENT", 
+                        "FX_TAB_SWITCH_TOTAL_E10S_MS",
+                        "CONTENT_FRAME_TIME_GPU", "COMPOSITE_TIME_GPU",
+                        "TIME_TO_LOAD_EVENT_END_MS", 'startup_ms', 'content_crashes')
+```
+
+
+## Variable Selection
+None performed at the moment. Literature suggests that using those related to outcome variables. 
+
+## Experiments
+Groups of models to train. Complete alchemy at this point...
+
+```{r}
+exp_1 <- c('uri_count', 'daily_max_tabs', 'daily_num_sessions_started', 'num_addons', 'num_bookmarks',
+           'profile_age_cat', 'is_wow64', 'fxa_configured', 'sync_configured', 'is_default_browser',
+           'timezone_cat')
+
+exp_2 <- c('uri_count', 'daily_max_tabs', 'daily_num_sessions_started', 'num_addons', 'num_bookmarks',
+           'profile_age', 'is_wow64', 'fxa_configured', 'sync_configured', 'is_default_browser',
+           'timezone_offset')
+
+exp_3 <- c('uri_count', 'daily_max_tabs', 'daily_num_sessions_started', 'num_addons', 'num_bookmarks',
+           'profile_age_cat', 'is_wow64', 'fxa_configured', 'sync_configured', 'is_default_browser',
+           'timezone_cat', 'distro_id_norm') 
+
+exp_4 <- c('search_count', 'daily_max_tabs', 'daily_num_sessions_started', 'num_addons', 'num_bookmarks',
+           'profile_age_cat', 'is_wow64', 'fxa_configured', 'sync_configured', 'is_default_browser',
+           'timezone_cat', 'distro_id_norm') # causing errors when downsampling!, 'os') 
+
+exp_5 <- c('search_count', 'daily_max_tabs', 'daily_num_sessions_started', 'num_addons', 'num_bookmarks',
+           'profile_age_cat','fxa_configured', 'sync_configured', 'is_default_browser',
+           'timezone_cat', 'cpu_speed_mhz') 
+
+exp_6 <- c('search_count', 'daily_max_tabs', 'daily_num_sessions_started', 'num_addons', 'num_bookmarks',
+           'profile_age_cat','fxa_configured', 'sync_configured', 'is_default_browser',
+           'country', 'cpu_speed_mhz') 
+
+exp_7 <- c('search_count', 'daily_max_tabs', 'daily_num_sessions_started', 'num_addons', 'num_bookmarks',
+           'profile_age_cat','fxa_configured', 'sync_configured', 'is_default_browser',
+           'country', 'cpu_speed_mhz', 'memory_mb')
+
+exp_8 <- c('search_count', 'daily_max_tabs', 'daily_num_sessions_started', 'num_addons', 'num_bookmarks',
+           'profile_age_cat','fxa_configured', 'sync_configured', 'is_default_browser',
+           'country', 'cpu_speed_mhz', 'memory_mb', 'cpu_cores')
+
+exp_9 <- c('search_count', 'daily_max_tabs', 'daily_num_sessions_started', 'num_addons', 'num_bookmarks',
+           'profile_age_cat','fxa_configured', 'sync_configured', 'is_default_browser',
+           'country', 'cpu_speed_cat', 'memory_cat', 'cpu_cores_cat')
+
+exp_10 <- c('search_count', 'daily_max_tabs', 'daily_num_sessions_started', 'num_addons', 'num_bookmarks',
+           'profile_age_cat','fxa_configured', 'sync_configured', 'is_default_browser',
+           'country', 'cpu_speed_cat', 'memory_cat', 'cpu_cores_cat', 'distro_id_norm')
+
+exps <- list(exp_1 = exp_1, exp_2 = exp_2, exp_3 = exp_3, exp_4 = exp_4, exp_5 = exp_5, 
+             exp_6 = exp_6, exp_7 = exp_7, exp_8 = exp_8, exp_9 = exp_9, exp_10 = exp_10)
+```
+
+
+## Modeling
+
+### CEM: Small Dataset
+
+#### 1x Oversampling
+```{r}
+cem_results_1x <- list()
+cem_models_1x <- list()
+for (exp in names(exps)){
+  cem <- matchit(formula = generate_formula(exps[[exp]], label), df_1x_sm, 'cem')
+  res <- match.data(cem) %>%
+    calc_delta(tr_cov = exps[[exp]], ho_cov = holdout_covariates)
+  cem_results_1x[[exp]] <- res
+  cem_models_1x[[exp]] <- cem
+  print(res)
+}
+```
+
+#### 2x Oversampling
+```{r}
+cem_results_2x <- list()
+cem_models_2x <- list()
+for (exp in names(exps)){
+  cem <- matchit(formula = generate_formula(exps[[exp]], label), df_2x_sm, 'cem')
+  res <- match.data(cem) %>%
+    calc_delta(tr_cov = exps[[exp]], ho_cov = holdout_covariates)
+  cem_results_2x[[exp]] <- res
+  cem_models_2x[[exp]] <- cem
+  print(res)
+}
+```
+
+#### 4x Oversampling
+```{r}
+cem_results_4x <- list()
+cem_models_4x <- list()
+for (exp in names(exps)){
+  cem <- matchit(formula = generate_formula(exps[[exp]], label), df_4x_sm, 'cem')
+  res <- match.data(cem) %>%
+    calc_delta(tr_cov = exps[[exp]], ho_cov = holdout_covariates)
+  cem_results_4x[[exp]] <- res
+  cem_models_4x[[exp]] <- cem
+  print(res)
+}
+```
+
+```{r}
+save.image('data/4week/US/analysis_09072019.RData')
+```
+
+**Observation**: Adding in environment metrics greatly helps!
+
+### Nearest Neighbors: Small
+
+#### 1x Oversampling
+```{r}
+nearest_results_1x <- list()
+nearest_models_1x <- list()
+for (exp in names(exps)){
+  nearest <- matchit(formula = generate_formula(exps[[exp]], label), df_1x_sm, 'nearest', replace = TRUE)
+  res <- match.data(nearest) %>%
+    calc_delta(tr_cov = exps[[exp]], ho_cov = holdout_covariates)
+  nearest_results_1x[[exp]] <- res
+  nearest_models_1x[[exp]] <- nearest
+  print(res)
+}
+```
+
+#### 2x Oversampling
+```{r}
+nearest_results_2x <- list()
+nearest_models_2x <- list()
+for (exp in names(exps)){
+  nearest <- matchit(formula = generate_formula(exps[[exp]], label), df_2x_sm, 'nearest')
+  res <- match.data(nearest) %>%
+    calc_delta(tr_cov = exps[[exp]], ho_cov = holdout_covariates)
+  nearest_results_2x[[exp]] <- res
+  nearest_models_2x[[exp]] <- nearest
+  print(res)
+}
+```
+
+#### 4x Oversampling
+```{r}
+nearest_results_4x <- list()
+nearest_models_4x <- list()
+for (exp in names(exps)){
+  nearest <- matchit(formula = generate_formula(exps[[exp]], label), df_4x_sm, 'nearest')
+  res <- match.data(nearest) %>%
+    calc_delta(tr_cov = exps[[exp]], ho_cov = holdout_covariates)
+  nearest_results_4x[[exp]] <- res
+  nearest_models_4x[[exp]] <- nearest
+  print(res)
+}
+```
+
+```{r, echo=FALSE}
+save.image('data/4week/US/analysis_09072019.RData')
+```
+
+### CEM: Full
+
+#### 1x Oversampling
+```{r}
+cem_results_1x <- list()
+cem_models_1x <- list()
+for (exp in names(exps)){
+  cem <- matchit(formula = generate_formula(exps[[exp]], label), df_1x, 'cem')
+  res <- match.data(cem) %>%
+    calc_delta(tr_cov = exps[[exp]], ho_cov = holdout_covariates)
+  cem_results_1x[[exp]] <- res
+  cem_models_1x[[exp]] <- cem
+  print(res)
+}
+```
+
+#### 2x Oversampling
+```{r}
+cem_results_2x <- list()
+cem_models_2x <- list()
+for (exp in names(exps)){
+  cem <- matchit(formula = generate_formula(exps[[exp]], label), df_2x, 'cem')
+  res <- match.data(cem) %>%
+    calc_delta(tr_cov = exps[[exp]], ho_cov = holdout_covariates)
+  cem_results_2x[[exp]] <- res
+  cem_models_2x[[exp]] <- cem
+  print(res)
+}
+```
+
+#### 4x Oversampling
+```{r}
+cem_results_4x <- list()
+cem_models_4x <- list()
+for (exp in names(exps)){
+  cem <- matchit(formula = generate_formula(exps[[exp]], label), df_4x, 'cem')
+  res <- match.data(cem) %>%
+    calc_delta(tr_cov = exps[[exp]], ho_cov = holdout_covariates)
+  cem_results_4x[[exp]] <- res
+  cem_models_4x[[exp]] <- cem
+  print(res)
+}
+```
+
+### Nearest Neighbors: Small - mahalanobis
+
+Appears `distance = 'mahalanobis'` doesn't work with categorical (singular matrix). Bypassing issue by only using numeric covariates. 
+
+#### 1x Oversampling
+```{r}
+formula <- generate_formula(c('search_count', 'daily_max_tabs', 'daily_num_sessions_started', 'num_addons', 
+                                        'num_bookmarks', 'profile_age', 'timezone_offset', 'cpu_speed_mhz', 'memory_mb', 
+                                        'cpu_cores'), label = label)
+                                      
+exp_1x.nearest.ma<- matchit(formula, df_1x_sm, 'nearest', distance='mahalanobis', replace = TRUE)
+
+exp_1x.res.nearest.ma <- match.data(exp_1x.nearest.ma) %>%
+  calc_delta(tr_cov = exp_1, ho_cov = holdout_covariates)
+exp_1x.res.nearest.ma
+```
+
+#### 2x Oversampling
+```{r}
+exp_2x.nearest.ma.1x<- matchit(formula, df_2x_sm, 'nearest', distance='mahalanobis')
+
+exp_2x.res.nearest.ma <- match.data(exp_2x.nearest.ma) %>%
+  calc_delta(tr_cov = exp_1, ho_cov = holdout_covariates)
+exp_2x.res.nearest.ma
+```
+
+#### 4x Oversampling
+```{r}
+exp_4x.nearest.ma<- matchit(formula, df_4x_sm, 'nearest', distance='mahalanobis')
+
+exp_4x.res.nearest.ma <- match.data(exp_4x.nearest.ma) %>%
+  calc_delta(tr_cov = exp_1, ho_cov = holdout_covariates)
+exp_4x.res.nearest.ma
+```
+
+```{r, echo=FALSE} 
+save.image('data/4week/US/analysis_09072019.RData')
+```
+
+```{r}
+stats <- calc_stats(df_4x_sm, holdout_covariates, add_1 = TRUE)
+
+for (covariate in holdout_covariates) {
+  stats_rel <- stats %>% filter(label == 'release') %>% select(covariate, metric)
+  means <- stats_rel[stats_rel$metric == 'mean', covariate]
+  medians <- stats_rel[stats_rel$metric == 'median', covariate]
+  
+  compare_log_cont(df_4x_sm, covariate, means, medians) 
+}
+```
+
+```{r}
+exp_4x.nearest.ma.df <- match.data(exp_4x.nearest.ma)
+stats <- calc_stats(exp_4x.nearest.ma.df, holdout_covariates, add_1 = TRUE)
+
+for (covariate in holdout_covariates) {
+  stats_rel <- stats %>% filter(label == 'release') %>% select(covariate, metric)
+  means <- stats_rel[stats_rel$metric == 'mean', covariate]
+  medians <- stats_rel[stats_rel$metric == 'median', covariate]
+  
+  compare_log_cont(exp_4x.nearest.ma.df, covariate, means, medians) 
+}
+```
+
+#### 4x: Kitchen Sink
+All continuous covariates
+
+```{r}
+formula <- generate_formula(c(cont_log_covariates, cont_covariates), label = label)
+
+exp_4x_all.nearest.ma<- matchit(formula, df_4x_sm, 'nearest', distance='mahalanobis')
+
+exp_4x_all.res.nearest.ma <- match.data(exp_4x_all.nearest.ma) %>%
+  calc_delta(tr_cov = exp_1, ho_cov = holdout_covariates)
+exp_4x_all.res.nearest.ma
+```
+
+```{r}
+save.image('data/4week/US/analysis_09072019.RData')
+```
+
+```{r}
+stats <- calc_stats(df_4x_sm, holdout_covariates, add_1 = TRUE)
+
+for (covariate in holdout_covariates) {
+  stats_rel <- stats %>% filter(label == 'release') %>% select(covariate, metric)
+  means <- stats_rel[stats_rel$metric == 'mean', covariate]
+  medians <- stats_rel[stats_rel$metric == 'median', covariate]
+  
+  compare_log_cont(df_4x_sm, covariate, means, medians) 
+}
+```
+
+```{r}
+exp_4x_all.nearest.ma.df <- match.data(exp_4x_all.nearest.ma)
+stats <- calc_stats(exp_4x_all.nearest.ma.df, holdout_covariates, add_1 = TRUE)
+
+for (covariate in holdout_covariates) {
+  stats_rel <- stats %>% filter(label == 'release') %>% select(covariate, metric)
+  means <- stats_rel[stats_rel$metric == 'mean', covariate]
+  medians <- stats_rel[stats_rel$metric == 'median', covariate]
+  
+  compare_log_cont(exp_4x_all.nearest.ma.df, covariate, means, medians) 
+}
+```
+
+```{r}
+save.image('data/4week/US/analysis_09072019.RData')
+```
+
+
+
+

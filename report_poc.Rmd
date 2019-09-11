@@ -29,11 +29,15 @@ df_f <- exp_4x.nearest.ma.df %>%
   filter(label == 'beta') %>%
   mutate(label =  'beta - matched') %>%
   rbind(df_4x_sm)
+
+model_covs <- c('search_count', 'daily_max_tabs', 'daily_num_sessions_started', 'num_addons', 
+                                        'num_bookmarks', 'profile_age', 'timezone_offset', 'cpu_speed_mhz', 'memory_mb', 
+                                        'cpu_cores')
 ```
 
 ## tl;dr
 
-[Statistical matching](https://en.wikipedia.org/wiki/Matching_(statistics)) methods were employed to investigate the posssibility of finding a subset of Beta clients that are representative of Release. The specific use-case of this proof-of-concept is utilizing engagement, configuration, and environment client fields (covariates) for matching. Validation of the matching is performed on a hold-out set of Firefox performance covariates, as an illustration of a potential real-world use-case. The following tables represent the relative difference between Beta and Release for the mean and median respectively. These initial results are promising and suggest that such techniques can work. 
+[Statistical matching](https://en.wikipedia.org/wiki/Matching_(statistics)) methods were employed to investigate the posssibility of finding a subset of Beta clients that are representative of Release. The specific use-case of this proof-of-concept was to utilize engagement, configuration, and environment client fields (covariates) for matching. Validation of the matching was performed on a hold-out set of Firefox performance covariates, as an illustration of a potential real-world use-case. The following tables represent the relative difference between Beta and Release for the mean and median respectively. These initial results are promising and suggest that such techniques can work. 
 
 ```{r tldr_summary, message=FALSE, warning=FALSE, echo=FALSE}
 
@@ -87,14 +91,62 @@ The code that exported the data is available [here](https://dbc-caf9527b-e073.cl
 Preliminary work utilized all countries. However, the results of the statistical matching were poor. Therefore, the dominant two countries in Release were selected to reduce the problem scope. This significantly limited the available population for matching to ~100K. 
 
 ### Covariates
-The following covariates are collected. These are categorized under training, and hold-out. The former are used for training a statistical matching model. The latter are not included in training and are used for determining model performance. The covariates are further subcategorized as to the what they measure. 
+The following covariates were collected. These were categorized under training, and hold-out. The former were used for training a statistical matching model. The latter are not included in training and are used for determining model performance. The covariates are further subcategorized as to the what they measure. 
 
 #### Training
-The sum of <  > ....
-(build markdown table)
 
+
+* Browser engagement
+    - uri_count
+    - search_count
+    - active_hours
+    - num_pages
+    - daily_max_tabs
+    - daily_unique_domains
+    - daily_num_sessions_started
+    - daily_tabs_opened
+* Frequency of Browser Usage
+    - num_active_days
+    - daily_num_sessions_started
+    - session_length
+    - profile_age
+* Environment
+    - cpu_cores
+    - cpu_speed_mhz
+    - memory_mb
+    - os
+    - os_version
+    - is_wow64
+    - distribution_id
+* Geo
+    - country
+    - timezone_offset
+* Settings
+    - num_bookmarks
+    - num_addons
+    - sync_configured
+    - is_default_browser
+  
 #### Holdout
-The following are the performance metrics used for validation. The 
+The following are the performance metrics used for validation. These were chosen to cover various aspects of [Firefox performance](https://docs.google.com/document/d/1W-EREsJLuRvTPvGXaW71FvuAGXkoLNDZmZl-sbaeMZM/edit#heading=h.xguata2qq3jz), in addition to their ease of accessbility in `main_summary`, 
+
+* Page Load
+    - FX_PAGE_LOAD_MS_2_PARENT
+    - TIME_TO_DOM_COMPLETE_MS
+    - TIME_TO_DOM_CONTENT_LOADED_END_MS
+    - TIME_TO_LOAD_EVENT_END_MS
+* Responsiveness
+    - FX_TAB_SWITCH_TOTAL_E10S_MS    
+* Graphics
+    - COMPOSITE_TIME_GPU
+    - CONTENT_FRAME_TIME_GPU
+    - CONTENT_PAINT_TIME_CONTENT
+* Memory
+    - MEMORY_TOTAL
+* Startup
+    - startup_ms
+* Stability
+    - content_crashes
 
 
 ### Covariate Selection {#cov_sel}
@@ -112,7 +164,7 @@ corrplot(cor(df[, c(cont_log_covariates, cont_covariates)], use='complete.obs'),
 
 
 ## Models
-A range of statistical matching models were reviewed, using the _R_ library [Matchit](https://cran.r-project.org/web/packages/MatchIt/index.html):
+A range of statistical matching models were [reviewed](https://metrics.mozilla.com/protected/cdowhygelund/modeling_poc.Rmd), using the R library [Matchit](https://cran.r-project.org/web/packages/MatchIt/index.html):
 
 * Coarsened Exact Matching (CEM)
 * Nearest neighbor matching
@@ -128,14 +180,11 @@ Finally, a range of Beta overrepresentations were tested. In the following, 2x m
 
 The best performing model was Nearest Neighbors with Mahalanobis distance measure, with 4x Beta to Release. This is in vein to the findings of [King et al. 2018](https://gking.harvard.edu/files/gking/files/psnot.pdf). However, this works finds that CEM is sub-optimal, with respect to Neight neighbors matching. 
 
-Mahalanobis distance matching requires continuous covariates. The following were found to be the most performant:
-
-< covariates>
+Mahalanobis distance matching requires continuous covariates. The following were found to be the most performant: `r paste(model_covs, sep=', ', collapse = ', ')`.
 
 ## Results
 
 The following plots show the covariate distributions for the following subsets: 
-
 
 * Beta: pre-matching
 * Beta: matched and subsetted
@@ -152,9 +201,9 @@ The following plots show the covariate distributions for the following subsets:
 
 The following plot shows the holdout performance metrics distributions for the following subsets. Overall, the matching greatly reduces the  differences in the distributions between Beta and Release. For several metrics, such as `CONTENT_PAINT_TIME_CONTENT`, the subsetting results in very comparable distributions. For cases such as `TIME_TO_DOM_CONTENT_LOADED_MS`, the improvement is significant, though differences between the two channels are significant.
 
-However, for `MEMORY_TOTAL` and `startup_ms`, the improvement is marginal and the resultant matched distrubution are poor. `MEMORY_TOTAL` has the greatest observable difference between Beta and Release pre and post matching. `startup_ms` doesn't appear to be highly distinct across channels for these metrics. 
+However, for `MEMORY_TOTAL` and `startup_ms`, the improvement is marginal and the resultant matched distrubutions are poor. `MEMORY_TOTAL` has the greatest observable difference between Beta and Release pre and post matching. `startup_ms` doesn't appear to be highly distinct across channels for these metrics. 
 
-Combined, these results suggest that matching can make small, but limited, improvements to the distributions. 
+In all cases, the change in the metrics is always positive. Combined, these results suggest that matching can make significant, albeit limited, improvements to the distributions. 
 
 ```{r perf_holdout, fig.width=10, fig.height=100, echo=FALSE}
 ho_other_cov <- c('content_crashes')
@@ -183,10 +232,6 @@ The following engagement covariates were not used training, as they are relative
 stats <- calc_stats(exp_4x.nearest.ma.df, cont_log_covariates, add_1 = TRUE)
 plots <- list()
 
-model_covs <- c('search_count', 'daily_max_tabs', 'daily_num_sessions_started', 'num_addons', 
-                                        'num_bookmarks', 'profile_age', 'timezone_offset', 'cpu_speed_mhz', 'memory_mb', 
-                                        'cpu_cores')
-
 for (covariate in cont_log_covariates[!cont_log_covariates %in% model_covs]) {
   stats_rel <- stats %>% filter(label == 'release') %>% select(covariate, metric)
   means <- stats_rel[stats_rel$metric == 'mean', covariate]
@@ -203,14 +248,16 @@ plot_grid(plotlist = plots, ncol = 1)
 
 ## Discussion
 
-The matching did an adequate job in finding a representative subset of Beta, especially concerning the performance metrics task. There are many avenues to further this analsysis, in order to utilize such a methodology in a production setting:
+The matching did an adequate job in finding a representative subset of Beta, especially concerning the performance metrics task. There are many avenues to further this analsysis, in order to utilize such a methodology in a production setting. The primary research investment that needs to be made is in feature generation and selection. These are typically the highest influential factos in ML/predictive modeling tasks.
+
+Additional next steps include:
 
 * Covariate/ Variable selection
   * This needs to be actively researched, especially in regards to real-world Firefox use-cases. 
 * Compare histogram distributions
-  * Client means were utilized in this above analysis. Instead, aggregating the client distributions needs to be addressed.
+  * Client means were utilized in this above analysis. Instead, aggregating the client distributions should be addressed.
 * Feature generation
   * The covariates utilized above are limited subset. A much more rigorous analysis of covariates needs to be applied.
-* All countries used in matching
+* Additional countries used in matching
   * This is required for most general uses of the Beta subset.
-  * The US and GB Beta population is quite small. As noted above, overrepresentation of Beta in matching results in higher performant models. Therefore, to obtain greater training sample sizes requires at minimum for India to be considered. 
+  * The US + GB Beta population is quite small. As noted above, overrepresentation of Beta in matching yields higher performant models. Therefore, to obtain greater training sample sizes requires additional countries, especially India, to be considered. 
