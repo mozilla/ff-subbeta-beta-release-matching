@@ -147,6 +147,7 @@ def get_meta(df):
   .filter(df.row_num == 1)
   .select(
     df.client_id.alias('cid'),
+    df.normalized_channel,
     df.app_version,
     df.country,
     df.city,
@@ -329,11 +330,11 @@ with StringIO() as f:
 
 # COMMAND ----------
 
+BETA_TRAINING_START_DATE = dt.datetime(2019, 4, 23)
 BETA_TRAINING_VERSION = '67'
 
-BETA_TRAINING_START_DATE = dt.datetime(2019, 4, 23)
-
 RELEASE_TRAINING_START_DATE = dt.datetime(2019, 5, 21)
+RELEASE_TRAINING_VERSION = BETA_TRAINING_VERSION
 
 # COMMAND ----------
 
