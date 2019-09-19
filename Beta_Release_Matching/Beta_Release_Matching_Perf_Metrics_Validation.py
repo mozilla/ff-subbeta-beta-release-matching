@@ -230,7 +230,7 @@ beta_df = add_meta(beta['agg'], beta_meta)
 beta_ms = beta_ms = get_df(ms, 'beta', BETA_VALIDATION_START_DATE, (str(x) for x in range(1, 1+sample_frac)), BETA_VALIDATION_VERSION,
                            gen_hist_metrics, rename_cid=True, add_label=False)['agg'] 
 beta_ms = mean_probes(beta_ms)
-beta_df = add_meta(beta_df, beta_ms, reduce_size=True)
+beta_df = add_meta(beta_df, beta_ms, reduce_size=False)
 
 # COMMAND ----------
 
@@ -271,7 +271,7 @@ release_df = add_meta(release['agg'], release_meta)
 release_ms = get_df(ms, 'release', RELEASE_VALIDATION_START_DATE, sample_frac, RELEASE_VALIDATION_VERSION, 
                     gen_hist_metrics, rename_cid=True, add_label=False)['agg'] 
 release_ms = mean_probes(release_ms)
-release_df = add_meta(release_df, release_ms, reduce_size=True)
+release_df = add_meta(release_df, release_ms, reduce_size=False)
 
 # COMMAND ----------
 
@@ -346,7 +346,7 @@ beta_df = add_meta(beta['agg'], beta_meta)
 beta_ms = beta_ms = get_df(ms, 'beta', BETA_TRAINING_START_DATE, (str(x) for x in range(1, 1+sample_frac)), BETA_TRAINING_VERSION,
                            gen_hist_metrics, rename_cid=True, add_label=False)['agg'] 
 beta_ms = mean_probes(beta_ms)
-beta_df = add_meta(beta_df, beta_ms, reduce_size=True)
+beta_df = add_meta(beta_df, beta_ms, reduce_size=False)
 
 beta_df.cache()
 beta_df.count()
@@ -378,7 +378,7 @@ release_df = add_meta(release['agg'], release_meta)
 release_ms = get_df(ms, 'release', RELEASE_TRAINING_START_DATE, sample_frac, RELEASE_TRAINING_VERSION, 
                     gen_hist_metrics, rename_cid=True, add_label=False)['agg'] 
 release_ms = mean_probes(release_ms)
-release_df = add_meta(release_df, release_ms, reduce_size=True)
+release_df = add_meta(release_df, release_ms, reduce_size=False)
 
 # COMMAND ----------
 
