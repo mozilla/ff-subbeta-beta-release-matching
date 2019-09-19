@@ -1,5 +1,5 @@
 ---
-title: "Beta to Release Matching"
+title: "Beta to Release Matching: Proof-of-Concept"
 author: "Corey Dow-Hygelund, Mozilla Data Science"
 date: 'Last Updated: `r format(Sys.time(), "%B %d, %Y")`'
 output: 
@@ -103,7 +103,6 @@ The following covariates were collected. These were categorized under training, 
     - num_pages
     - daily_max_tabs
     - daily_unique_domains
-    - daily_num_sessions_started
     - daily_tabs_opened
 * Frequency of Browser Usage
     - num_active_days

@@ -202,7 +202,7 @@ compare_cont <- function(df, covariate){
   print(p)
 }
 
-compare_cat <- function(df, covariate, limit = NULL){
+compare_cat <- function(df, covariate, limit = NULL, plot=TRUE){
   # reshape for plotting
   df_c <- df %>% 
     count(get(covariate), label) %>%
@@ -227,6 +227,7 @@ compare_cat <- function(df, covariate, limit = NULL){
     theme_bw() + 
     labs(x = covariate)
   
-  print(p)
+  if (plot) print(p)
+  return(p)
   # return(df_c)
 }
