@@ -227,7 +227,8 @@ sample_frac = 99
 beta = get_df(cd, 'beta', BETA_VALIDATION_START_DATE, (str(x) for x in range(1, 1+sample_frac)), BETA_VALIDATION_VERSION, gen_metrics)
 beta_meta = get_meta(beta['df'])
 beta_df = add_meta(beta['agg'], beta_meta)
-beta_ms = beta_ms = get_df(ms, 'beta', BETA_VALIDATION_START_DATE, (str(x) for x in range(1, 1+sample_frac)), BETA_VALIDATION_VERSION,
+beta_ms = beta_ms = get_df(ms, 'beta', BETA_VALIDATION_START_DATE, 
+                           (str(x) for x in range(1, 1+sample_frac)), BETA_VALIDATION_VERSION,
                            gen_hist_metrics, rename_cid=True, add_label=False)['agg'] 
 beta_ms = mean_probes(beta_ms)
 beta_df = add_meta(beta_df, beta_ms, reduce_size=False)
@@ -343,7 +344,8 @@ sample_frac = 99
 beta = get_df(cd, 'beta', BETA_TRAINING_START_DATE, (str(x) for x in range(1, 1+sample_frac)), BETA_TRAINING_VERSION, gen_metrics)
 beta_meta = get_meta(beta['df'])
 beta_df = add_meta(beta['agg'], beta_meta)
-beta_ms = beta_ms = get_df(ms, 'beta', BETA_TRAINING_START_DATE, (str(x) for x in range(1, 1+sample_frac)), BETA_TRAINING_VERSION,
+beta_ms = beta_ms = get_df(ms, 'beta', BETA_TRAINING_START_DATE, 
+                           (str(x) for x in range(1, 1+sample_frac)), BETA_TRAINING_VERSION,
                            gen_hist_metrics, rename_cid=True, add_label=False)['agg'] 
 beta_ms = mean_probes(beta_ms)
 beta_df = add_meta(beta_df, beta_ms, reduce_size=False)
