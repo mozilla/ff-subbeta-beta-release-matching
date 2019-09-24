@@ -372,6 +372,8 @@ plot_grid(plotlist = plots, ncol = 2)
 
 The matching yielded a subset that was similarly representative to v67 as to v68 for most of the covariates reviewed. However, for a subset of covariates, the difference between channels actually increased (e.g., `profile_age`, `default_search_engine`), or are distinctly different than Release before and after matching, namely `MEMORY_TOTAL`. This latter covariate requires further investigation as why its distribution is significantly more spread to higher values than for Release. 
 
+The usage of a performance metrics hold-out set is not necessary, when applying the model across versions. However, [research has shown](https://metrics.mozilla.com/protected/cdowhygelund/beta_subset_release.html#covariate_selection) that optimal feature selection for statistical matching uses the effects (e.g., hold-out covariates) rather than the response (e.g., whether it is Beta or Release) typical of predictive modeling. Therefore, knowledge of the metrics of concern before matching occurs is key.
+
 ## Next Steps
 This methodology is an initial step towards providing an additional set of Firefox Release Heatlth metrics derived from the Beta release population. Additional work to realize this goal include:
 
