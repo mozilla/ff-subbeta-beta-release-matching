@@ -1,0 +1,317 @@
+---
+title: 'Beta to Release Matching: Method Validation'
+author: "Corey Dow-Hygelund"
+date: "9/19/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r imports, warning=FALSE, message=FALSE, echo=FALSE}
+source('supporting_funcs.R')
+library(kableExtra)
+library(cowplot)
+```
+
+# Technique
+
+* Apply same data cleaning, covariate/feature generation, and sampling as in [proof-of-concept](https://metrics.mozilla.com/protected/cdowhygelund/beta_subset_release.html)
+    - Apply to v67 and v68 datasets
+    - **NOTE** Should we sample clients from both versions? 
+* Train model (apply matching) to v67
+    - Review diagnostics
+* Validated against v68
+    1. Find all clients in v67 sample 
+    2. Review diagnostics
+
+# Data Loading
+
+Follow the same protocol in the [previous work](https://metrics.mozilla.com/protected/cdowhygelund/modeling_poc.Rmd). For this case v67 data is used for modeling, and v68 is used for validation. 
+
+```{r}
+# define response field
+label <- 'is_release'
+
+load_df <- function(file_path){
+  df <- read.csv(file_path) %>%
+  select(-c(CONTENT_PAINT_TIME_PARENT, COMPOSITE_TIME_CONTENT, COMPOSITE_TIME_PARENT, CONTENT_FRAME_TIME_PARENT)) %>% # All NAs 
+  select(-e10s_enabled) %>% # All True
+  mutate(default_search_engine = as.factor(normalize_search_engine(default_search_engine))) %>%
+  mutate(profile_age_cat = as.factor(normalize_profile_age(profile_age))) %>%
+  mutate(distro_id_norm = as.factor(normalize_distro_id(distribution_id))) %>%
+  mutate(timezone_cat = as.factor(normalize_timezone(timezone_offset))) %>%
+  mutate(memory_cat = as.factor(normalize_memory(memory_mb))) %>% 
+  mutate(cpu_speed_cat = as.factor(normalize_cpu_speed(cpu_speed_mhz))) %>% 
+  mutate(cpu_cores_cat = as.factor(normalize_cpu_cores(cpu_cores))) %>% 
+  mutate(!!label := case_when(
+    label == 'beta' ~ FALSE,
+    TRUE ~ TRUE)) %>%
+  filter(startup_ms >= 0 & profile_age >= 0)
+  
+  # complete cases (specifically targets perf metrics) and remove profiles in both Beta and Release
+  df_c <- df %>% 
+    na.omit() %>%
+    mutate()
+  return(df_c)
+}
+
+df_train <- load_df('data/Validation/df_67.csv')
+df_validate <- load_df('data/Validation/df_68.csv')
+```
+
+# Sampling
+Oversampling Beta by 4x and downsampling this result to 100K records. 
+
+```{r}
+build_df <- function(df_c, multiple){
+  df_beta <- df_c %>% filter(is_release == FALSE)
+  df_rel <- df_c %>% filter(is_release == TRUE)
+  n_beta <- nrow(df_beta)
+  
+  df <- df_rel %>%
+    sample_n(size = round(n_beta / multiple)) %>%
+    rbind(df_beta)
+  
+  return(df)
+}
+
+df_train_4x <- build_df(df_train, 4) %>% sample_n(size = 100000)
+# df_validate_4x <- build_df(df_validate, 4) %>% sample_n(size = 100000)
+```
+
+Determine the number of training (v67) Beta and Release clients that are in the validation set (v68)
+
+```{r}
+mutual_clients <- df_train_4x[, c('client_id', 'label')] %>% 
+  inner_join(df_validate[, c('client_id', 'label')]) %>% 
+  count(label)
+
+mutual_clients
+```
+
+Compare this to existing distribution
+
+```{r}
+df_train_4x %>% 
+  count(label)
+```
+
+Okay, not bad most training clients (~70%) are in validation. See how this holds after matching.
+
+# Modeling
+
+```{r covariate_groups}
+model_covs <- c('search_count', 'daily_max_tabs', 'daily_num_sessions_started', 'num_addons', 
+                              'num_bookmarks', 'profile_age', 'timezone_offset', 'cpu_speed_mhz',
+                              'memory_mb', 'cpu_cores')
+
+holdout_covariates <- c("CONTENT_PAINT_TIME_CONTENT", "TIME_TO_DOM_CONTENT_LOADED_END_MS", 
+                        "MEMORY_TOTAL", "TIME_TO_DOM_COMPLETE_MS", "FX_PAGE_LOAD_MS_2_PARENT", 
+                        "FX_TAB_SWITCH_TOTAL_E10S_MS",
+                        "CONTENT_FRAME_TIME_GPU", "COMPOSITE_TIME_GPU",
+                        "TIME_TO_LOAD_EVENT_END_MS", 'startup_ms', 'content_crashes')
+
+
+cont_log_covariates <- c('active_hours', 'daily_max_tabs', 'daily_tabs_opened', 'search_count',
+                         'daily_unique_domains', 'daily_num_sessions_started', 
+                         'num_bookmarks', 'num_addons', 'num_active_days', 'num_pages', 'uri_count',
+                         'session_length', 'profile_age')
+
+cat_covariates <- c('country', 'timezone_cat', 'distro_id_norm', 'profile_age_cat', 'cpu_cores_cat',
+                    'memory_cat', 'cpu_speed_cat', 'default_search_engine')
+
+```
+
+The best model from previous work: 
+
+```{r model_train}
+formula <- generate_formula(model_covs, label = label)
+
+nn.ma <- matchit(formula, df_train_4x, 'nearest', distance='mahalanobis')
+
+df_matched <- match.data(nn.ma) 
+```
+```{r export_model, warning=FALSE, message=FALSE, echo=FALSE}
+save.image('data/Validation/analysis_09182019_corr.RData')
+```
+
+```{r summary_mean_tbl}
+stats_pre <- calc_delta(df_train_4x, NULL, holdout_covariates) %>%
+  select(-'content_crashes')
+stats_post <- calc_delta(df_matched, NULL, holdout_covariates) %>%
+  select(-'content_crashes')
+
+stats_mean <- stats_pre[1, ] %>% 
+  rbind(stats_post[1, ]) %>%
+  set_rownames(c('pre-matching', 'post-matching'))
+
+stats_median <- stats_pre[2, ] %>% 
+  rbind(stats_post[2, ]) %>%
+  set_rownames(c('pre-matching', 'post-matching'))
+
+knitr::kable(stats_mean) %>%
+  kable_styling() %>%
+  scroll_box(width = "750px", height = "200px")
+
+```
+
+```{r perf_holdout, fig.width=10, fig.height=50, echo=FALSE}
+df_full <- df_matched %>% 
+  select(-c(distance, weights)) %>%
+  filter(label == 'beta') %>%
+  mutate(label =  'beta - matched') %>%
+  rbind(df_train)
+
+stats <- calc_stats(df_matched, holdout_covariates, add_1 = TRUE)
+
+plots <- list()
+
+for (covariate in holdout_covariates) {
+  stats_rel <- stats %>% filter(label == 'release') %>% select(covariate, metric)
+  means <- stats_rel[stats_rel$metric == 'mean', covariate]
+  medians <- stats_rel[stats_rel$metric == 'median', covariate]
+  ho_means <- stats %>% filter(label == 'beta' & metric == 'mean') %>% select(covariate)
+  
+  plots[[covariate]] <- compare_log_cont(df_full, covariate, means, medians, as.numeric(ho_means), print=FALSE) 
+}
+
+plot_grid(plotlist = plots, ncol = 1)
+
+# for (covariate in holdout_covariates) {
+#   compare_log_cont(df_full, covariate) 
+#}
+```
+
+
+
+# Validation
+
+Subset the validation clients down to those matched
+
+```{r}
+df_validate_matched <- df_validate %>%
+  filter(client_id %in% df_matched$client_id)
+
+df_validate_matched %>%
+  count(label)
+```
+
+## Holdout Covariates
+
+```{r summary_validate_mean_tbl}
+stats_pre <- calc_delta(df_validate, NULL, holdout_covariates) %>%
+  select(-'content_crashes')
+stats_post <- calc_delta(df_validate_matched, NULL, holdout_covariates) %>%
+  select(-'content_crashes')
+
+stats_mean <- stats_pre[1, ] %>% 
+  rbind(stats_post[1, ]) %>%
+  set_rownames(c('pre-matching', 'post-matching'))
+
+stats_median <- stats_pre[2, ] %>% 
+  rbind(stats_post[2, ]) %>%
+  set_rownames(c('pre-matching', 'post-matching'))
+
+knitr::kable(stats_mean) %>%
+  kable_styling() %>%
+  scroll_box(width = "750px", height = "200px")
+
+```
+
+```{r}
+knitr::kable(stats_median) %>%
+  kable_styling() %>%
+  scroll_box(width = "750px", height = "200px")
+```
+
+```{r perf_holdout, fig.width=10, fig.height=50, echo=FALSE}
+df_validate_full <- df_validate_matched %>% 
+  # select(-c(distance, weights)) %>%
+  filter(label == 'beta') %>%
+  mutate(label =  'beta - matched') %>%
+  rbind(df_validate) %>% 
+  distinct()
+
+stats <- calc_stats(df_validate_full, holdout_covariates, add_1 = TRUE)
+
+plots <- list()
+
+for (covariate in holdout_covariates) {
+  stats_rel <- stats %>% filter(label == 'release') %>% select(covariate, metric)
+  means <- stats_rel[stats_rel$metric == 'mean', covariate]
+  medians <- stats_rel[stats_rel$metric == 'median', covariate]
+  ho_means <- stats %>% filter(label == 'beta' & metric == 'mean') %>% select(covariate)
+  
+  plots[[covariate]] <- compare_log_cont(df_validate_full, covariate, means, medians, as.numeric(ho_means), print=FALSE) 
+}
+
+# for (covariate in holdout_covariates) {
+#   compare_log_cont(df_full, covariate) 
+#}
+```
+
+```{r perf_holdout, fig.width=10, fig.height=50, echo=FALSE}
+plot_grid(plotlist = plots, ncol = 1)
+```
+
+
+## Training/Engagement Covariates
+
+
+```{r summary_validate_mean_tbl}
+stats_pre <- calc_delta(df_validate, NULL, cont_log_covariates) 
+stats_post <- calc_delta(df_validate_matched, NULL, cont_log_covariates) 
+
+stats_mean <- stats_pre[1, ] %>% 
+  rbind(stats_post[1, ]) %>%
+  set_rownames(c('pre-matching', 'post-matching'))
+
+stats_median <- stats_pre[2, ] %>% 
+  rbind(stats_post[2, ]) %>%
+  set_rownames(c('pre-matching', 'post-matching'))
+
+knitr::kable(stats_mean) %>%
+  kable_styling() %>%
+  scroll_box(width = "750px", height = "200px")
+
+```
+
+```{r}
+knitr::kable(stats_median) %>%
+  kable_styling() %>%
+  scroll_box(width = "750px", height = "200px")
+```
+
+```{r cont_log_cov_plots, fig.width=10, fig.height=50, echo=FALSE}
+stats <- calc_stats(df_validate_full, cont_log_covariates, add_1 = TRUE)
+
+plots <- list()
+
+for (covariate in cont_log_covariates) {
+  stats_rel <- stats %>% filter(label == 'release') %>% select(covariate, metric)
+  means <- stats_rel[stats_rel$metric == 'mean', covariate]
+  medians <- stats_rel[stats_rel$metric == 'median', covariate]
+  ho_means <- stats %>% filter(label == 'beta' & metric == 'mean') %>% select(covariate)
+  
+  plots[[covariate]] <- compare_log_cont(df_validate_full, covariate, means, medians, as.numeric(ho_means), print=FALSE) 
+}
+```
+
+```{r cont_log_cov_plotted, fig.width=10, fig.height=50, echo=FALSE}
+plot_grid(plotlist = plots, ncol = 1)
+```
+
+Categorical 
+
+```{r cat_cov_plotted, fig.width=10, fig.height=50, echo=FALSE}
+plots <- list()
+
+for (covariate in cat_covariates){
+  plots[[covariate]] <- compare_cat(df_validate_full, covariate, limit = 10, plot = FALSE)
+}
+
+plot_grid(plotlist = plots, ncol = 1)
+```
+

@@ -1,0 +1,403 @@
+---
+title: 'Beta to Release Matching: Method Validation'
+author: "Corey Dow-Hygelund, Mozilla Data Science"
+date: 'Last Updated: `r format(Sys.time(), "%B %d, %Y")`'
+output: 
+  html_document:
+    theme: cosmo
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r data_load, message=FALSE, warning=FALSE, echo=FALSE}
+load('data/Validation/analysis_09182019_corr.RData')
+```
+
+```{r imports, message=FALSE, warning=FALSE, echo=FALSE}
+source('supporting_funcs.R')
+library(cowplot)
+library(kableExtra)
+library(pander)
+```
+
+# tl;dr 
+
+This work expands upon the Beta to Release matching [proof-of-concept](https://metrics.mozilla.com/protected/cdowhygelund/beta_subset_release.html), by validating the technique across versions. The matching model was trained on v67 Desktop Firefox versions, matching Beta profiles that were representative of Release. Comparisons were made against these matched profiles and Release for v68 performance and engagement metrics. The results for v68 are similar to those observed in v67. This suggests this methodology can be used to calculate additional Firefox Release Health metrics derived from the Beta populations.
+
+
+```{r tldr_summary, message=FALSE, warning=FALSE, echo=FALSE}
+stats_pre <- calc_delta(df_validate, NULL, holdout_covariates) %>%
+  select(-'content_crashes')
+stats_post <- calc_delta(df_validate_matched, NULL, holdout_covariates) %>%
+  select(-'content_crashes') 
+
+stats_pre_v67 <- calc_delta(df_train, NULL, holdout_covariates) %>%
+  select(-'content_crashes')
+stats_post_v67 <- calc_delta(df_matched, NULL, holdout_covariates) %>%
+  select(-'content_crashes')
+
+rows <- c('pre-matching: v67', 'post-matching: v67', 'pre-matching: v68', 'post-matching: v68')
+  
+stats_mean <- stats_pre_v67[1, ] %>% 
+  rbind(stats_post_v67[1, ]) %>%
+  rbind(stats_pre[1, ]) %>%
+  rbind(stats_post[1, ]) %>%
+  set_rownames(rows)
+
+stats_median <- stats_pre_v67[2, ] %>% 
+  rbind(stats_post_v67[2, ]) %>%
+  rbind(stats_pre[2, ]) %>%
+  rbind(stats_post[2, ]) %>%
+  set_rownames(rows)
+```
+
+The following tables represent the relative difference between the Beta and Release train (v67) and validation (v68) datasets for the mean and median respectively.
+
+## Beta-Release Difference: Mean
+
+The following shows the 
+```{r tldr_summary_mean, message=FALSE, warning=FALSE, echo=FALSE}
+knitr::kable(stats_mean) %>%
+  kable_styling() %>%
+  scroll_box(width = "900px", height = "400px")
+```
+
+## Beta-Release Difference: Median
+
+```{r tldr_summary_median, message=FALSE, warning=FALSE, echo=FALSE}
+
+knitr::kable(stats_median) %>%
+  kable_styling() %>%
+  scroll_box(width = "900px", height = "400px")
+```
+
+# Problem Statement
+There is significant utility in findiing representative Beta populations of Firefox that can give insight into Release before its launch. In a previous work, it was shown that [statistical matching](https://en.wikipedia.org/wiki/Matching_(statistics)) can find a subset of Beta that is representative of Release regarding performance metrics. However, a real world use-case is training the model on v67, finding matched clients, then applying to a subsequent version. This work attempts to further validate the technique, by following  this real-world use-case.
+
+1. Train a statistical matching model on v67 Firefox data that matches Beta to Release profiles.
+2. Extract the matched v67 Beta profiles.
+3. Subset v68 Beta profiles by the matched v67 profiles.
+4. Measure the difference in performance and engagement between between Beta and Release before and after matching. 
+
+
+# Methodology
+## Data Preparation
+The code that exported the data is available [here](https://dbc-caf9527b-e073.cloud.databricks.com/#notebook/175052/command/175053). Similar filters are applied as the previous work.
+
+* Desktop Firefox
+* Two weeks of collection per profile, starting with first observed ping within date window
+* en-US, en-GB locales
+* US, GB countries
+
+### Training
+The follows makes up the training dataset, used in statistical matching:
+
+* Version 67
+* Beta dates: last four weeks (06/04/2019 - 07/09/2019)
+* Release dates: first four weeks (07/09/2019 - 08/06/2019)
+* Composition: 
+
+```{r training_composition, message=FALSE, warning=FALSE, echo=FALSE}
+knitr::kable(
+  df_train_4x %>% 
+  count(label) %>%
+  rename(channel = label, count = n)
+  ) %>%
+  kable_styling() %>%
+  scroll_box(width = "250px", height = "150px")
+```
+
+
+### Validation
+
+The followings filters constitute the validation dataset:
+
+* Version 68
+* Beta dates: last four weeks (04/23/2019 - 05/21/2019)
+* Release dates: first four weeks (05/21/2019 - 06/18/2019)
+* Composition: _before_ matching and subsetting of Beta)
+
+```{r validation_composition, message=FALSE, warning=FALSE, echo=FALSE}
+knitr::kable(
+  df_validate %>% 
+  count(label) %>%
+    rename(channel = label, count = n)
+  ) %>%
+  kable_styling() %>%
+  scroll_box(width = "250px", height = "150px")
+```
+
+# Model
+
+The [highest performant model](https://metrics.mozilla.com/protected/cdowhygelund/beta_subset_release.html#models) was trained on the [v67 dataset](https://metrics.mozilla.com/protected/cdowhygelund/modeling_validation.Rmd). The code the performed the modeling is available [here](https://metrics.mozilla.com/protected/cdowhygelund/method_validation.Rmd):
+
+* Model: Nearest Neighbors with Mahalanobis distance measure
+* Beta oversampling: 4x Beta to Release
+* Covariates (Model Features): `r pander(model_covs)`
+
+The final result of this model is a subset of Beta profiles most representative of Release.
+
+# Validation
+
+The next step is to subset the _validation_ v68 dataset by these matched Beta profiles. This reduces the Beta sample size used in the subsequent analysis:
+
+* v67 Beta subset: `r df_matched %>% filter(label == 'beta') %>% count()` distinct profiles
+* v68 Beta subset: `r df_validate_matched %>% filter(label == 'beta') %>% count()` distinct profiles
+ 
+The following plots show the covariate distributions for the following subsets: 
+
+* Beta v68: pre-matching
+* Beta v68: matched and subsetted
+* Release v68
+
+**NOTE**: Guiding lines have been added for the following:
+
+* <span style="color:red">red</span> dashed: Release mean
+* <span style="color:blue">blue</span> dashed: Release median
+* <span style="color:green">green</span> dashed line: subsetted Beta _mean_. 
+
+## Holdout Covariates
+The same set of [performance metrics as the previous analysis](https://metrics.mozilla.com/protected/cdowhygelund/beta_subset_release.html#covariates), were held out from matching model training and used as a model diagnostic:
+
+```{r holdout_covs_list, echo=FALSE, results='asis'}
+pander(as.list(holdout_covariates))
+```
+
+
+### Training Dataset: v67
+
+```{r perf_holdout_training, fig.width=10, fig.height=50, echo=FALSE}
+df_training_full <- df_matched %>% 
+  select(-weights, -distance) %>%
+  filter(label == 'beta') %>%
+  mutate(label =  'beta - matched') %>%
+  rbind(df_train) %>% 
+  distinct()
+
+stats <- calc_stats(df_training_full, holdout_covariates, add_1 = TRUE)
+
+plots <- list()
+
+for (covariate in holdout_covariates) {
+  if (covariate == 'content_crashes') break
+  stats_rel <- stats %>% filter(label == 'release') %>% select(covariate, metric)
+  means <- stats_rel[stats_rel$metric == 'mean', covariate]
+  medians <- stats_rel[stats_rel$metric == 'median', covariate]
+  ho_means <- stats %>% filter(label == 'beta' & metric == 'mean') %>% select(covariate)
+  
+  plots[[covariate]] <- compare_log_cont(df_training_full, covariate, means, medians, as.numeric(ho_means), print=FALSE) 
+}
+
+plot_grid(plotlist = plots, ncol = 2)
+```
+
+### Validation Dataset: v68
+```{r perf_holdout_validation, fig.width=10, fig.height=50, echo=FALSE}
+df_validate_full <- df_validate_matched %>% 
+  filter(label == 'beta') %>%
+  mutate(label =  'beta - matched') %>%
+  rbind(df_validate) %>% 
+  distinct()
+
+stats <- calc_stats(df_validate_full, holdout_covariates, add_1 = TRUE)
+
+plots <- list()
+
+for (covariate in holdout_covariates) {
+  if (covariate == 'content_crashes') break
+  stats_rel <- stats %>% filter(label == 'release') %>% select(covariate, metric)
+  means <- stats_rel[stats_rel$metric == 'mean', covariate]
+  medians <- stats_rel[stats_rel$metric == 'median', covariate]
+  ho_means <- stats %>% filter(label == 'beta' & metric == 'mean') %>% select(covariate)
+  
+  plots[[covariate]] <- compare_log_cont(df_validate_full, covariate, means, medians, as.numeric(ho_means), print=FALSE) 
+}
+
+plot_grid(plotlist = plots, ncol = 2)
+```
+
+## Training Covariates
+
+The following covariates were used in training the v67 model. Note that the environment covariates were trained on the numerical versions, but have been converted to categories for plotting. 
+
+```{r summary_training_covs, echo=FALSE, warning=FALSE}
+stats_pre <- calc_delta(df_validate, NULL, cont_log_covariates) 
+stats_post <- calc_delta(df_validate_matched, NULL, cont_log_covariates)
+  
+stats_pre_v67 <- calc_delta(df_train, NULL, cont_log_covariates)
+stats_post_v67 <- calc_delta(df_matched, NULL, cont_log_covariates)
+
+rows <- c('pre-matching: v67', 'post-matching: v67', 'pre-matching: v68', 'post-matching: v68')
+  
+stats_mean <- stats_pre_v67[1, ] %>% 
+  rbind(stats_post_v67[1, ]) %>%
+  rbind(stats_pre[1, ]) %>%
+  rbind(stats_post[1, ]) %>%
+  set_rownames(rows)
+
+stats_median <- stats_pre_v67[2, ] %>% 
+  rbind(stats_post_v67[2, ]) %>%
+  rbind(stats_pre[2, ]) %>%
+  rbind(stats_post[2, ]) %>%
+  set_rownames(rows)
+```
+
+### Beta-Release Difference: Mean
+```{r summary_training_covs_mean_tbl, echo=FALSE, warning=FALSE}
+knitr::kable(stats_mean) %>%
+  kable_styling() %>%
+  scroll_box(width = "900px", height = "400px")
+```
+
+###  Beta-Release Difference: Median
+
+```{r summary_training_covs_median_tbl, echo=FALSE, warning=FALSE}
+knitr::kable(stats_median) %>%
+  kable_styling() %>%
+  scroll_box(width = "900px", height = "400px")
+```
+
+### Training Dataset Continuous Covariates: v67
+```{r training_cont_log_cov_plots, fig.width=10, fig.height=50, echo=FALSE}
+stats <- calc_stats(df_validate_full, cont_log_covariates, add_1 = TRUE)
+
+plots <- list()
+
+for (covariate in cont_log_covariates) {
+  stats_rel <- stats %>% filter(label == 'release') %>% select(covariate, metric)
+  means <- stats_rel[stats_rel$metric == 'mean', covariate]
+  medians <- stats_rel[stats_rel$metric == 'median', covariate]
+  ho_means <- stats %>% filter(label == 'beta' & metric == 'mean') %>% select(covariate)
+  
+  plots[[covariate]] <- compare_log_cont(df_validate_full, covariate, means, medians, as.numeric(ho_means), print=FALSE) 
+}
+```
+
+```{r training_cont_log_cov_plotted, fig.width=10, fig.height=50, echo=FALSE}
+plot_grid(plotlist = plots, ncol = 2)
+```
+
+### Training Dataset Categorical Covariates: v67
+
+```{r training_cat_cov_orderder, echo=FALSE}
+# Hacked due to not having foresight in ordering beforehand...
+
+if (!'default_search_engine' %in% cat_covariates) {
+  cat_covariates <- c(cat_covariates, 'default_search_engine')
+}
+  
+df_training_full <- df_training_full %>%
+  mutate(cpu_cores_cat = ordered(cpu_cores_cat, 
+                                 levels <- c('1', '2', '< 4', '< 8', '< 16', '> 16'))) %>%
+  mutate(cpu_speed_cat = ordered(cpu_speed_cat, 
+                                 levels <- c("< 1GHz", "< 2GHz", "< 3GHz", "< 4GHz", "> 16GHz"))) %>% 
+  mutate(memory_cat = ordered(memory_cat, 
+                              levels <- c('< 1GB', '< 2GB', '< 4GB', '< 6GB', '< 16GB', '> 16GB'))) %>%
+  mutate(profile_age_cat = ordered(profile_age_cat,
+                                   levels <- c("< 1 week",  "< 1 month", 
+                                               "< 6 months", "< 2 years", "< 5 years", "> 5 years")))
+```
+
+```{r training_cat_cov_plotted, fig.width=10, fig.height=20, echo=FALSE}
+plots <- list()
+
+for (i in 1:length(cat_covariates)) {
+  covariate <- cat_covariates[i]
+  if (i!=1) plots[[covariate]] <- compare_cat(df_training_full, covariate, 
+                                              limit = 10, plot = FALSE, add_legend=FALSE)
+  else plots[[covariate]] <- compare_cat(df_training_full, covariate, limit = 10, plot = FALSE)
+}
+
+plot_grid(plotlist = plots, ncol = 2)
+```
+
+
+### Validation Dataset Continuous Covariates: v68
+
+```{r validation_cont_log_cov_plots, fig.width=10, fig.height=50, echo=FALSE}
+stats <- calc_stats(df_validate_full, cont_log_covariates, add_1 = TRUE)
+
+plots <- list()
+
+for (covariate in cont_log_covariates) {
+  stats_rel <- stats %>% filter(label == 'release') %>% select(covariate, metric)
+  means <- stats_rel[stats_rel$metric == 'mean', covariate]
+  medians <- stats_rel[stats_rel$metric == 'median', covariate]
+  ho_means <- stats %>% filter(label == 'beta' & metric == 'mean') %>% select(covariate)
+  
+  plots[[covariate]] <- compare_log_cont(df_validate_full, covariate, means, medians, as.numeric(ho_means), print=FALSE) 
+}
+```
+
+```{r validation_cont_log_cov_plotted, fig.width=10, fig.height=50, echo=FALSE}
+plot_grid(plotlist = plots, ncol = 2)
+```
+
+
+### Validation Dataset Categorical Covariates: v68
+
+```{r validation_cat_cov_orderder, echo=FALSE}
+# Hacked due to not having foresight in ordering beforehand...
+df_validate_full <- df_validate_full %>%
+  mutate(cpu_cores_cat = ordered(cpu_cores_cat, 
+                                 levels <- c('1', '2', '< 4', '< 8', '< 16', '> 16'))) %>%
+  mutate(cpu_speed_cat = ordered(cpu_speed_cat, 
+                                 levels <- c("< 1GHz", "< 2GHz", "< 3GHz", "< 4GHz", "> 16GHz"))) %>% 
+  mutate(memory_cat = ordered(memory_cat, 
+                              levels <- c('< 1GB', '< 2GB', '< 4GB', '< 6GB', '< 16GB', '> 16GB'))) %>%
+  mutate(profile_age_cat = ordered(profile_age_cat,
+                                   levels <- c("< 1 week",  "< 1 month", 
+                                               "< 6 months", "< 2 years", "< 5 years", "> 5 years")))
+```
+
+```{r validation_cat_cov_plotted, fig.width=10, fig.height=20, echo=FALSE}
+plots <- list()
+
+for (i in 1:length(cat_covariates)) {
+  covariate <- cat_covariates[i]
+  if (i!=1) plots[[covariate]] <- compare_cat(df_validate_full, covariate, 
+                                              limit = 10, plot = FALSE, add_legend=FALSE)
+  else plots[[covariate]] <- compare_cat(df_validate_full, covariate, limit = 10, plot = FALSE)
+}
+
+plot_grid(plotlist = plots, ncol = 2)
+```
+
+
+# Discussion
+
+The matching yielded a subset that was similarly representative to v67 as to v68 for most of the covariates reviewed. However, for a subset of covariates, the difference between channels actually increased (e.g., `profile_age`, `default_search_engine`), or are distinctly different than Release before and after matching, namely `MEMORY_TOTAL`. This latter covariate requires further investigation as why its distribution is significantly more spread to higher values than for Release. 
+
+## Next Steps
+This methodology is an initial step towards providing an additional set of Firefox Release Heatlth metrics derived from the Beta release population. Additional work to realize this goal include:
+
+* Address the full country and locale distributions 
+* Investigate other model architectures that utilize nominal/categorical covariates
+* Additional feature/covariate generation 
+     - locale
+     - additional environmental (e.g., HDD/SDD)
+     - additional performance metrics 
+          - Especially those influencing WebRender and Fission
+     - crash
+* Research into [covariate selection](https://metrics.mozilla.com/protected/cdowhygelund/beta_subset_release.html#covariate_selection) for matching models 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
