@@ -159,14 +159,15 @@ normalize_cpu_speed <- function(cpu_speed){
 }
 
 normalize_cpu_cores <- function(cpu_cores){
-  case_when(
+  levels <- c('1', '2', '< 4', '< 8', '< 16', '> 16')
+  factor(case_when(
     cpu_cores <= 1 ~ "1",
     cpu_cores <= 2 ~ "2",
     cpu_cores <= 4 ~ "< 4",
     cpu_cores <= 8 ~ "< 8",
     cpu_cores <= 16 ~ "< 16",
     TRUE ~ "> 16"
-  )
+  ), levels = levels, ordered = TRUE)
 }
 
 #### Diagnostics
@@ -202,7 +203,7 @@ compare_cont <- function(df, covariate){
   print(p)
 }
 
-compare_cat <- function(df, covariate, limit = NULL, plot=TRUE){
+compare_cat <- function(df, covariate, limit = NULL, plot=TRUE, add_legend=TRUE){
   # reshape for plotting
   df_c <- df %>% 
     count(get(covariate), label) %>%
@@ -224,9 +225,11 @@ compare_cat <- function(df, covariate, limit = NULL, plot=TRUE){
   
   p <- ggplot(df_c, aes(category, density)) +
     geom_bar(aes(fill = label), position = "dodge", stat="identity") +
-    theme_bw() + 
+    theme_bw() +
+    theme(legend.position = c(0.2, 0.8)) +
     labs(x = covariate)
   
+  if (!add_legend) p <- p + guides(fill=FALSE)
   if (plot) print(p)
   return(p)
   # return(df_c)
