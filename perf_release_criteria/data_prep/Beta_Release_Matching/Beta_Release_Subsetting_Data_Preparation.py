@@ -15,6 +15,14 @@ import pandas as pd
 
 # MAGIC %md **TODO**
 # MAGIC 
+# MAGIC 1. Deal with summed metrics
+# MAGIC  - How can we handle a variable size window
+# MAGIC    - need to normalize by # of days (i.e. mean over days)
+# MAGIC 
+# MAGIC * Modify filtering to realistic values
+# MAGIC  - Will increase sample size
+# MAGIC  - rerun validation
+# MAGIC    
 # MAGIC 1. Join Release and Beta pyspark Data Frames
 # MAGIC 2. Serialize as parquet rather than pandas
 # MAGIC 3. Append rather than overwrite? 
@@ -22,6 +30,15 @@ import pandas as pd
 # MAGIC 2. Remove country filters
 # MAGIC 3. Remove locale filters
 # MAGIC    - Should this be a separate job at first?
+
+# COMMAND ----------
+
+# MAGIC %md Feature Additions
+# MAGIC 1. Min/max startup times
+# MAGIC 2. Full distribution of histograms
+# MAGIC 3. content crashes features
+# MAGIC 4. max search counts, etc.. of all engangement metrics
+# MAGIC 5. 
 
 # COMMAND ----------
 
@@ -54,21 +71,28 @@ ms = spark.table('main_summary')
 
 # COMMAND ----------
 
-sum_int_metrics = {'active_hours_sum': 'active_hours',
-                   'scalar_parent_browser_engagement_total_uri_count_sum': 'uri_count',
-                   'subsession_hours_sum': 'session_length',
-                   'search_count_all': 'search_count',
-                   'crashes_detected_content_sum': 'content_crashes'
-                  }
-
-mean_int_metrics = {'places_bookmarks_count_mean': 'num_bookmarks',                      
-                    'places_pages_count_mean': 'num_pages',            
-                    'scalar_parent_browser_engagement_unique_domains_count_mean': 'daily_unique_domains',
-                    'scalar_parent_browser_engagement_max_concurrent_tab_count_max': 'daily_max_tabs',
-                    'scalar_parent_browser_engagement_tab_open_event_count_sum': 'daily_tabs_opened',
-                    'first_paint_mean': 'startup_ms',
-                    'sessions_started_on_this_day': 'daily_num_sessions_started',
+sum_int_metrics = {
+  # 'active_hours_sum': 'active_hours',
+#                    'scalar_parent_browser_engagement_total_uri_count_sum': 'uri_count',
+#                    'subsession_hours_sum': 'session_length',
+#                    'search_count_all': 'search_count',
+                    'crashes_detected_content_sum': 'content_crashes'
                    }
+
+mean_int_metrics = {
+  'active_hours_sum': 'active_hours',
+  'scalar_parent_browser_engagement_total_uri_count_sum': 'uri_count',
+  'subsession_hours_sum': 'session_length',
+  'search_count_all': 'search_count',
+  # 'crashes_detected_content_sum': 'content_crashes',
+  'places_bookmarks_count_mean': 'num_bookmarks',                      
+  'places_pages_count_mean': 'num_pages',            
+  'scalar_parent_browser_engagement_unique_domains_count_mean': 'daily_unique_domains',
+  'scalar_parent_browser_engagement_max_concurrent_tab_count_max': 'daily_max_tabs',
+  'scalar_parent_browser_engagement_tab_open_event_count_sum': 'daily_tabs_opened',
+  'first_paint_mean': 'startup_ms',
+  'sessions_started_on_this_day': 'daily_num_sessions_started',
+ }
 
 probe_ms_map = {
   # page load
@@ -79,15 +103,16 @@ probe_ms_map = {
   # responsiveness
   'histogram_parent_fx_tab_switch_total_e10s_ms': 'FX_TAB_SWITCH_TOTAL_E10S_MS', 
   # memory
-  'histogram_parent_memory_total': 'MEMORY_TOTAL',   
-  # graphics
-  'histogram_parent_content_paint_time': 'CONTENT_PAINT_TIME_PARENT',  
-  'histogram_content_content_paint_time': 'CONTENT_PAINT_TIME_CONTENT',  
-  'histogram_parent_content_frame_time': 'CONTENT_FRAME_TIME_PARENT',
-  'histogram_gpu_content_frame_time': 'CONTENT_FRAME_TIME_GPU',  
-  'histogram_parent_composite_time': 'COMPOSITE_TIME_PARENT',
-  'histogram_gpu_composite_time': 'COMPOSITE_TIME_GPU',
-  'histogram_content_composite_time': 'COMPOSITE_TIME_CONTENT'  
+  'histogram_parent_memory_heap_allocated': 'MEMORY_HEAP_ALLOCATED',
+  'histogram_parent_memory_resident_fast': 'MEMORY_RESIDENT_FAST',
+  'histogram_parent_memory_total': 'MEMORY_TOTAL',
+  'histogram_parent_memory_unique': 'MEMORY_UNIQUE',
+  'histogram_parent_memory_vsize': 'MEMORY_VSIZE',
+  'histogram_parent_memory_vsize_max_contiguous': 'MEMORY_VSIZE_MAX_CONTIGUOUS',
+  # graphics   
+  'histogram_content_content_paint_time': 'CONTENT_PAINT_TIME_CONTENT',    
+  'histogram_gpu_content_frame_time': 'CONTENT_FRAME_TIME_GPU',    
+  'histogram_gpu_composite_time': 'COMPOSITE_TIME_GPU',  
 }
 
 # COMMAND ----------
@@ -95,18 +120,6 @@ probe_ms_map = {
 # MAGIC %md # Methods
 
 # COMMAND ----------
-
-def retrieve_release_dates():
-  """ Finds the current Release/Beta versions and the corresponding launch dates"""
-  # pull the release calendar: 1st item contains most recent launches
-  sched = pd.read_html('https://wiki.mozilla.org/Release_Management/Calendar')[1]
-  rel_dates = sched['Release Date'].astype('datetime64[ns]')
-  sched['Launch'] = rel_dates
-  sched['Beta'] = sched['Beta'].str.extract(f'Firefox ([0-9]+)')
-  sched['Release'] = sched['Release'].str.extract(f'Firefox ([0-9]+)')
-  # get last two releases
-  cur_idx = rel_dates[rel_dates < dt.datetime.now() ].idxmax()  
-  return sched.iloc[cur_idx:cur_idx+2]
 
 def gen_hist_metrics(df):
   metrics = [F.collect_list(x).alias(y) for 
@@ -125,14 +138,14 @@ def gen_metrics(df):
 
   return metrics
 
-def get_df(tbl, channel, start_date, end_date, sample_ids, version, metrics, rename_cid=False, add_label=True):
-  # end_date = start_date + dt.timedelta(weeks=NUM_WEEKS)
-  channel_client_end_date = end_date - dt.timedelta(NUM_DAYS)
+def get_df(tbl, channel, start_date, sample_ids, version, metrics, rename_cid=False, add_label=True):
+  channel_end_date = start_date + dt.timedelta(weeks=NUM_WEEKS)
+  channel_client_end_date = channel_end_date - dt.timedelta(NUM_DAYS)
 
   df = (
     tbl
     .filter(tbl.submission_date_s3 >= start_date.strftime('%Y%m%d'))
-    .filter(tbl.submission_date_s3 < end_date.strftime('%Y%m%d'))
+    .filter(tbl.submission_date_s3 < channel_end_date.strftime('%Y%m%d'))
     .filter(tbl.app_version.startswith(version))
     .filter(tbl.normalized_channel == channel)
     .filter(F.col('sample_id').isin(*sample_ids))
@@ -167,28 +180,42 @@ def get_meta(df):
   df
   .filter(df.row_num == 1)
   .select(
+    # profile
     df.client_id.alias('cid'),
+    df.install_year,
+    df.profile_age_in_days.alias('profile_age'), 
+    df.fxa_configured,
+    F.when(F.isnull(df.sync_configured), False).otherwise(df.sync_configured).alias('sync_configured'),
+    F.when(F.isnull(df.is_default_browser), False).otherwise(df.is_default_browser).alias('is_default_browser'),    
+    # app 
     df.normalized_channel,
     df.app_version,
+    F.when(F.isnull(df.distribution_id), 'mozilla-stock').otherwise(df.distribution_id).alias('distribution_id'),    
+    # search
+    df.default_search_engine,
+    # geo 
     df.country,
     df.city,
     df.geo_subdivision1,
     df.geo_subdivision2,
+    df.timezone_offset,
+    # add-ons
     df.active_addons_count_mean.alias('num_addons'),
+    # cpu 
     df.cpu_cores,
     df.cpu_speed_mhz,
-    df.default_search_engine,
-    df.memory_mb,    
+    df.cpu_family,
+    df.cpu_l2_cache_kb,
+    df.cpu_l3_cache_kb,
+    df.cpu_stepping,
+    df.cpu_model,
+    df.cpu_vendor,
+    # memory
+    df.memory_mb,   
+    # os
     df.os,
     df.os_version,
-    df.is_wow64,
-    df.e10s_enabled,
-    df.fxa_configured,
-    df.profile_age_in_days.alias('profile_age'),
-    F.when(F.isnull(df.sync_configured), False).otherwise(df.sync_configured).alias('sync_configured'),
-    F.when(F.isnull(df.is_default_browser), False).otherwise(df.is_default_browser).alias('is_default_browser'),
-    df.timezone_offset,
-    F.when(F.isnull(df.distribution_id), 'mozilla-stock').otherwise(df.distribution_id).alias('distribution_id')    
+    df.is_wow64               
   )
 )
   return df_meta
@@ -438,5 +465,5 @@ df_pd.shape
 s3_resource = boto3.resource('s3')
 with StringIO() as f:
   df_pd.to_csv(f, index=False)
-  file_path = '{}/df_pd_{}.csv'.format(DATA_PATH, BETA_VALIDATION_VERSION)
+  file_path = '{}/df_pd_{}.csv'.format(DATA_PATH, BETA_PREDICTION_VERSION)
   s3_resource.Object(DATA_BUCKET, file_path).put(Body=f.getvalue())    
