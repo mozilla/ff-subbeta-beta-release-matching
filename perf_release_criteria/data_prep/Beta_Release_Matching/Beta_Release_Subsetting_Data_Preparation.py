@@ -1,4 +1,40 @@
 # Databricks notebook source
+# MAGIC %md # Description
+# MAGIC 
+# MAGIC Generates training, prediction, and validation datasets. See [PRD](https://docs.google.com/document/d/1Ygz6MkudYHZjnDnD9Z97kUyFrvV3KGWsjXyPjddhHq0/edit#heading=h.x5t09uq91x6z) for further details. 
+# MAGIC 
+# MAGIC * Handles variable size windows for Beta and Release
+# MAGIC   - Configurable:
+# MAGIC       - _maximum_ size window for submission date
+# MAGIC       - window size used for aggregating client pings
+# MAGIC   - Means w.r.t. submission date are taken
+# MAGIC   - **WARNING**: Crash counts however are summed. Therefore, comparing directly (e.g., training/validation) is not valid. 
+# MAGIC * Window size used 
+# MAGIC   * Beta     
+# MAGIC     - _startpoint_: Either Beta launch date or configured window size (whichever is first)
+# MAGIC     - _endpoint_: Release launch date 
+# MAGIC   * Release 
+# MAGIC     - _startpoint_: Release launch date 
+# MAGIC     - _endpoint_: Configured window size
+# MAGIC       - **NOTE**: This job focuses on the _most_ recent Release version. Therefore, the window can't go past the next launch date. 
+
+# COMMAND ----------
+
+# MAGIC %md # TBD
+# MAGIC The following will be flushed out as the other portions are implemented. 
+# MAGIC 
+# MAGIC * Export:
+# MAGIC   * Current: Pandas dataframe overwritten each run
+# MAGIC   * Proposed: GCP/Parquet table that is appened. This will be specified and implemented during milestone that automates this process into daily or weekly jobs. 
+# MAGIC * Splitting this process based upon countries and locales:
+# MAGIC   - Current: US/GB locale and country
+# MAGIC   - Proposed: US/GB locale/country 1 file and table, All other records another file and table?
+# MAGIC * Modifying filtering of outliers
+# MAGIC   - Current: Filters out 99.9 percentile 
+# MAGIC   - Research as apart of modeling work. Primary driver is determining the filtered population in Release that is used for validation. 
+
+# COMMAND ----------
+
 # MAGIC %md # Imports
 
 # COMMAND ----------
@@ -13,44 +49,13 @@ import pandas as pd
 
 # COMMAND ----------
 
-# MAGIC %md **TODO**
-# MAGIC 
-# MAGIC 1. Deal with summed metrics
-# MAGIC  - How can we handle a variable size window
-# MAGIC    - need to normalize by # of days (i.e. mean over days)
-# MAGIC 
-# MAGIC * Modify filtering to realistic values
-# MAGIC  - Will increase sample size
-# MAGIC  - rerun validation
-# MAGIC    
-# MAGIC 1. Join Release and Beta pyspark Data Frames
-# MAGIC 2. Serialize as parquet rather than pandas
-# MAGIC 3. Append rather than overwrite? 
-# MAGIC 
-# MAGIC 2. Remove country filters
-# MAGIC 3. Remove locale filters
-# MAGIC    - Should this be a separate job at first?
-
-# COMMAND ----------
-
-# MAGIC %md Feature Additions
-# MAGIC 1. Min/max startup times
-# MAGIC 2. Full distribution of histograms
-# MAGIC 3. content crashes features
-# MAGIC 4. max search counts, etc.. of all engangement metrics
-# MAGIC 5. 
-
-# COMMAND ----------
-
 # MAGIC %md # Configuration
 
 # COMMAND ----------
 
-# MAGIC %md
+# MAGIC %md Current settings
 # MAGIC * Limit to 1 week of pings per client
-# MAGIC 
-# MAGIC **TBD**
-# MAGIC * Limit to 2 week collection interval for Beta
+# MAGIC * Limit to 2 week collection interval for Beta/Release (see Description above)
 
 # COMMAND ----------
 
@@ -72,10 +77,6 @@ ms = spark.table('main_summary')
 # COMMAND ----------
 
 sum_int_metrics = {
-  # 'active_hours_sum': 'active_hours',
-#                    'scalar_parent_browser_engagement_total_uri_count_sum': 'uri_count',
-#                    'subsession_hours_sum': 'session_length',
-#                    'search_count_all': 'search_count',
                     'crashes_detected_content_sum': 'content_crashes'
                    }
 
@@ -84,7 +85,6 @@ mean_int_metrics = {
   'scalar_parent_browser_engagement_total_uri_count_sum': 'uri_count',
   'subsession_hours_sum': 'session_length',
   'search_count_all': 'search_count',
-  # 'crashes_detected_content_sum': 'content_crashes',
   'places_bookmarks_count_mean': 'num_bookmarks',                      
   'places_pages_count_mean': 'num_pages',            
   'scalar_parent_browser_engagement_unique_domains_count_mean': 'daily_unique_domains',
@@ -94,25 +94,25 @@ mean_int_metrics = {
   'sessions_started_on_this_day': 'daily_num_sessions_started',
  }
 
+max_int_metrics = {
+  'active_hours_sum': 'active_hours_max',
+  'scalar_parent_browser_engagement_total_uri_count_sum': 'uri_count_max',
+  'subsession_hours_sum': 'session_length_max',
+  'search_count_all': 'search_count_max',
+  'places_pages_count_mean': 'num_pages_max',            
+  'scalar_parent_browser_engagement_unique_domains_count_mean': 'daily_unique_domains_max',
+  'scalar_parent_browser_engagement_max_concurrent_tab_count_max': 'daily_max_tabs_max',
+  'scalar_parent_browser_engagement_tab_open_event_count_sum': 'daily_tabs_opened_max',
+  'first_paint_mean': 'startup_ms_max',
+  'sessions_started_on_this_day': 'daily_num_sessions_started_max',
+}
+
 probe_ms_map = {
   # page load
   'histogram_parent_fx_page_load_ms_2': 'FX_PAGE_LOAD_MS_2_PARENT',
   'histogram_content_time_to_dom_complete_ms': 'TIME_TO_DOM_COMPLETE_MS',
   'histogram_content_time_to_dom_content_loaded_end_ms': 'TIME_TO_DOM_CONTENT_LOADED_END_MS',
-  'histogram_content_time_to_load_event_end_ms': 'TIME_TO_LOAD_EVENT_END_MS',  
-  # responsiveness
-  'histogram_parent_fx_tab_switch_total_e10s_ms': 'FX_TAB_SWITCH_TOTAL_E10S_MS', 
-  # memory
-  'histogram_parent_memory_heap_allocated': 'MEMORY_HEAP_ALLOCATED',
-  'histogram_parent_memory_resident_fast': 'MEMORY_RESIDENT_FAST',
-  'histogram_parent_memory_total': 'MEMORY_TOTAL',
-  'histogram_parent_memory_unique': 'MEMORY_UNIQUE',
-  'histogram_parent_memory_vsize': 'MEMORY_VSIZE',
-  'histogram_parent_memory_vsize_max_contiguous': 'MEMORY_VSIZE_MAX_CONTIGUOUS',
-  # graphics   
-  'histogram_content_content_paint_time': 'CONTENT_PAINT_TIME_CONTENT',    
-  'histogram_gpu_content_frame_time': 'CONTENT_FRAME_TIME_GPU',    
-  'histogram_gpu_composite_time': 'COMPOSITE_TIME_GPU',  
+  'histogram_content_time_to_load_event_end_ms': 'TIME_TO_LOAD_EVENT_END_MS', 
 }
 
 # COMMAND ----------
@@ -120,6 +120,18 @@ probe_ms_map = {
 # MAGIC %md # Methods
 
 # COMMAND ----------
+
+def retrieve_release_dates():
+  """ Finds the current Release/Beta versions and the corresponding launch dates"""
+  # pull the release calendar: 1st item contains most recent launches
+  sched = pd.read_html('https://wiki.mozilla.org/Release_Management/Calendar')[1]
+  rel_dates = sched['Release Date'].astype('datetime64[ns]')
+  sched['Launch'] = rel_dates
+  sched['Beta'] = sched['Beta'].str.extract('Firefox ([0-9]+)')
+  sched['Release'] = sched['Release'].str.extract('Firefox ([0-9]+)')
+  # get last two releases
+  cur_idx = rel_dates[rel_dates < dt.datetime.now() ].idxmax()  
+  return sched.iloc[cur_idx:cur_idx+2]
 
 def gen_hist_metrics(df):
   metrics = [F.collect_list(x).alias(y) for 
@@ -129,23 +141,28 @@ def gen_hist_metrics(df):
 
 def gen_metrics(df):
   metrics = [F.count('*').alias('num_active_days')]
-                      
+  
+  # sum across client pings
   metrics = metrics + [F.sum(F.coalesce(df[x], F.lit(0))).alias(y) for 
             x, y in sum_int_metrics.items()]  
   
+  # mean across client pings
   metrics = metrics + [F.mean(F.coalesce(df[x], F.lit(0))).alias(y) for 
             x, y in mean_int_metrics.items()]  
-
+  
+  # find max across client pings
+  metrics = metrics + [F.max(F.coalesce(df[x], F.lit(0))).alias(y) for 
+            x, y in max_int_metrics.items()]  
+  
   return metrics
 
-def get_df(tbl, channel, start_date, sample_ids, version, metrics, rename_cid=False, add_label=True):
-  channel_end_date = start_date + dt.timedelta(weeks=NUM_WEEKS)
-  channel_client_end_date = channel_end_date - dt.timedelta(NUM_DAYS)
+def get_df(tbl, channel, start_date, end_date, sample_ids, version, metrics, rename_cid=False, add_label=True):
+  channel_client_end_date = end_date - dt.timedelta(NUM_DAYS)
 
   df = (
     tbl
     .filter(tbl.submission_date_s3 >= start_date.strftime('%Y%m%d'))
-    .filter(tbl.submission_date_s3 < channel_end_date.strftime('%Y%m%d'))
+    .filter(tbl.submission_date_s3 < end_date.strftime('%Y%m%d'))
     .filter(tbl.app_version.startswith(version))
     .filter(tbl.normalized_channel == channel)
     .filter(F.col('sample_id').isin(*sample_ids))
