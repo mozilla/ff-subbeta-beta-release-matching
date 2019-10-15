@@ -61,8 +61,6 @@ Calculate the Wasserstein distance. It appears that the same number of instances
 wd <- wasserstein(pp(beta %>% sample_n(30000)), pp(release %>% sample_n(30000)))
 ```
 
->>> Error: cannot allocate vector of size 6.7 Gb
-
 Okay this isn't going to work. Reduce down to single dimension for the earth mover's distance. Use `FX_PAGE_LOAD_MS_2`. Utilize the original dataset values. Benchmark the time. 
 
 ## EMD

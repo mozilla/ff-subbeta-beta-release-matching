@@ -1679,13 +1679,6 @@ release &lt;- df_norm %&gt;%
 <p>Calculate the Wasserstein distance. It appears that the same number of instances must be in both distributions. <strong>NOTE</strong>: Received <code>Error in gen_cost(x, y, 1) : std::bad_alloc</code> when using 85K records. Downsample to 30K.</p>
 <pre class="r"><code>wd &lt;- wasserstein(pp(beta %&gt;% sample_n(30000)), pp(release %&gt;% sample_n(30000)))</code></pre>
 <pre><code>## Error: cannot allocate vector of size 6.7 Gb</code></pre>
-<blockquote>
-<blockquote>
-<blockquote>
-<p>Error: cannot allocate vector of size 6.7 Gb</p>
-</blockquote>
-</blockquote>
-</blockquote>
 <p>Okay this isn’t going to work. Reduce down to single dimension for the earth mover’s distance. Use <code>FX_PAGE_LOAD_MS_2</code>. Utilize the original dataset values. Benchmark the time.</p>
 </div>
 <div id="emd" class="section level2">
@@ -1704,7 +1697,7 @@ release &lt;- df_train %&gt;%
 
 system.time(emd &lt;- wasserstein1d(beta$FX_PAGE_LOAD_MS_2_PARENT, release$FX_PAGE_LOAD_MS_2_PARENT))</code></pre>
 <pre><code>##    user  system elapsed 
-##   1.537   0.000   1.537</code></pre>
+##   1.544   0.000   1.543</code></pre>
 <pre class="r"><code>print(emd)</code></pre>
 <pre><code>## [1] 410.1089</code></pre>
 <p>That is reasonable for the use-case: ~10s for full dataset and all metrics. See memory usage:</p>
@@ -1726,7 +1719,7 @@ release_m &lt;- df_matched %&gt;%
 
 system.time(emd &lt;- wasserstein1d(beta_m$FX_PAGE_LOAD_MS_2_PARENT, release_m$FX_PAGE_LOAD_MS_2_PARENT))</code></pre>
 <pre><code>##    user  system elapsed 
-##   0.002   0.000   0.002</code></pre>
+##   0.002   0.000   0.003</code></pre>
 <pre class="r"><code>print(emd)</code></pre>
 <pre><code>## [1] 145.2227</code></pre>
 </div>
@@ -1736,7 +1729,7 @@ system.time(emd &lt;- wasserstein1d(beta_m$FX_PAGE_LOAD_MS_2_PARENT, release_m$F
 <p>Try a Cramér-von Mises (<code>p=2</code>).</p>
 <pre class="r"><code>system.time(cmd &lt;- wasserstein1d(beta$FX_PAGE_LOAD_MS_2_PARENT, release$FX_PAGE_LOAD_MS_2_PARENT, p=2))</code></pre>
 <pre><code>##    user  system elapsed 
-##   1.123   0.004   1.127</code></pre>
+##   1.120   0.004   1.124</code></pre>
 <pre class="r"><code>print(cmd)</code></pre>
 <pre><code>## [1] 537.1603</code></pre>
 <p>This works also! Onto memory profiling.</p>
@@ -1747,7 +1740,7 @@ total(cms_mem)/(1024^2)</code></pre>
 <h3>Post-matching</h3>
 <pre class="r"><code>system.time(cmd &lt;- wasserstein1d(beta_m$FX_PAGE_LOAD_MS_2_PARENT, release_m$FX_PAGE_LOAD_MS_2_PARENT, p=2))</code></pre>
 <pre><code>##    user  system elapsed 
-##   0.002   0.000   0.002</code></pre>
+##   0.002   0.000   0.003</code></pre>
 <pre class="r"><code>print(cmd)</code></pre>
 <pre><code>## [1] 237.5179</code></pre>
 </div>
