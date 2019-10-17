@@ -6,7 +6,7 @@ output:
 ---
 
 # tl;dr 
-This is analysis to determine the feasibility of the various [scoring algorithms](https://docs.google.com/document/d/1SfuanvmYmvmEFAdQ7Z5djDeLezdNB1TESqVmj93O8to/edit#heading=h.w3huje1nj766) proposed in the modeling approach for this [PRD](https://docs.google.com/document/d/1Ygz6MkudYHZjnDnD9Z97kUyFrvV3KGWsjXyPjddhHq0/edit#heading=h.lvb9l8gw2nee). 
+This analysis determines the feasibility of the various [scoring algorithms](https://docs.google.com/document/d/1SfuanvmYmvmEFAdQ7Z5djDeLezdNB1TESqVmj93O8to/edit#heading=h.w3huje1nj766) proposed in the modeling approach for this [PRD](https://docs.google.com/document/d/1Ygz6MkudYHZjnDnD9Z97kUyFrvV3KGWsjXyPjddhHq0/edit#heading=h.lvb9l8gw2nee). Cramér-von Mises appears to satisfy the requirements.  
 
 ```{r imports, echo=FALSE, warning=FALSE, message=FALSE}
 library(dplyr)
@@ -15,9 +15,13 @@ library(profmem)
 ```
 
 # Method
+
+
 * Utilize previous saved image from proof-of-concept validation
-* Compare performance metrics of Beta to Release, without any matching. On test. 
-* Benchmark computation time, and memory usage (if necessary) 
+* Compare performance metrics of Beta to Release, without any matching. 
+* Compare performance metrics of Beta to Release, without matching.
+    - Observe reduction
+* Benchmark computation time, and memory usage
 
 ```{r data_load, echo=FALSE}
 load('data/milestone2/analysis_10022019_corr.RData')
