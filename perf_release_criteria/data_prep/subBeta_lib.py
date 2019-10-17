@@ -123,6 +123,7 @@ def get_meta(df):
     F.when(F.isnull(df.sync_configured), False).otherwise(df.sync_configured).alias('sync_configured'),
     F.when(F.isnull(df.is_default_browser), False).otherwise(df.is_default_browser).alias('is_default_browser'),    
     # app 
+    df.locale,
     df.normalized_channel,
     df.app_version,
     F.when(F.isnull(df.distribution_id), 'mozilla-stock').otherwise(df.distribution_id).alias('distribution_id'),    
