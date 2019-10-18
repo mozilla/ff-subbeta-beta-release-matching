@@ -1,8 +1,11 @@
 ---
 title: 'Milestone 2: Datasets Generation'
-output:
+date: 'Last Updated: `r format(Sys.time(), "%B %d, %Y")`'
+output: 
   html_document:
-    df_print: paged
+    theme: cosmo
+    toc: true
+    toc_float: true
 ---
 
 ```{r imports, echo=FALSE, warning=FALSE, message=FALSE}
@@ -177,9 +180,6 @@ Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
 library(googleCloudStorageR)
 
 upload_try <- gcs_upload(image_file_path, name = image_file_path)
-upload_try
-```
-```{r}
 upload_try
 ```
 
