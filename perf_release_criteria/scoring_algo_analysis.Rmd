@@ -1,5 +1,5 @@
 ---
-title: 'Milestone 2 Test: Scoring Algorithms'
+title: 'Milestone 2: Scoring Algorithms Test'
 output:
   html_document:
     df_print: paged
