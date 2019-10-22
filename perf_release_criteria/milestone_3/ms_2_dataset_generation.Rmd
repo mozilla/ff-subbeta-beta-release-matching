@@ -57,8 +57,8 @@ load_df <- function(file_path){
     filter(startup_ms >= 0 & profile_age >= 0)
 }
 
-df_train <- load_df('../data/milestone2/df_pd_67.csv')
-df_validate <- load_df('../data/milestone2/df_pd_68.csv')
+df_train <- load_df('data/df_pd_67.csv')
+df_validate <- load_df('data/df_pd_68.csv')
 ```
 
 # Review 
@@ -226,12 +226,15 @@ bts.16x <- gen_bootstraps(df_train_f, oversampling = 16)
 Save the resultant dataset and bootstrap samples to an R image. 
 
 ```{r serialize_dataset}
-image_file_path <- paste('data/milestone2/df_train_validate_', format(Sys.time(), "%Y%m%d"), '.RData', sep='')
+image_file_name <- paste('df_train_validate_', format(Sys.time(), "%Y%m%d"), '.RData', sep='')
+image_file_path <- file.path('data', image_file_name)
 save(df_train_f, df_validate_f, bts.1x, bts.4x, bts.8x, bts.16x,
      file = image_file_path)
+
+gcs_file_path <- file.path('data', 'milestone2', image_file_name)
 ```
 
-Then push the results to GCP in the `moz-fx-dev-subbeta` bucket, under `r image_file_path`.
+Then push the results to GCP in the `moz-fx-dev-subbeta` bucket, under `r gcs_file_path`.
 
 ```{r gcp_storage_push, warning=FALSE}
 Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
@@ -239,7 +242,7 @@ Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
 
 library(googleCloudStorageR)
 
-upload_try <- gcs_upload(image_file_path, name = image_file_path)
+upload_try <- gcs_upload(image_file_path, name = gcs_file_path)
 upload_try
 ```
 

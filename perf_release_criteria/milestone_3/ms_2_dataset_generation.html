@@ -1528,7 +1528,7 @@ div.tocify {
 
 <div id="tldr" class="section level1">
 <h1>tl;dr</h1>
-<p>This notebook generates the training and validation datasets used to determine the model framework for this <a href="https://docs.google.com/document/d/1Ygz6MkudYHZjnDnD9Z97kUyFrvV3KGWsjXyPjddhHq0/edit#heading=h.lvb9l8gw2nee">PRD</a>. These datasets will be used for all steps in the process detailed out in the <a href="https://docs.google.com/document/d/1SfuanvmYmvmEFAdQ7Z5djDeLezdNB1TESqVmj93O8to/edit#heading=h.nwwrif453n80">document</a>.</p>
+<p>This notebook generates the training and validation datasets used to determine the model framework for this <a href="https://docs.google.com/document/d/1Ygz6MkudYHZjnDnD9Z97kUyFrvV3KGWsjXyPjddhHq0/edit#heading=h.lvb9l8gw2nee">PRD</a>. These datasets will be used for all steps in the process detailed out in the <a href="https://docs.google.com/document/d/1SfuanvmYmvmEFAdQ7Z5djDeLezdNB1TESqVmj93O8to/edit#heading=h.nwwrif453n80">document</a>. In addition, the bootstrap replicates for feature selection and hyperparameter tuning are created. These datasets are all stored in GCP under the <code>moz-fx-dev-cdowhyglund-subBeta</code> project.</p>
 </div>
 <div id="dataset-preparation" class="section level1">
 <h1>Dataset Preparation</h1>
@@ -1539,6 +1539,7 @@ div.tocify {
 <p>The following process is very similar to that used in the validation of the <a href="https://metrics.mozilla.com/protected/cdowhygelund/beta_subset_release_validation.html">proof-of-concept</a>. In addition:</p>
 <ul>
 <li><code>na.omit</code> is not applied.</li>
+<li>Missing values are only dropped for the performance metrics (outcomes) of concern</li>
 <li>OS is filtered to only Windows.</li>
 </ul>
 <pre class="r"><code># define response field
@@ -1565,8 +1566,8 @@ load_df &lt;- function(file_path){
     filter(startup_ms &gt;= 0 &amp; profile_age &gt;= 0)
 }
 
-df_train &lt;- load_df('data/milestone2/df_pd_67.csv')
-df_validate &lt;- load_df('data/milestone2/df_pd_68.csv')</code></pre>
+df_train &lt;- load_df('data/df_pd_67.csv')
+df_validate &lt;- load_df('data/df_pd_68.csv')</code></pre>
 </div>
 <div id="review" class="section level1">
 <h1>Review</h1>
@@ -1935,38 +1936,79 @@ df_validate &lt;- load_df('data/milestone2/df_pd_68.csv')</code></pre>
 ## </code></pre>
 </div>
 </div>
+<div id="bootstrap-samples" class="section level1">
+<h1>Bootstrap Samples</h1>
+<p>The feature selection will utilize 10 boostrap replicates, which are generated as follows: 1. The entire <code>df_train</code> dataset is sampled at 100% with replacement. 2. A sample of Release (<code>is_release = TRUE</code>) <code>client_id</code> are taken of the same size as Beta (73846) 3. The entire (resampled) Beta <code>client_id</code> are combined with this sampled Release ids. - These are the profiles that will be used for building the matching model. - The matched Beta profiles will be used for scoring the model. 4. The remaining Release ids will be used for scoring the model.</p>
+<p>The same set of bootstrap samples will be used for all feature selection across modeling algorithms. A suite of these are created to represent different levels of Beta oversampling with respect to Release.</p>
+<pre class="r"><code>extract_ids &lt;- function(df_c, size, oversampling){
+  df_beta &lt;- df_c %&gt;% filter(is_release == FALSE)
+  df_rel &lt;- df_c %&gt;% filter(is_release == TRUE)
+  n_beta &lt;- nrow(df_beta)
+  
+  model_ids &lt;- df_rel %&gt;%
+    sample_n(size = round(n_beta / oversampling)) %&gt;%
+    rbind(df_beta) %&gt;%
+    pull(client_id)
+  
+  # create the dataset for scoring matching model
+  test_ids &lt;- df_rel %&gt;% 
+    filter(!client_id %in% model_ids) %&gt;%
+    pull(client_id)
+  
+  return(list(train = model_ids, test = test_ids))
+}
+
+gen_bootstraps &lt;- function(df_train, oversampling = 1, num_bts = 10){
+  bts &lt;- list()
+  for (i in 1:num_bts){
+    # create a resampled version of entire dataframe
+    df_resampled &lt;- df_train %&gt;% sample_frac(replace = TRUE)
+    # create train/test &quot;splits&quot;
+    bts[[i]] &lt;- extract_ids(df_resampled, oversampling = oversampling)
+  }
+  return(bts)
+}</code></pre>
+<pre class="r"><code>bts.1x &lt;- gen_bootstraps(df_train_f)
+bts.4x &lt;- gen_bootstraps(df_train_f, oversampling = 4)
+bts.8x &lt;- gen_bootstraps(df_train_f, oversampling = 8)
+bts.16x &lt;- gen_bootstraps(df_train_f, oversampling = 16)</code></pre>
+</div>
 <div id="serialize-and-push-to-gcp" class="section level1">
 <h1>Serialize and push to GCP</h1>
-<p>Save the result dataset to an R image.</p>
-<pre class="r"><code>image_file_path &lt;- paste('data/milestone2/df_train_validate_', format(Sys.time(), &quot;%Y%m%d&quot;), '.RData', sep='')
-save(df_train_f, df_validate_f, file = image_file_path)</code></pre>
-<p>The push the results to GCP in the <code>moz-fx-dev-subbeta</code> bucket, under data/milestone2/df_train_validate_20191021.RData.</p>
+<p>Save the resultant dataset and bootstrap samples to an R image.</p>
+<pre class="r"><code>image_file_name &lt;- paste('df_train_validate_', format(Sys.time(), &quot;%Y%m%d&quot;), '.RData', sep='')
+image_file_path &lt;- file.path('data', image_file_name)
+save(df_train_f, df_validate_f, bts.1x, bts.4x, bts.8x, bts.16x,
+     file = image_file_path)
+
+gcs_file_path &lt;- file.path('data', 'milestone2', image_file_name)</code></pre>
+<p>Then push the results to GCP in the <code>moz-fx-dev-subbeta</code> bucket, under data/milestone2/df_train_validate_20191021.RData.</p>
 <pre class="r"><code>Sys.setenv(&quot;GCS_DEFAULT_BUCKET&quot; = &quot;moz-fx-dev-subbeta&quot;,
            &quot;GCS_AUTH_FILE&quot; = &quot;moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json&quot;)
 
 library(googleCloudStorageR)</code></pre>
 <pre><code>## Successfully auto-authenticated via moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json</code></pre>
 <pre><code>## Set default bucket name to 'moz-fx-dev-subbeta'</code></pre>
-<pre class="r"><code>upload_try &lt;- gcs_upload(image_file_path, name = image_file_path)</code></pre>
-<pre><code>## 2019-10-21 14:00:39 -- File size detected as 92.7 Mb</code></pre>
-<pre><code>## 2019-10-21 14:00:39 -- Found resumeable upload URL: https://www.googleapis.com/upload/storage/v1/b/moz-fx-dev-subbeta/o/?uploadType=resumable&amp;name=data%2Fmilestone2%2Fdf_train_validate_20191021.RData&amp;predefinedAcl=private&amp;upload_id=AEnB2UpvticHbc4C5GhfalTMlyutXXE_dH7bJJj3TxUTjHkBnQ5vsBVmoJYk4-qAaSWCynxHVJEdalFLGlkVEkvQNX5VSko5piipgDnGbqYVsmPDgJnVhwA</code></pre>
+<pre class="r"><code>upload_try &lt;- gcs_upload(image_file_path, name = gcs_file_path)</code></pre>
+<pre><code>## 2019-10-21 19:43:05 -- File size detected as 384.7 Mb</code></pre>
+<pre><code>## 2019-10-21 19:43:05 -- Found resumeable upload URL: https://www.googleapis.com/upload/storage/v1/b/moz-fx-dev-subbeta/o/?uploadType=resumable&amp;name=data%2Fmilestone2%2Fdf_train_validate_20191021.RData&amp;predefinedAcl=private&amp;upload_id=AEnB2UrMaeUi1DGuLTMrfYXvKvwD14GFIWmFl_b1E17aMy7nnlWyl56ktzw6SQbzO-6LCYdislawiCcNEHr56-lYpGwYwG3fvK8-c0JvVfNEPFfS52dQQ-8</code></pre>
 <pre class="r"><code>upload_try</code></pre>
 <pre><code>## ==Google Cloud Storage Object==
 ## Name:                data/milestone2/df_train_validate_20191021.RData 
-## Size:                92.7 Mb 
-## Media URL:           https://www.googleapis.com/download/storage/v1/b/moz-fx-dev-subbeta/o/data%2Fmilestone2%2Fdf_train_validate_20191021.RData?generation=1571691705271989&amp;alt=media 
+## Size:                384.7 Mb 
+## Media URL:           https://www.googleapis.com/download/storage/v1/b/moz-fx-dev-subbeta/o/data%2Fmilestone2%2Fdf_train_validate_20191021.RData?generation=1571712458003791&amp;alt=media 
 ## Download URL:        https://storage.cloud.google.com/moz-fx-dev-subbeta/data%2Fmilestone2%2Fdf_train_validate_20191021.RData 
 ## Public Download URL: https://storage.googleapis.com/moz-fx-dev-subbeta/data%2Fmilestone2%2Fdf_train_validate_20191021.RData 
 ## Bucket:              moz-fx-dev-subbeta 
-## ID:                  moz-fx-dev-subbeta/data/milestone2/df_train_validate_20191021.RData/1571691705271989 
-## MD5 Hash:            a4q3S7emFe8P2LVXfxs17A== 
+## ID:                  moz-fx-dev-subbeta/data/milestone2/df_train_validate_20191021.RData/1571712458003791 
+## MD5 Hash:            xVJwt18uXFa+4KYk4gqk0w== 
 ## Class:               STANDARD 
-## Created:             2019-10-21 21:01:45 
-## Updated:             2019-10-21 21:01:45 
-## Generation:          1571691705271989 
+## Created:             2019-10-22 02:47:38 
+## Updated:             2019-10-22 02:47:38 
+## Generation:          1571712458003791 
 ## Meta Generation:     1 
-## eTag:                CLWNqO6fruUCEAE= 
-## crc32c:              mrmgzQ==</code></pre>
+## eTag:                CM+q/pXtruUCEAE= 
+## crc32c:              F0w61Q==</code></pre>
 </div>
 
 
