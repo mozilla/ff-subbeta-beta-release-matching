@@ -119,6 +119,8 @@ get_matches <- function(model, data, group = "all", distance = "distance", weigh
 
 run_matchit_sample <- function(df_train, bt, model_covs, size=50000, ...){
   # generate training and test dataset
+  if(missing(seed)) seed <- 1984
+  set.seed(1984)
   train <- df_train %>% 
     filter(client_id %in% bt$train) %>%
     sample_n(size = size)
@@ -151,8 +153,10 @@ perform_matchit_fs <- function(df_train, bts, model_covs, workers, size=50000, .
   registerDoParallel(cl)
   
   scores <- foreach(i=1:length(bts), 
-                    .packages = c('dplyr', 'MatchIt'), 
-                    .export=c('run_matchit_sample', 'generate_formula', 'get_matches', 'calc_score')) %dopar% {
+                    .packages = c('dplyr', 'MatchIt', 'transport'), 
+                    .export=c('run_matchit_sample', 'generate_formula', 'get_matches', 
+                              'calc_score', 'get_m2_metric_map',
+                              'calc_cms')) %dopar% {
     bt <- bts[[i]]
     score <- run_matchit_sample(df_train, bt, model_covs, size = size, ...)
     score

@@ -184,7 +184,7 @@ The feature selection will utilize 10 boostrap replicates, which are generated a
 The same set of bootstrap samples will be used for all feature selection across modeling algorithms. A suite of these are created to represent different levels of Beta oversampling with respect to Release. 
 
 ```{r bootstrap_def}
-extract_ids <- function(df_c, size, oversampling){
+extract_ids <- function(df_c, oversampling){
   df_beta <- df_c %>% filter(is_release == FALSE)
   df_rel <- df_c %>% filter(is_release == TRUE)
   n_beta <- nrow(df_beta)
