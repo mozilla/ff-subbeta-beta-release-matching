@@ -19,9 +19,9 @@ file_name = 'df_train_validate_20191021.RData'
 image_file_path = file.path('data', file_name)
 
 # Pull from GCP if necessary
-# library(googleCloudStorageR)
 # Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
 #            "GCS_AUTH_FILE" = "moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json")
+# library(googleCloudStorageR)
 # gcs_get_object(file.path('data', 'milestone2', file_name), saveToDisk = image_file_path, overwrite = TRUE)
 
 load(image_file_path)
@@ -36,7 +36,7 @@ perf_metrics <- names(get_m2_metric_map())
 
 set.seed(1234)
 df_train_f_sm <- df_train_f %>%
-   sample_n(20000)
+   sample_n(80000)
 
 df_fs <- df_train_f_sm %>%
    select(-perf_metrics) %>%
@@ -104,7 +104,7 @@ df_rel <- df_train_f %>%
 set.seed(1234)
 df_train_f_sm_eq <- df_rel %>%
   bind_rows(df_beta) %>%
-   sample_n(20000)
+   sample_n(80000)
 
 df_fs_eq <- df_train_f_sm_eq %>%
    select(-perf_metrics) %>%
