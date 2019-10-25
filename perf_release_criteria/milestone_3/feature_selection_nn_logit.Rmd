@@ -1,5 +1,5 @@
 ---
-title: "Milestone 2: Feature Selection - Nearest Neighbors, Probit, with Linear Propensity Score"
+title: "Milestone 2: Feature Selection - Nearest Neighbors, Logit"
 author: "Corey Dow-Hygelund, Mozilla Data Science"
 date: 'Last Updated: `r format(Sys.time(), "%B %d, %Y")`'
 output: 
@@ -13,7 +13,7 @@ output:
 
 This analysis determines the relevant [covariates (features)](https://docs.google.com/document/d/1SfuanvmYmvmEFAdQ7Z5djDeLezdNB1TESqVmj93O8to/edit#heading=h.nwwrif453n80) to utilize for computationally intensive statistical matching algorithms proposed in the modeling approach for this [PRD](https://docs.google.com/document/d/1Ygz6MkudYHZjnDnD9Z97kUyFrvV3KGWsjXyPjddhHq0/edit#heading=h.lvb9l8gw2nee). 
 
-**Matching Algorithm Tested**: Nearest-neighbors with probit distance metric transformed back to linear scale.
+**Matching Algorithm Tested**: Nearest-neighbors with logit distance metric
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 source('../lib/supporting_funcs.R')
@@ -54,7 +54,7 @@ covs <- df_train_f %>%
   # select_if(is.numeric) %>% # Mahalanobis constraint
   names()
 
-results_file_name <- 'feature_selection_nn_probit_linear.RData' 
+results_file_name <- 'feature_selection_nn_logit.RData' 
 results_file_path <- file.path('data', results_file_name)
 ```
 
@@ -122,7 +122,7 @@ Feature selection on only performance metrics
 ```{r fs1, error=TRUE}
 res_fs1 <- list()
 for (bt in names(bts)){
-  res_fs1[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs1, size=NULL, replace=TRUE, workers = 10, distance = "linear.probit")
+  res_fs1[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs1, size=NULL, replace=TRUE, workers = 10, distance = 'logit')
 }
 save.image(results_file_path)
 print(res_fs1)
@@ -131,7 +131,7 @@ print(res_fs1)
 ```{r fs1_noreplace, error=TRUE}
 res_fs1_noreplace <- list()
 for (bt in names(bts)){
-  res_fs1_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs1, size=NULL, replace=FALSE, workers = 10, distance = "linear.probit")
+  res_fs1_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs1, size=NULL, replace=FALSE, workers = 10, distance = 'logit')
 }
 save.image(results_file_path)
 print(res_fs1_noreplace)
@@ -144,7 +144,7 @@ Performance metrics and the highest found by Boruta with original dataset.
 ```{r fs2, error=TRUE}
 res_fs2 <- list()
 for (bt in names(bts)){
-  res_fs2[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs2, size=NULL, replace=TRUE, workers = 10, distance = "linear.probit")
+  res_fs2[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs2, size=NULL, replace=TRUE, workers = 10, distance = 'logit')
 }
 save.image(results_file_path)
 print(res_fs2)
@@ -153,7 +153,7 @@ print(res_fs2)
 ```{r fs2_noreplace, error=TRUE}
 res_fs2_noreplace <- list()
 for (bt in names(bts)){
-  res_fs2_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs2, size=NULL, replace=FALSE, workers = 10, distance = "linear.probit")
+  res_fs2_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs2, size=NULL, replace=FALSE, workers = 10, distance = 'logit')
 }
 save.image(results_file_path)
 print(res_fs2_noreplace)
@@ -166,7 +166,7 @@ Performance metrics and the highest found by Boruta with equal labels dataset.
 ```{r fs3, error=TRUE}
 res_fs3 <- list()
 for (bt in names(bts)){
-  res_fs3[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs3, size=NULL, replace=TRUE, workers = 10, distance = "linear.probit")
+  res_fs3[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs3, size=NULL, replace=TRUE, workers = 10, distance = 'logit')
 }
 save.image(results_file_path)
 print(res_fs3)
@@ -175,7 +175,7 @@ print(res_fs3)
 ```{r fs3_noreplace, error=TRUE}
 res_fs3_noreplace <- list()
 for (bt in names(bts)){
-  res_fs3_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs3, size=NULL, replace=FALSE, workers = 10, distance = "linear.probit")
+  res_fs3_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs3, size=NULL, replace=FALSE, workers = 10, distance = 'logit')
 }
 save.image(results_file_path)
 print(res_fs3_noreplace)
@@ -188,7 +188,7 @@ Performance metrics and all covariates.
 ```{r fs4, error=TRUE}
 res_fs4 <- list()
 for (bt in names(bts)){
-  res_fs4[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs4, size=NULL, replace=TRUE, workers = 10, distance = "linear.probit")
+  res_fs4[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs4, size=NULL, replace=TRUE, workers = 10, distance = 'logit')
 }
 save.image(results_file_path)
 print(res_fs4)
@@ -197,7 +197,7 @@ print(res_fs4)
 ```{r fs4_noreplace, error=TRUE}
 res_fs4_noreplace <- list()
 for (bt in names(bts)){
-  res_fs4_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs4, size=NULL, replace=FALSE, workers = 10, distance = "linear.probit")
+  res_fs4_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs4, size=NULL, replace=FALSE, workers = 10, distance = 'logit')
 }
 save.image(results_file_path)
 print(res_fs4_noreplace)
@@ -210,7 +210,7 @@ Only the highest covariates found by Boruta (excluding performance).
 ```{r fs5, error=TRUE}
 res_fs5 <- list()
 for (bt in names(bts)){
-  res_fs5[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs5, size=NULL, replace=TRUE, workers = 10, distance = "linear.probit")
+  res_fs5[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs5, size=NULL, replace=TRUE, workers = 10, distance = 'logit')
 }
 save.image(results_file_path)
 print(res_fs5)
@@ -219,7 +219,7 @@ print(res_fs5)
 ```{r fs5_noreplace, error=TRUE}
 res_fs5_noreplace <- list()
 for (bt in names(bts)){
-  res_fs5_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs5, size=NULL, replace=FALSE, workers = 10, distance = "linear.probit")
+  res_fs5_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs5, size=NULL, replace=FALSE, workers = 10, distance = 'logit')
 }
 save.image(results_file_path)
 print(res_fs5_noreplace)
@@ -232,7 +232,7 @@ Only the highest covariates found by Boruta (equal labels, excluding performance
 ```{r fs6, error=TRUE}
 res_fs6 <- list()
 for (bt in names(bts)){
-  res_fs6[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs6, size=NULL, replace=TRUE, workers = 10, distance = "linear.probit")
+  res_fs6[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs6, size=NULL, replace=TRUE, workers = 10, distance = 'logit')
 }
 save.image(results_file_path)
 print(res_fs6)
@@ -241,7 +241,7 @@ print(res_fs6)
 ```{r fs6_noreplace, error=TRUE}
 res_fs6_noreplace <- list()
 for (bt in names(bts)){
-  res_fs6_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs6, size=NULL, replace=FALSE, workers = 10, distance = "linear.probit")
+  res_fs6_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs6, size=NULL, replace=FALSE, workers = 10, distance = 'logit')
 }
 save.image(results_file_path)
 print(res_fs6_noreplace)
@@ -254,7 +254,7 @@ Utilize all covariates (excluding performance).
 ```{r fs7, error=TRUE}
 res_fs7 <- list()
 for (bt in names(bts)){
-  res_fs7[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs7, size=NULL, replace=TRUE, workers = 10, distance = "linear.probit")
+  res_fs7[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs7, size=NULL, replace=TRUE, workers = 10, distance = 'logit')
 }
 save.image(results_file_path)
 print(res_fs7)
@@ -263,14 +263,14 @@ print(res_fs7)
 ```{r fs7_noreplace, error=TRUE}
 res_fs7_noreplace <- list()
 for (bt in names(bts)){
-  res_fs7_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs7, size=NULL, replace=FALSE, workers = 10, distance = "linear.probit")
+  res_fs7_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs7, size=NULL, replace=FALSE, workers = 10, distance = 'logit')
 }
 save.image(results_file_path)
 print(res_fs7_noreplace)
 ```
 
 # Serialize and Push to GCP
-Save the feature selection results to GCP. 
+Save the resultant dataset and bootstrap samples to an R image. 
 
 ```{r serialize_dataset}
 save(list = ls(pattern = 'res_fs'), file = results_file_path)
