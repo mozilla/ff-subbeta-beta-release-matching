@@ -117,13 +117,16 @@ get_matches <- function(model, data, group = "all", distance = "distance", weigh
 #### Bootstramp Resampling
 # The following are for feature selection and hyperparameter tuning
 
-run_matchit_sample <- function(df_train, bt, model_covs, size=50000, ...){
+run_matchit_sample <- function(df_train, bt, model_covs, seed, size=50000, ...){
   # generate training and test dataset
-  if(missing(seed)) seed <- 1984
-  set.seed(1984)
   train <- df_train %>% 
-    filter(client_id %in% bt$train) %>%
-    sample_n(size = size)
+    filter(client_id %in% bt$train)
+  if (!is.null(size)){
+    if(missing(seed)) seed <- 1984
+    set.seed(seed)
+    df_train <- df_train %>% 
+      sample_n(size = size)
+  }
   
   test <- df_train %>% 
     filter(client_id %in% bt$train) %>%
@@ -146,24 +149,32 @@ run_matchit_sample <- function(df_train, bt, model_covs, size=50000, ...){
   return(calc_score(df_scored, get_m2_metric_map()))
 }
 
-perform_matchit_fs <- function(df_train, bts, model_covs, workers, size=50000, ...){
+perform_matchit_fs <- function(df_train, bts, model_covs, workers, seed, size=50000, ...){
   if (missing(workers)) workers = detectCores()
   # registerDoMC(workers)
   cl <- makePSOCKcluster(workers) # number of cores to use
   registerDoParallel(cl)
-  
-  scores <- foreach(i=1:length(bts), 
-                    .packages = c('dplyr', 'MatchIt', 'transport'), 
-                    .export=c('run_matchit_sample', 'generate_formula', 'get_matches', 
-                              'calc_score', 'get_m2_metric_map',
-                              'calc_cms')) %dopar% {
-    bt <- bts[[i]]
-    score <- run_matchit_sample(df_train, bt, model_covs, size = size, ...)
-    score
-    # scores[[i]] <- score
-  }
-  stopCluster(cl)
-  scores <- unlist(scores)
-  final <- c(mean = mean(scores), median = median(scores))
+  final <- tryCatch({
+    scores <- foreach(i=1:length(bts), 
+                      .packages = c('dplyr', 'MatchIt', 'transport'), 
+                      .export=c('run_matchit_sample', 'generate_formula', 'get_matches', 
+                                'calc_score', 'get_m2_metric_map',
+                                'calc_cms')) %dopar% {
+                                  bt <- bts[[i]]
+                                  score <- run_matchit_sample(df_train, bt, model_covs, size = size, ...)
+                                  score
+                                  # scores[[i]] <- score
+                                }
+    scores <- unlist(scores)
+    c(mean = mean(scores), median = median(scores))
+    }, 
+    error = function(cond){
+      message(paste("Bootstrap matching failed: ", cond))
+      return(NA)
+    },
+    finally = {
+      stopCluster(cl)
+    }
+  )
   return(final)
 }
