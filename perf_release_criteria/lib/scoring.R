@@ -117,12 +117,11 @@ get_matches <- function(model, data, group = "all", distance = "distance", weigh
 #### Bootstramp Resampling
 # The following are for feature selection and hyperparameter tuning
 
-run_matchit_sample <- function(df_train, bt, model_covs, seed, size=50000, ...){
+run_matchit_sample <- function(df_train, bt, model_covs, seed, add_interactions, size=50000, ...){
   # generate training and test dataset
   train <- df_train %>% 
     filter(client_id %in% bt$train)
   if (!is.null(size)){
-    if(missing(seed)) seed <- 1984
     set.seed(seed)
     df_train <- df_train %>% 
       sample_n(size = size)
@@ -133,7 +132,7 @@ run_matchit_sample <- function(df_train, bt, model_covs, seed, size=50000, ...){
     filter(label == 'release')
   
   # train model 
-  formula <- generate_formula(model_covs, label = 'is_release')
+  formula <- generate_formula(model_covs, label = 'is_release', add_interactions)
   model <- matchit(formula, train, ...)
   
   # extract beta subset
@@ -149,8 +148,10 @@ run_matchit_sample <- function(df_train, bt, model_covs, seed, size=50000, ...){
   return(calc_score(df_scored, get_m2_metric_map()))
 }
 
-perform_matchit_fs <- function(df_train, bts, model_covs, workers, seed, size=50000, ...){
+perform_matchit_fs <- function(df_train, bts, model_covs, workers, seed, add_interactions=FALSE, 
+                               size=50000, ...){
   if (missing(workers)) workers = detectCores()
+  if (missing(seed)) seed <- 1984
   # registerDoMC(workers)
   cl <- makePSOCKcluster(workers) # number of cores to use
   registerDoParallel(cl)
@@ -161,7 +162,9 @@ perform_matchit_fs <- function(df_train, bts, model_covs, workers, seed, size=50
                                 'calc_score', 'get_m2_metric_map',
                                 'calc_cms')) %dopar% {
                                   bt <- bts[[i]]
-                                  score <- run_matchit_sample(df_train, bt, model_covs, size = size, ...)
+                                  score <- run_matchit_sample(df_train, bt, model_covs, seed, add_interactions,
+                                                              size = size, 
+                                                              ...)
                                   score
                                   # scores[[i]] <- score
                                 }

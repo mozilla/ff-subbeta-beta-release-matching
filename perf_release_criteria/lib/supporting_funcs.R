@@ -52,9 +52,15 @@ calc_stats <- function(df.match, ho_cov, add_1 = FALSE){
 
 #### Modeling Pipeline
 
-generate_formula <- function(tr_cov, label){
-  # Focus on linear and no-interactions
-  return(as.formula(paste(label, '~', paste(tr_cov, collapse="+"))))
+generate_formula <- function(tr_cov, label, add_interactions=FALSE){
+  if (add_interactions){
+    formula <- paste(label, '~', paste(tr_cov, collapse="*"))
+  }
+  else {
+    formula <- paste(label, '~', paste(tr_cov, collapse="+"))
+  }
+  print(formula)
+  return(as.formula(formula))
 }
 
 #### Categorize continuous covariates
