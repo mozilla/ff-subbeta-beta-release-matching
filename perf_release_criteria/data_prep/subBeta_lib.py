@@ -57,6 +57,15 @@ def gen_hist_metrics(df):
   
   return metrics
 
+@F.udf(returnType=T.DoubleType())
+def mean_narm(x):
+  values = [value for value in x if x is not None]
+  if values:
+    avg = float(sum(values))/len(values)
+  else:
+    avg = None
+  return avg
+
 def gen_metrics(df):
   metrics = [F.count('*').alias('num_active_days')]
   
@@ -65,7 +74,7 @@ def gen_metrics(df):
             x, y in sum_int_metrics.items()]  
   
   # mean across client pings
-  metrics = metrics + [F.mean(F.coalesce(df[x], F.lit(0))).alias(y) for 
+  metrics = metrics + [mean_narm(F.collect_list(x)).alias(y) for 
             x, y in mean_int_metrics.items()]  
   
   # find max across client pings
