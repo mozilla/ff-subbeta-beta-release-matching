@@ -1521,7 +1521,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">Milestone 2: Datasets Generation</h1>
-<h4 class="date">Last Updated: October 21, 2019</h4>
+<h4 class="date">Last Updated: October 25, 2019</h4>
 
 </div>
 
@@ -1566,171 +1566,171 @@ load_df &lt;- function(file_path){
     filter(startup_ms &gt;= 0 &amp; profile_age &gt;= 0)
 }
 
-df_train &lt;- load_df('data/df_pd_67.csv')
-df_validate &lt;- load_df('data/df_pd_68.csv')</code></pre>
+df_train &lt;- load_df('data/df_pd_67_20191026.csv')
+df_validate &lt;- load_df('data/df_pd_68_20191026.csv')</code></pre>
 </div>
 <div id="review" class="section level1">
 <h1>Review</h1>
 <pre class="r"><code>summary(df_train)</code></pre>
-<pre><code>##   client_id         num_active_days content_crashes   num_pages       
-##  Length:367766      Min.   :1.000   Min.   :0       Min.   :     0.0  
-##  Class :character   1st Qu.:3.000   1st Qu.:0       1st Qu.:   175.7  
-##  Mode  :character   Median :5.000   Median :0       Median :  2047.0  
-##                     Mean   :5.175   Mean   :0       Mean   : 10814.4  
-##                     3rd Qu.:7.000   3rd Qu.:0       3rd Qu.: 10622.9  
-##                     Max.   :8.000   Max.   :0       Max.   :159606.4  
-##                                                                       
-##    uri_count      daily_unique_domains  search_count      active_hours   
-##  Min.   :   0.0   Min.   : 0.000       Min.   : 0.0000   Min.   :0.0000  
-##  1st Qu.:  22.0   1st Qu.: 1.655       1st Qu.: 0.0000   1st Qu.:0.1951  
-##  Median :  69.5   Median : 3.000       Median : 0.6667   Median :0.4901  
-##  Mean   : 128.2   Mean   : 4.166       Mean   : 2.1943   Mean   :0.7655  
-##  3rd Qu.: 163.5   3rd Qu.: 5.250       3rd Qu.: 2.5714   3rd Qu.:1.0316  
-##  Max.   :2467.9   Max.   :41.229       Max.   :49.2857   Max.   :7.2901  
+<pre><code>##   client_id         num_active_days content_crashes  active_hours   
+##  Length:302990      Min.   :1.000   Min.   :0       Min.   :0.0000  
+##  Class :character   1st Qu.:4.000   1st Qu.:0       1st Qu.:0.2595  
+##  Mode  :character   Median :6.000   Median :0       Median :0.5660  
+##                     Mean   :5.526   Mean   :0       Mean   :0.8423  
+##                     3rd Qu.:8.000   3rd Qu.:0       3rd Qu.:1.1222  
+##                     Max.   :8.000   Max.   :0       Max.   :7.2901  
+##                                                                     
+##    uri_count       session_length       search_count    num_bookmarks    
+##  Min.   :   1.00   Min.   :  0.01667   Min.   : 0.000   Min.   :    0.0  
+##  1st Qu.:  43.00   1st Qu.:  2.21908   1st Qu.: 0.000   1st Qu.:   10.0  
+##  Median :  94.67   Median :  6.56818   Median : 0.875   Median :   26.0  
+##  Mean   : 155.54   Mean   :  9.87532   Mean   : 2.391   Mean   :  175.4  
+##  3rd Qu.: 195.50   3rd Qu.: 14.63727   3rd Qu.: 2.875   3rd Qu.:   87.0  
+##  Max.   :2931.00   Max.   :240.80486   Max.   :51.000   Max.   :40401.0  
 ##                                                                          
-##  daily_tabs_opened session_length      num_bookmarks     
-##  Min.   :  0.00    Min.   :  0.00028   Min.   :    0.00  
-##  1st Qu.:  2.00    1st Qu.:  1.50861   1st Qu.:    5.60  
-##  Median :  6.40    Median :  5.51807   Median :   14.50  
-##  Mean   : 15.00    Mean   :  9.05110   Mean   :  112.41  
-##  3rd Qu.: 16.38    3rd Qu.: 13.28581   3rd Qu.:   51.33  
-##  Max.   :536.88    Max.   :243.80181   Max.   :24339.38  
-##                                                          
-##    startup_ms       daily_max_tabs    daily_num_sessions_started
-##  Min.   :       0   Min.   :  0.000   Min.   : 0.000            
-##  1st Qu.:    1553   1st Qu.:  2.250   1st Qu.: 1.000            
-##  Median :    3586   Median :  3.500   Median : 2.000            
-##  Mean   :   13391   Mean   :  6.141   Mean   : 2.704            
-##  3rd Qu.:    9201   3rd Qu.:  6.000   3rd Qu.: 3.200            
-##  Max.   :19371984   Max.   :786.250   Max.   :32.167            
-##                                                                 
-##  num_pages_max    uri_count_max     daily_unique_domains_max
-##  Min.   :     0   Min.   :    0.0   Min.   :  0.000         
-##  1st Qu.:   323   1st Qu.:   41.0   1st Qu.:  2.333         
-##  Median :  3225   Median :  143.0   Median :  4.667         
-##  Mean   : 14649   Mean   :  268.1   Mean   :  7.344         
-##  3rd Qu.: 15258   3rd Qu.:  338.0   3rd Qu.:  9.000         
-##  Max.   :313365   Max.   :15869.0   Max.   :100.000         
-##                                                             
-##  search_count_max  active_hours_max  daily_tabs_opened_max
-##  Min.   :  0.000   Min.   : 0.0000   Min.   :   0.00      
-##  1st Qu.:  0.000   1st Qu.: 0.3750   1st Qu.:   4.00      
-##  Median :  2.000   Median : 0.9736   Median :  14.00      
-##  Mean   :  4.954   Mean   : 1.4589   Mean   :  31.24      
-##  3rd Qu.:  6.000   3rd Qu.: 2.0097   3rd Qu.:  34.00      
-##  Max.   :217.000   Max.   :24.9833   Max.   :3302.00      
-##                                                           
-##  session_length_max  startup_ms_max      daily_max_tabs_max
-##  Min.   :   0.0003   Min.   :        0   Min.   :   0.000  
-##  1st Qu.:   2.9492   1st Qu.:     2409   1st Qu.:   3.000  
-##  Median :   9.7972   Median :     5954   Median :   5.000  
-##  Mean   :  17.3572   Mean   :    36784   Mean   :   9.126  
-##  3rd Qu.:  25.1091   3rd Qu.:    17227   3rd Qu.:   9.000  
-##  Max.   :1255.3822   Max.   :142749446   Max.   :3149.000  
+##    num_pages        daily_unique_domains daily_max_tabs    
+##  Min.   :     0.0   Min.   : 1.000       Min.   :   0.625  
+##  1st Qu.:   939.5   1st Qu.: 2.250       1st Qu.:   2.500  
+##  Median :  5265.5   Median : 3.600       Median :   3.800  
+##  Mean   : 17333.1   Mean   : 4.986       Mean   :   6.870  
+##  3rd Qu.: 19482.2   3rd Qu.: 6.083       3rd Qu.:   6.375  
+##  Max.   :179657.5   Max.   :44.000       Max.   :1012.625  
 ##                                                            
-##  daily_num_sessions_started_max     label         install_year 
-##  Min.   :  0.000                beta   : 73923   Min.   :1969  
-##  1st Qu.:  2.000                release:293843   1st Qu.:2016  
-##  Median :  3.000                                 Median :2018  
-##  Mean   :  4.795                                 Mean   :2017  
-##  3rd Qu.:  6.000                                 3rd Qu.:2018  
-##  Max.   :100.000                                 Max.   :2106  
-##                                                                
-##   profile_age       fxa_configured sync_configured is_default_browser
-##  Min.   :     0.0   False:306790   False:303894    False:164488      
-##  1st Qu.:   247.0   True : 60976   True : 63872    True :203278      
-##  Median :   692.0                                                    
-##  Mean   :   889.5                                                    
-##  3rd Qu.:  1368.0                                                    
-##  Max.   :152817.0                                                    
+##  daily_tabs_opened   startup_ms       daily_num_sessions_started
+##  Min.   :  1.000   Min.   :     261   Min.   : 0.000            
+##  1st Qu.:  4.000   1st Qu.:    1526   1st Qu.: 1.167            
+##  Median :  8.875   Median :    3536   Median : 2.000            
+##  Mean   : 17.762   Mean   :   13000   Mean   : 2.786            
+##  3rd Qu.: 19.625   3rd Qu.:    9183   3rd Qu.: 3.333            
+##  Max.   :518.250   Max.   :17109506   Max.   :32.833            
+##                                                                 
+##  active_hours_max  uri_count_max     session_length_max  search_count_max 
+##  Min.   : 0.0000   Min.   :    1.0   Min.   :   0.0214   Min.   :  0.000  
+##  1st Qu.: 0.5222   1st Qu.:   82.0   1st Qu.:   4.4928   1st Qu.:  0.000  
+##  Median : 1.1375   Median :  191.0   Median :  12.2625   Median :  2.000  
+##  Mean   : 1.6157   Mean   :  319.3   Mean   :  19.0952   Mean   :  5.473  
+##  3rd Qu.: 2.1847   3rd Qu.:  396.0   3rd Qu.:  27.0261   3rd Qu.:  7.000  
+##  Max.   :24.9833   Max.   :18032.0   Max.   :1255.3822   Max.   :217.000  
+##                                                                           
+##  num_pages_max    daily_unique_domains_max daily_max_tabs_max
+##  Min.   :     0   Min.   :  1.000          Min.   :   1.0    
+##  1st Qu.:  1055   1st Qu.:  3.000          1st Qu.:   4.0    
+##  Median :  5434   Median :  5.889          Median :   6.0    
+##  Mean   : 17523   Mean   :  8.589          Mean   :  10.2    
+##  3rd Qu.: 19734   3rd Qu.: 11.000          3rd Qu.:  10.0    
+##  Max.   :180456   Max.   :100.000          Max.   :3149.0    
+##                                                              
+##  daily_tabs_opened_max startup_ms_max      daily_num_sessions_started_max
+##  Min.   :   1.00       Min.   :      269   Min.   :  0.000               
+##  1st Qu.:   7.00       1st Qu.:     2445   1st Qu.:  2.000               
+##  Median :  17.00       Median :     6129   Median :  3.000               
+##  Mean   :  34.53       Mean   :    37499   Mean   :  5.058               
+##  3rd Qu.:  38.00       3rd Qu.:    17922   3rd Qu.:  6.000               
+##  Max.   :3302.00       Max.   :106338296   Max.   :100.000               
+##                                                                          
+##      label         install_year   profile_age       fxa_configured
+##  beta   : 59685   Min.   :1969   Min.   :     0.0   False:249440  
+##  release:243305   1st Qu.:2016   1st Qu.:   258.0   True : 53550  
+##                   Median :2018   Median :   701.0                 
+##                   Mean   :2017   Mean   :   895.9                 
+##                   3rd Qu.:2018   3rd Qu.:  1371.0                 
+##                   Max.   :2106   Max.   :152802.0                 
+##                                                                   
+##  sync_configured is_default_browser   locale       normalized_channel
+##  False:246391    False:127753       en-GB: 26565   beta   : 59685    
+##  True : 56599    True :175237       en-US:276425   release:243305    
 ##                                                                      
-##    locale       normalized_channel  app_version
-##  en-GB: 31867   beta   : 73923     Min.   :67  
-##  en-US:335899   release:293843     1st Qu.:67  
-##                                    Median :67  
-##                                    Mean   :67  
-##                                    3rd Qu.:67  
-##                                    Max.   :67  
-##                                                
-##                distribution_id           default_search_engine country    
-##  mozilla-stock         :356356   Bing               :  6499    GB: 65591  
-##  acer-001              :  2887   DuckDuckGo         : 13654    US:302175  
-##  yahoo                 :  1276   Google             :311985               
-##  mozilla-ironsource-001:  1268   missing            :     0               
-##  wildtangent-001       :   895   other (bundled)    :  1005               
-##  euballot              :   587   other (non-bundled): 34111               
-##  (Other)               :  4497   Yahoo              :   512               
-##           city        geo_subdivision1 geo_subdivision2 timezone_offset 
-##  ??         : 91075   ENG    : 54036   ??     :311994   Min.   :-720.0  
-##  London     :  5974   CA     : 38137   MAN    :  1375   1st Qu.:-300.0  
-##  New York   :  4029   TX     : 22390   KEN    :  1320   Median :-240.0  
-##  Los Angeles:  3480   NY     : 18878   HRT    :  1187   Mean   :-218.5  
-##  Chicago    :  2956   FL     : 18256   BIR    :  1139   3rd Qu.:-240.0  
-##  Houston    :  2564   IL     : 12180   ESS    :  1117   Max.   : 840.0  
-##  (Other)    :257688   (Other):203889   (Other): 49634                   
-##    num_addons        cpu_cores      cpu_speed_mhz     cpu_family      
-##  Min.   :  0.000   Min.   : 1.000   Min.   :  598   Min.   :   6.000  
-##  1st Qu.:  4.250   1st Qu.: 2.000   1st Qu.: 2208   1st Qu.:   6.000  
-##  Median :  5.273   Median : 2.000   Median : 2694   Median :   6.000  
-##  Mean   :  5.992   Mean   : 3.108   Mean   : 2701   Mean   :   8.444  
-##  3rd Qu.:  7.000   3rd Qu.: 4.000   3rd Qu.: 3193   3rd Qu.:   6.000  
-##  Max.   :170.000   Max.   :64.000   Max.   :37609   Max.   :2053.000  
-##                                                                       
-##  cpu_l2_cache_kb  cpu_l3_cache_kb  cpu_stepping      cpu_model    
-##  Min.   : 128.0   Min.   : 1024   Min.   : 1.000   Min.   :  1.0  
-##  1st Qu.: 256.0   1st Qu.: 3072   1st Qu.: 3.000   1st Qu.: 42.0  
-##  Median : 256.0   Median : 6144   Median : 5.000   Median : 60.0  
-##  Mean   : 640.9   Mean   : 5752   Mean   : 5.593   Mean   : 69.1  
-##  3rd Qu.: 512.0   3rd Qu.: 8192   3rd Qu.: 9.000   3rd Qu.: 94.0  
-##  Max.   :6144.0   Max.   :65536   Max.   :14.000   Max.   :241.0  
-##  NA's   :135      NA's   :81104   NA's   :16883    NA's   :3358   
-##                      cpu_vendor       memory_mb         os_version    
-##                           :     0   Min.   :    502   10.0   :241030  
-##  AuthenticAMD             : 54886   1st Qu.:   4002   6.1    :102782  
-##  CentaurHauls             :     7   Median :   8064   6.3    : 20887  
-##  GenuineIntel             :312808   Mean   :   9326   6.2    :  3021  
-##  Qualcomm Technologies Inc:    65   3rd Qu.:  11975   5.1    :    31  
-##                                     Max.   :1572800   6.0    :    14  
-##                                                       (Other):     1  
-##   is_wow64      TIME_TO_DOM_INTERACTIVE_MS FX_PAGE_LOAD_MS_2_PARENT
-##       :     0   Min.   :    4.33           Min.   :    0           
-##  False:332787   1st Qu.:  981.40           1st Qu.: 1887           
-##  True : 34979   Median : 1416.24           Median : 2705           
-##                 Mean   : 1979.66           Mean   : 3169           
-##                 3rd Qu.: 2232.16           3rd Qu.: 3996           
-##                 Max.   :50000.00           Max.   :10000           
-##                                                                    
+##                                                                      
+##                                                                      
+##                                                                      
+##                                                                      
+##   app_version               distribution_id  
+##  Min.   :67   mozilla-stock         :293576  
+##  1st Qu.:67   acer-001              :  2438  
+##  Median :67   yahoo                 :  1100  
+##  Mean   :67   mozilla-ironsource-001:  1064  
+##  3rd Qu.:67   wildtangent-001       :   641  
+##  Max.   :67   euballot              :   469  
+##               (Other)               :  3702  
+##          default_search_engine country              city       
+##  Bing               :  5276    GB: 54140   ??         : 75173  
+##  DuckDuckGo         : 10964    US:248850   London     :  4677  
+##  Google             :256145                New York   :  3017  
+##  other (bundled)    :   862                Los Angeles:  2806  
+##  other (non-bundled): 29388                Chicago    :  2355  
+##  Yahoo              :   355                Houston    :  2108  
+##                                            (Other)    :212854  
+##  geo_subdivision1 geo_subdivision2 timezone_offset   num_addons     
+##  ENG    : 44673   ??     :256653   Min.   :-720    Min.   :  0.000  
+##  CA     : 31391   MAN    :  1115   1st Qu.:-300    1st Qu.:  4.333  
+##  TX     : 18482   KEN    :  1099   Median :-240    Median :  5.385  
+##  NY     : 15268   HRT    :   990   Mean   :-220    Mean   :  6.086  
+##  FL     : 15167   BIR    :   954   3rd Qu.:-240    3rd Qu.:  7.000  
+##  IL     :  9928   ESS    :   938   Max.   : 840    Max.   :170.000  
+##  (Other):168081   (Other): 41241                                    
+##    cpu_cores      cpu_speed_mhz     cpu_family      cpu_l2_cache_kb 
+##  Min.   : 1.000   Min.   :  598   Min.   :   6.00   Min.   : 128.0  
+##  1st Qu.: 2.000   1st Qu.: 2208   1st Qu.:   6.00   1st Qu.: 256.0  
+##  Median : 2.000   Median : 2695   Median :   6.00   Median : 256.0  
+##  Mean   : 3.109   Mean   : 2704   Mean   :   8.49   Mean   : 636.8  
+##  3rd Qu.: 4.000   3rd Qu.: 3193   3rd Qu.:   6.00   3rd Qu.: 512.0  
+##  Max.   :40.000   Max.   :37214   Max.   :2053.00   Max.   :6144.0  
+##                                                     NA's   :93      
+##  cpu_l3_cache_kb  cpu_stepping      cpu_model     
+##  Min.   : 1024   Min.   : 1.000   Min.   :  1.00  
+##  1st Qu.: 3072   1st Qu.: 3.000   1st Qu.: 42.00  
+##  Median : 6144   Median : 5.000   Median : 60.00  
+##  Mean   : 5687   Mean   : 5.593   Mean   : 69.61  
+##  3rd Qu.: 8192   3rd Qu.: 9.000   3rd Qu.: 94.00  
+##  Max.   :65536   Max.   :14.000   Max.   :193.00  
+##  NA's   :66119   NA's   :14019    NA's   :2765    
+##                      cpu_vendor       memory_mb        os_version    
+##                           :     0   Min.   :   511   10.0   :200764  
+##  AuthenticAMD             : 45664   1st Qu.:  4005   6.1    : 82848  
+##  CentaurHauls             :     6   Median :  8066   6.3    : 16916  
+##  GenuineIntel             :257265   Mean   :  9346   6.2    :  2430  
+##  Qualcomm Technologies Inc:    55   3rd Qu.: 12122   5.1    :    21  
+##                                     Max.   :524254   6.0    :    10  
+##                                                      (Other):     1  
+##   is_wow64      FX_PAGE_LOAD_MS_2_PARENT TIME_TO_DOM_COMPLETE_MS
+##       :     0   Min.   :    1            Min.   :    7          
+##  False:275448   1st Qu.: 1923            1st Qu.: 1756          
+##  True : 27542   Median : 2709            Median : 2568          
+##                 Mean   : 3117            Mean   : 3510          
+##                 3rd Qu.: 3919            3rd Qu.: 4080          
+##                 Max.   :10000            Max.   :50000          
+##                                                                 
 ##  TIME_TO_DOM_CONTENT_LOADED_END_MS TIME_TO_LOAD_EVENT_END_MS
-##  Min.   :    2                     Min.   :    7            
-##  1st Qu.: 1110                     1st Qu.: 1620            
-##  Median : 1651                     Median : 2370            
-##  Mean   : 2397                     Mean   : 3321            
-##  3rd Qu.: 2712                     3rd Qu.: 3799            
-##  Max.   :50000                     Max.   :50000            
+##  Min.   :   15.62                  Min.   :    7            
+##  1st Qu.: 1136.68                  1st Qu.: 1644            
+##  Median : 1668.15                  Median : 2369            
+##  Mean   : 2380.77                  Mean   : 3238            
+##  3rd Qu.: 2698.84                  3rd Qu.: 3730            
+##  Max.   :50000.00                  Max.   :50000            
 ##                                                             
-##  TIME_TO_NON_BLANK_PAINT_MS TIME_TO_DOM_COMPLETE_MS   profile_age_cat  
-##  Min.   :     7.0           Min.   :    7           &lt; 1 week  : 14513  
-##  1st Qu.:   778.5           1st Qu.: 1716           &lt; 1 month : 11378  
-##  Median :  1126.9           Median : 2546           &lt; 6 months: 49733  
-##  Mean   :  1613.5           Mean   : 3568           &lt; 2 years :113975  
-##  3rd Qu.:  1767.8           3rd Qu.: 4120           &lt; 5 years :129752  
-##  Max.   :100000.0           Max.   :50000           &gt; 5 years : 48415  
-##                                                                        
+##  TIME_TO_DOM_INTERACTIVE_MS TIME_TO_NON_BLANK_PAINT_MS   profile_age_cat  
+##  Min.   :   22.89           Min.   :     7.0           &lt; 1 week  :  9212  
+##  1st Qu.:  995.79           1st Qu.:   788.7           &lt; 1 month :  9295  
+##  Median : 1414.46           Median :  1122.9           &lt; 6 months: 41183  
+##  Mean   : 1918.10           Mean   :  1523.3           &lt; 2 years : 95405  
+##  3rd Qu.: 2186.06           3rd Qu.:  1720.8           &lt; 5 years :107909  
+##  Max.   :50000.00           Max.   :100000.0           &gt; 5 years : 39986  
+##                                                                           
 ##  distro_id_norm    timezone_cat     memory_cat     cpu_speed_cat   
-##  acer   :  3120   (-6,-4]:209289   &lt; 1GB :  1193   &lt; 1GHz :   810  
-##  Mozilla:360239   (-8,-6]: 79391   &lt; 2GB : 11075   &lt; 2GHz : 58913  
-##  other  :  3008   (0,2]  : 62685   &lt; 4GB :104820   &lt; 3GHz :187582  
-##  Yahoo  :  1399   (4,6]  :  7245   &lt; 6GB : 23725   &lt; 4GHz :113953  
-##                   (6,8]  :  2994   &lt; 16GB:210277   &gt; 16GHz:  6508  
-##                   (2,4]  :  2106   &gt; 16GB: 16676                   
-##                   (Other):  4056                                   
+##  acer   :  2622   (-6,-4]:172969   &lt; 1GB :   739   &lt; 1GHz :   614  
+##  Mozilla:296806   (-8,-6]: 65518   &lt; 2GB :  8547   &lt; 2GHz : 48386  
+##  other  :  2358   (0,2]  : 51921   &lt; 4GB : 84948   &lt; 3GHz :154440  
+##  Yahoo  :  1204   (4,6]  :  5416   &lt; 6GB : 19542   &lt; 4GHz : 94068  
+##                   (6,8]  :  2282   &lt; 16GB:175602   &gt; 16GHz:  5482  
+##                   (2,4]  :  1676   &gt; 16GB: 13612                   
+##                   (Other):  3208                                   
 ##  cpu_cores_cat is_release     
-##  1   :  5925   Mode :logical  
-##  2   :186504   FALSE:73923    
-##  &lt; 4 :154314   TRUE :293843   
-##  &lt; 8 : 19505                  
-##  &lt; 16:  1241                  
-##  &gt; 16:   277                  
+##  1   :  4440   Mode :logical  
+##  2   :153498   FALSE:59685    
+##  &lt; 4 :127636   TRUE :243305   
+##  &lt; 8 : 16292                  
+##  &lt; 16:   925                  
+##  &gt; 16:   199                  
 ## </code></pre>
 <div id="observations" class="section level2">
 <h2>Observations</h2>
@@ -1783,164 +1783,156 @@ df_validate &lt;- load_df('data/df_pd_68.csv')</code></pre>
 <pre class="r"><code>df_train %&gt;% count(client_id) %&gt;% select(n) %&gt;% table</code></pre>
 <pre><code>## .
 ##      1      2 
-## 367734     16</code></pre>
+## 302962     14</code></pre>
 <p>Duplicate cients are really uncommon!</p>
 </div>
 <div id="cleaning" class="section level2">
 <h2>Cleaning</h2>
 <p>Performing the proposed actions above</p>
 <pre class="r"><code>summary(df_train_f)</code></pre>
-<pre><code>##   client_id         num_active_days content_crashes   num_pages     
-##  Length:367521      Min.   :1.000   Min.   :0       Min.   :     0  
-##  Class :character   1st Qu.:3.000   1st Qu.:0       1st Qu.:   176  
-##  Mode  :character   Median :5.000   Median :0       Median :  2049  
-##                     Mean   :5.175   Mean   :0       Mean   : 10818  
-##                     3rd Qu.:7.000   3rd Qu.:0       3rd Qu.: 10628  
-##                     Max.   :8.000   Max.   :0       Max.   :159606  
+<pre><code>##   client_id         num_active_days content_crashes  active_hours   
+##  Length:302819      Min.   :1.000   Min.   :0       Min.   :0.0000  
+##  Class :character   1st Qu.:4.000   1st Qu.:0       1st Qu.:0.2595  
+##  Mode  :character   Median :6.000   Median :0       Median :0.5660  
+##                     Mean   :5.526   Mean   :0       Mean   :0.8423  
+##                     3rd Qu.:8.000   3rd Qu.:0       3rd Qu.:1.1222  
+##                     Max.   :8.000   Max.   :0       Max.   :7.2901  
 ##                                                                     
-##    uri_count      daily_unique_domains  search_count      active_hours   
-##  Min.   :   0.0   Min.   : 0.000       Min.   : 0.0000   Min.   :0.0000  
-##  1st Qu.:  22.0   1st Qu.: 1.655       1st Qu.: 0.0000   1st Qu.:0.1951  
-##  Median :  69.5   Median : 3.000       Median : 0.6667   Median :0.4903  
-##  Mean   : 128.3   Mean   : 4.167       Mean   : 2.1948   Mean   :0.7655  
-##  3rd Qu.: 163.6   3rd Qu.: 5.250       3rd Qu.: 2.5714   3rd Qu.:1.0317  
-##  Max.   :2467.9   Max.   :41.229       Max.   :49.2857   Max.   :7.2901  
+##    uri_count       session_length       search_count    num_bookmarks    
+##  Min.   :   1.00   Min.   :  0.01667   Min.   : 0.000   Min.   :    0.0  
+##  1st Qu.:  43.00   1st Qu.:  2.21927   1st Qu.: 0.000   1st Qu.:   10.0  
+##  Median :  94.67   Median :  6.56861   Median : 0.875   Median :   26.0  
+##  Mean   : 155.55   Mean   :  9.87566   Mean   : 2.391   Mean   :  175.4  
+##  3rd Qu.: 195.50   3rd Qu.: 14.63906   3rd Qu.: 2.875   3rd Qu.:   87.0  
+##  Max.   :2931.00   Max.   :240.80486   Max.   :51.000   Max.   :40401.0  
 ##                                                                          
-##  daily_tabs_opened session_length      num_bookmarks     
-##  Min.   :  0.00    Min.   :  0.00028   Min.   :    0.00  
-##  1st Qu.:  2.00    1st Qu.:  1.50917   1st Qu.:    5.60  
-##  Median :  6.40    Median :  5.51935   Median :   14.50  
-##  Mean   : 15.00    Mean   :  9.05189   Mean   :  112.43  
-##  3rd Qu.: 16.38    3rd Qu.: 13.28736   3rd Qu.:   51.38  
-##  Max.   :536.88    Max.   :243.80181   Max.   :24339.38  
+##    num_pages      daily_unique_domains daily_max_tabs    
+##  Min.   :     0   Min.   : 1.000       Min.   :   0.625  
+##  1st Qu.:   940   1st Qu.: 2.250       1st Qu.:   2.500  
+##  Median :  5268   Median : 3.600       Median :   3.800  
+##  Mean   : 17337   Mean   : 4.986       Mean   :   6.870  
+##  3rd Qu.: 19490   3rd Qu.: 6.087       3rd Qu.:   6.375  
+##  Max.   :179658   Max.   :44.000       Max.   :1012.625  
 ##                                                          
-##    startup_ms       daily_max_tabs    daily_num_sessions_started
-##  Min.   :       0   Min.   :  0.000   Min.   : 0.000            
-##  1st Qu.:    1553   1st Qu.:  2.250   1st Qu.: 1.000            
-##  Median :    3584   Median :  3.500   Median : 2.000            
-##  Mean   :   13374   Mean   :  6.142   Mean   : 2.704            
-##  3rd Qu.:    9192   3rd Qu.:  6.000   3rd Qu.: 3.200            
-##  Max.   :19371984   Max.   :786.250   Max.   :32.167            
+##  daily_tabs_opened   startup_ms       daily_num_sessions_started
+##  Min.   :  1.000   Min.   :     261   Min.   : 0.000            
+##  1st Qu.:  4.000   1st Qu.:    1526   1st Qu.: 1.167            
+##  Median :  8.875   Median :    3533   Median : 2.000            
+##  Mean   : 17.762   Mean   :   12983   Mean   : 2.786            
+##  3rd Qu.: 19.625   3rd Qu.:    9176   3rd Qu.: 3.333            
+##  Max.   :518.250   Max.   :17109506   Max.   :32.833            
 ##                                                                 
-##  num_pages_max    uri_count_max     daily_unique_domains_max
-##  Min.   :     0   Min.   :    0.0   Min.   :  0.000         
-##  1st Qu.:   323   1st Qu.:   41.0   1st Qu.:  2.333         
-##  Median :  3227   Median :  143.0   Median :  4.667         
-##  Mean   : 14654   Mean   :  268.1   Mean   :  7.345         
-##  3rd Qu.: 15266   3rd Qu.:  338.0   3rd Qu.:  9.000         
-##  Max.   :313365   Max.   :15869.0   Max.   :100.000         
-##                                                             
-##  search_count_max  active_hours_max  daily_tabs_opened_max
-##  Min.   :  0.000   Min.   : 0.0000   Min.   :   0.00      
-##  1st Qu.:  0.000   1st Qu.: 0.3750   1st Qu.:   4.00      
-##  Median :  2.000   Median : 0.9736   Median :  14.00      
-##  Mean   :  4.955   Mean   : 1.4591   Mean   :  31.25      
-##  3rd Qu.:  6.000   3rd Qu.: 2.0097   3rd Qu.:  34.00      
-##  Max.   :217.000   Max.   :24.9833   Max.   :3302.00      
-##                                                           
-##  session_length_max  startup_ms_max      daily_max_tabs_max
-##  Min.   :   0.0003   Min.   :        0   Min.   :   0.000  
-##  1st Qu.:   2.9503   1st Qu.:     2409   1st Qu.:   3.000  
-##  Median :   9.7992   Median :     5950   Median :   5.000  
-##  Mean   :  17.3592   Mean   :    36747   Mean   :   9.127  
-##  3rd Qu.:  25.1103   3rd Qu.:    17213   3rd Qu.:   9.000  
-##  Max.   :1255.3822   Max.   :142749446   Max.   :3149.000  
-##                                                            
-##  daily_num_sessions_started_max     label         install_year 
-##  Min.   :  0.000                beta   : 73846   Min.   :1993  
-##  1st Qu.:  2.000                release:293675   1st Qu.:2016  
-##  Median :  3.000                                 Median :2018  
-##  Mean   :  4.795                                 Mean   :2017  
-##  3rd Qu.:  6.000                                 3rd Qu.:2018  
-##  Max.   :100.000                                 Max.   :2019  
-##                                                                
-##   profile_age     fxa_configured sync_configured is_default_browser
-##  Min.   :   0.0   False:306572   False:303674    False:164401      
-##  1st Qu.: 247.0   True : 60949   True : 63847    True :203120      
-##  Median : 692.0                                                    
-##  Mean   : 887.8                                                    
-##  3rd Qu.:1367.0                                                    
-##  Max.   :7051.0                                                    
-##                                                                    
-##    locale       normalized_channel  app_version
-##  en-GB: 31843   beta   : 73846     Min.   :67  
-##  en-US:335678   release:293675     1st Qu.:67  
-##                                    Median :67  
-##                                    Mean   :67  
-##                                    3rd Qu.:67  
-##                                    Max.   :67  
-##                                                
-##          default_search_engine country     timezone_offset 
-##  Bing               :  6497    GB: 65539   Min.   :-720.0  
-##  DuckDuckGo         : 13645    US:301982   1st Qu.:-300.0  
-##  Google             :311768                Median :-240.0  
-##  other (bundled)    :  1005                Mean   :-218.6  
-##  other (non-bundled): 34094                3rd Qu.:-240.0  
-##  Yahoo              :   512                Max.   : 840.0  
-##                                                            
-##    num_addons        cpu_cores      cpu_speed_mhz   cpu_l2_cache_kb 
-##  Min.   :  0.000   Min.   : 1.000   Min.   :  792   Min.   : 128.0  
-##  1st Qu.:  4.250   1st Qu.: 2.000   1st Qu.: 2208   1st Qu.: 256.0  
-##  Median :  5.273   Median : 2.000   Median : 2694   Median : 256.0  
-##  Mean   :  5.992   Mean   : 3.109   Mean   : 2701   Mean   : 640.7  
-##  3rd Qu.:  7.000   3rd Qu.: 4.000   3rd Qu.: 3193   3rd Qu.: 512.0  
-##  Max.   :170.000   Max.   :64.000   Max.   :37609   Max.   :6144.0  
-##                                                                     
-##  cpu_vendor       memory_mb       os_version      is_wow64     
-##  AMD  : 54875   Min.   :    511   Other:    45   False:332561  
-##  Intel:312577   1st Qu.:   4002   6.1  :102595   True : 34960  
-##  Other:    69   Median :   8064   6.2  :  3021                 
-##                 Mean   :   9330   6.3  : 20875                 
-##                 3rd Qu.:  11984   10.0 :240985                 
-##                 Max.   :1572800                                
-##                                                                
-##  TIME_TO_DOM_INTERACTIVE_MS FX_PAGE_LOAD_MS_2_PARENT
-##  Min.   :    4.33           Min.   :    0           
-##  1st Qu.:  981.27           1st Qu.: 1887           
-##  Median : 1415.85           Median : 2704           
-##  Mean   : 1977.76           Mean   : 3168           
-##  3rd Qu.: 2230.59           3rd Qu.: 3994           
-##  Max.   :50000.00           Max.   :10000           
-##                                                     
-##  TIME_TO_DOM_CONTENT_LOADED_END_MS TIME_TO_LOAD_EVENT_END_MS
-##  Min.   :    2                     Min.   :    7            
-##  1st Qu.: 1109                     1st Qu.: 1620            
-##  Median : 1651                     Median : 2370            
-##  Mean   : 2395                     Mean   : 3318            
-##  3rd Qu.: 2709                     3rd Qu.: 3796            
-##  Max.   :50000                     Max.   :50000            
-##                                                             
-##  TIME_TO_NON_BLANK_PAINT_MS TIME_TO_DOM_COMPLETE_MS   profile_age_cat  
-##  Min.   :     7.0           Min.   :    7           &lt; 1 week  : 14488  
-##  1st Qu.:   778.4           1st Qu.: 1716           &lt; 1 month : 11368  
-##  Median :  1126.5           Median : 2545           &lt; 6 months: 49693  
-##  Mean   :  1612.1           Mean   : 3565           &lt; 2 years :113930  
-##  3rd Qu.:  1766.7           3rd Qu.: 4118           &lt; 5 years :129680  
-##  Max.   :100000.0           Max.   :50000           &gt; 5 years : 48362  
+##  active_hours_max  uri_count_max     session_length_max  search_count_max 
+##  Min.   : 0.0000   Min.   :    1.0   Min.   :   0.0214   Min.   :  0.000  
+##  1st Qu.: 0.5222   1st Qu.:   82.0   1st Qu.:   4.4936   1st Qu.:  0.000  
+##  Median : 1.1375   Median :  191.0   Median :  12.2625   Median :  2.000  
+##  Mean   : 1.6157   Mean   :  319.3   Mean   :  19.0960   Mean   :  5.474  
+##  3rd Qu.: 2.1847   3rd Qu.:  396.0   3rd Qu.:  27.0272   3rd Qu.:  7.000  
+##  Max.   :24.9833   Max.   :18032.0   Max.   :1255.3822   Max.   :217.000  
+##                                                                           
+##  num_pages_max    daily_unique_domains_max daily_max_tabs_max
+##  Min.   :     0   Min.   :  1.000          Min.   :   1.0    
+##  1st Qu.:  1055   1st Qu.:  3.000          1st Qu.:   4.0    
+##  Median :  5437   Median :  5.889          Median :   6.0    
+##  Mean   : 17527   Mean   :  8.590          Mean   :  10.2    
+##  3rd Qu.: 19742   3rd Qu.: 11.000          3rd Qu.:  10.0    
+##  Max.   :180456   Max.   :100.000          Max.   :3149.0    
+##                                                              
+##  daily_tabs_opened_max startup_ms_max      daily_num_sessions_started_max
+##  Min.   :   1.00       Min.   :      269   Min.   :  0.000               
+##  1st Qu.:   7.00       1st Qu.:     2445   1st Qu.:  2.000               
+##  Median :  17.00       Median :     6124   Median :  3.000               
+##  Mean   :  34.53       Mean   :    37457   Mean   :  5.058               
+##  3rd Qu.:  38.00       3rd Qu.:    17906   3rd Qu.:  6.000               
+##  Max.   :3302.00       Max.   :106338296   Max.   :100.000               
+##                                                                          
+##      label         install_year   profile_age     fxa_configured
+##  beta   : 59627   Min.   :1993   Min.   :   0.0   False:249292  
+##  release:243192   1st Qu.:2016   1st Qu.: 258.0   True : 53527  
+##                   Median :2018   Median : 701.0                 
+##                   Mean   :2017   Mean   : 894.5                 
+##                   3rd Qu.:2018   3rd Qu.:1371.0                 
+##                   Max.   :2019   Max.   :7051.0                 
+##                                                                 
+##  sync_configured is_default_browser   locale       normalized_channel
+##  False:246241    False:127701       en-GB: 26547   beta   : 59627    
+##  True : 56578    True :175118       en-US:276272   release:243192    
+##                                                                      
+##                                                                      
+##                                                                      
+##                                                                      
+##                                                                      
+##   app_version         default_search_engine country     timezone_offset
+##  Min.   :67   Bing               :  5275    GB: 54100   Min.   :-720   
+##  1st Qu.:67   DuckDuckGo         : 10958    US:248719   1st Qu.:-300   
+##  Median :67   Google             :255992                Median :-240   
+##  Mean   :67   other (bundled)    :   862                Mean   :-220   
+##  3rd Qu.:67   other (non-bundled): 29377                3rd Qu.:-240   
+##  Max.   :67   Yahoo              :   355                Max.   : 840   
 ##                                                                        
+##    num_addons        cpu_cores     cpu_speed_mhz   cpu_l2_cache_kb 
+##  Min.   :  0.000   Min.   : 1.00   Min.   :  792   Min.   : 128.0  
+##  1st Qu.:  4.333   1st Qu.: 2.00   1st Qu.: 2208   1st Qu.: 256.0  
+##  Median :  5.386   Median : 2.00   Median : 2695   Median : 256.0  
+##  Mean   :  6.086   Mean   : 3.11   Mean   : 2704   Mean   : 636.6  
+##  3rd Qu.:  7.000   3rd Qu.: 4.00   3rd Qu.: 3193   3rd Qu.: 512.0  
+##  Max.   :170.000   Max.   :40.00   Max.   :37214   Max.   :6144.0  
+##                                                                    
+##  cpu_vendor       memory_mb      os_version      is_wow64     
+##  AMD  : 45655   Min.   :   511   Other:    31   False:275293  
+##  Intel:257106   1st Qu.:  4005   6.1  : 82711   True : 27526  
+##  Other:    58   Median :  8066   6.2  :  2430                 
+##                 Mean   :  9349   6.3  : 16906                 
+##                 3rd Qu.: 12122   10.0 :200741                 
+##                 Max.   :524254                                
+##                                                               
+##  FX_PAGE_LOAD_MS_2_PARENT TIME_TO_DOM_COMPLETE_MS
+##  Min.   :    1            Min.   :    7          
+##  1st Qu.: 1923            1st Qu.: 1755          
+##  Median : 2708            Median : 2567          
+##  Mean   : 3115            Mean   : 3507          
+##  3rd Qu.: 3917            3rd Qu.: 4077          
+##  Max.   :10000            Max.   :50000          
+##                                                  
+##  TIME_TO_DOM_CONTENT_LOADED_END_MS TIME_TO_LOAD_EVENT_END_MS
+##  Min.   :   15.62                  Min.   :    7            
+##  1st Qu.: 1136.49                  1st Qu.: 1644            
+##  Median : 1667.70                  Median : 2368            
+##  Mean   : 2378.84                  Mean   : 3235            
+##  3rd Qu.: 2696.93                  3rd Qu.: 3728            
+##  Max.   :50000.00                  Max.   :50000            
+##                                                             
+##  TIME_TO_DOM_INTERACTIVE_MS TIME_TO_NON_BLANK_PAINT_MS   profile_age_cat  
+##  Min.   :   22.89           Min.   :     7.0           &lt; 1 week  :  9203  
+##  1st Qu.:  995.65           1st Qu.:   788.6           &lt; 1 month :  9287  
+##  Median : 1414.06           Median :  1122.7           &lt; 6 months: 41152  
+##  Mean   : 1916.30           Mean   :  1522.1           &lt; 2 years : 95369  
+##  3rd Qu.: 2184.93           3rd Qu.:  1719.7           &lt; 5 years :107861  
+##  Max.   :50000.00           Max.   :100000.0           &gt; 5 years : 39947  
+##                                                                           
 ##  distro_id_norm    timezone_cat     memory_cat     cpu_speed_cat   
-##  acer   :  3120   (-6,-4]:209187   &lt; 1GB :  1174   &lt; 1GHz :   802  
-##  Mozilla:359997   (-8,-6]: 79323   &lt; 2GB : 10937   &lt; 2GHz : 58838  
-##  other  :  3007   (0,2]  : 62632   &lt; 4GB :104768   &lt; 3GHz :187461  
-##  Yahoo  :  1397   (4,6]  :  7237   &lt; 6GB : 23719   &lt; 4GHz :113914  
-##                   (6,8]  :  2992   &lt; 16GB:210250   &gt; 16GHz:  6506  
-##                   (2,4]  :  2097   &gt; 16GB: 16673                   
-##                   (Other):  4053                                   
+##  acer   :  2622   (-6,-4]:172898   &lt; 1GB :   724   &lt; 1GHz :   609  
+##  Mozilla:296637   (-8,-6]: 65476   &lt; 2GB :  8458   &lt; 2GHz : 48329  
+##  other  :  2358   (0,2]  : 51882   &lt; 4GB : 84908   &lt; 3GHz :154363  
+##  Yahoo  :  1202   (4,6]  :  5409   &lt; 6GB : 19540   &lt; 4GHz : 94038  
+##                   (6,8]  :  2280   &lt; 16GB:175580   &gt; 16GHz:  5480  
+##                   (2,4]  :  1668   &gt; 16GB: 13609                   
+##                   (Other):  3206                                   
 ##  cpu_cores_cat is_release      cpu_l2_cache_kb_cat
-##  1   :  5790   Mode :logical   &lt; 1024: 34716      
-##  2   :186420   FALSE:73846     &lt; 256 :269227      
-##  &lt; 4 :154296   TRUE :293675    &lt; 512 : 20046      
-##  &lt; 8 : 19497                   &gt; 1024: 43532      
-##  &lt; 16:  1241                                      
-##  &gt; 16:   277                                      
+##  1   :  4346   Mode :logical   &lt; 1024: 28384      
+##  2   :153442   FALSE:59627     &lt; 256 :222219      
+##  &lt; 4 :127622   TRUE :243192    &lt; 512 : 16583      
+##  &lt; 8 : 16285                   &gt; 1024: 35633      
+##  &lt; 16:   925                                      
+##  &gt; 16:   199                                      
 ## </code></pre>
 </div>
 </div>
 <div id="bootstrap-samples" class="section level1">
 <h1>Bootstrap Samples</h1>
-<p>The feature selection will utilize 10 boostrap replicates, which are generated as follows: 1. The entire <code>df_train</code> dataset is sampled at 100% with replacement. 2. A sample of Release (<code>is_release = TRUE</code>) <code>client_id</code> are taken of the same size as Beta (73846) 3. The entire (resampled) Beta <code>client_id</code> are combined with this sampled Release ids. - These are the profiles that will be used for building the matching model. - The matched Beta profiles will be used for scoring the model. 4. The remaining Release ids will be used for scoring the model.</p>
+<p>The feature selection will utilize 10 boostrap replicates, which are generated as follows: 1. The entire <code>df_train</code> dataset is sampled at 100% with replacement. 2. A sample of Release (<code>is_release = TRUE</code>) <code>client_id</code> are taken of the same size as Beta (59627) 3. The entire (resampled) Beta <code>client_id</code> are combined with this sampled Release ids. - These are the profiles that will be used for building the matching model. - The matched Beta profiles will be used for scoring the model. 4. The remaining Release ids will be used for scoring the model.</p>
 <p>The same set of bootstrap samples will be used for all feature selection across modeling algorithms. A suite of these are created to represent different levels of Beta oversampling with respect to Release.</p>
-<pre class="r"><code>extract_ids &lt;- function(df_c, size, oversampling){
+<pre class="r"><code>extract_ids &lt;- function(df_c, oversampling){
   df_beta &lt;- df_c %&gt;% filter(is_release == FALSE)
   df_rel &lt;- df_c %&gt;% filter(is_release == TRUE)
   n_beta &lt;- nrow(df_beta)
@@ -1982,7 +1974,7 @@ save(df_train_f, df_validate_f, bts.1x, bts.4x, bts.8x, bts.16x,
      file = image_file_path)
 
 gcs_file_path &lt;- file.path('data', 'milestone2', image_file_name)</code></pre>
-<p>Then push the results to GCP in the <code>moz-fx-dev-subbeta</code> bucket, under data/milestone2/df_train_validate_20191021.RData.</p>
+<p>Then push the results to GCP in the <code>moz-fx-dev-subbeta</code> bucket, under data/milestone2/df_train_validate_20191025.RData.</p>
 <pre class="r"><code>Sys.setenv(&quot;GCS_DEFAULT_BUCKET&quot; = &quot;moz-fx-dev-subbeta&quot;,
            &quot;GCS_AUTH_FILE&quot; = &quot;moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json&quot;)
 
@@ -1990,25 +1982,25 @@ library(googleCloudStorageR)</code></pre>
 <pre><code>## Successfully auto-authenticated via moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json</code></pre>
 <pre><code>## Set default bucket name to 'moz-fx-dev-subbeta'</code></pre>
 <pre class="r"><code>upload_try &lt;- gcs_upload(image_file_path, name = gcs_file_path)</code></pre>
-<pre><code>## 2019-10-21 19:43:05 -- File size detected as 384.7 Mb</code></pre>
-<pre><code>## 2019-10-21 19:43:05 -- Found resumeable upload URL: https://www.googleapis.com/upload/storage/v1/b/moz-fx-dev-subbeta/o/?uploadType=resumable&amp;name=data%2Fmilestone2%2Fdf_train_validate_20191021.RData&amp;predefinedAcl=private&amp;upload_id=AEnB2UrMaeUi1DGuLTMrfYXvKvwD14GFIWmFl_b1E17aMy7nnlWyl56ktzw6SQbzO-6LCYdislawiCcNEHr56-lYpGwYwG3fvK8-c0JvVfNEPFfS52dQQ-8</code></pre>
+<pre><code>## 2019-10-25 18:30:13 -- File size detected as 318.7 Mb</code></pre>
+<pre><code>## 2019-10-25 18:30:13 -- Found resumeable upload URL: https://www.googleapis.com/upload/storage/v1/b/moz-fx-dev-subbeta/o/?uploadType=resumable&amp;name=data%2Fmilestone2%2Fdf_train_validate_20191025.RData&amp;predefinedAcl=private&amp;upload_id=AEnB2UqRHvbSYC2Fo-qmAfbYEhxig1ywGhV1f_Gx1YxUoEiHhmr04evhzz3vclLC_ppD6CErY5soWFquK8fs0jm_D-oIvi8sUDTYIHsSeDEait50txYA2VI</code></pre>
 <pre class="r"><code>upload_try</code></pre>
 <pre><code>## ==Google Cloud Storage Object==
-## Name:                data/milestone2/df_train_validate_20191021.RData 
-## Size:                384.7 Mb 
-## Media URL:           https://www.googleapis.com/download/storage/v1/b/moz-fx-dev-subbeta/o/data%2Fmilestone2%2Fdf_train_validate_20191021.RData?generation=1571712458003791&amp;alt=media 
-## Download URL:        https://storage.cloud.google.com/moz-fx-dev-subbeta/data%2Fmilestone2%2Fdf_train_validate_20191021.RData 
-## Public Download URL: https://storage.googleapis.com/moz-fx-dev-subbeta/data%2Fmilestone2%2Fdf_train_validate_20191021.RData 
+## Name:                data/milestone2/df_train_validate_20191025.RData 
+## Size:                318.7 Mb 
+## Media URL:           https://www.googleapis.com/download/storage/v1/b/moz-fx-dev-subbeta/o/data%2Fmilestone2%2Fdf_train_validate_20191025.RData?generation=1572053639207313&amp;alt=media 
+## Download URL:        https://storage.cloud.google.com/moz-fx-dev-subbeta/data%2Fmilestone2%2Fdf_train_validate_20191025.RData 
+## Public Download URL: https://storage.googleapis.com/moz-fx-dev-subbeta/data%2Fmilestone2%2Fdf_train_validate_20191025.RData 
 ## Bucket:              moz-fx-dev-subbeta 
-## ID:                  moz-fx-dev-subbeta/data/milestone2/df_train_validate_20191021.RData/1571712458003791 
-## MD5 Hash:            xVJwt18uXFa+4KYk4gqk0w== 
+## ID:                  moz-fx-dev-subbeta/data/milestone2/df_train_validate_20191025.RData/1572053639207313 
+## MD5 Hash:            6HImIYbPCNyNqVGuV1XEBA== 
 ## Class:               STANDARD 
-## Created:             2019-10-22 02:47:38 
-## Updated:             2019-10-22 02:47:38 
-## Generation:          1571712458003791 
+## Created:             2019-10-26 01:33:59 
+## Updated:             2019-10-26 01:33:59 
+## Generation:          1572053639207313 
 ## Meta Generation:     1 
-## eTag:                CM+q/pXtruUCEAE= 
-## crc32c:              F0w61Q==</code></pre>
+## eTag:                CJGz7pXkuOUCEAE= 
+## crc32c:              i9uqIg==</code></pre>
 </div>
 
 
