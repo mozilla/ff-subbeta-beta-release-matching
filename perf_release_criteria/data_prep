@@ -171,7 +171,8 @@ df_pd.shape
 s3_resource = boto3.resource('s3')
 with StringIO() as f:
   df_pd.to_csv(f, index=False)
-  file_path = '{}/df_pd_{}.csv'.format(DATA_PATH, BETA_VALIDATION_VERSION)
+  file_path = '{}/df_pd_{}_{}.csv'.format(DATA_PATH, BETA_VALIDATION_VERSION, 
+                                          dt.date.today().strftime('%Y%m%d'))
   s3_resource.Object(DATA_BUCKET, file_path).put(Body=f.getvalue())    
 
 # COMMAND ----------
@@ -265,5 +266,6 @@ df_pd.shape
 s3_resource = boto3.resource('s3')
 with StringIO() as f:
   df_pd.to_csv(f, index=False)
-  file_path = '{}/df_pd_{}.csv'.format(DATA_PATH, BETA_TRAINING_VERSION)
+  file_path = '{}/df_pd_{}_{}.csv'.format(DATA_PATH, BETA_TRAINING_VERSION, 
+                                          dt.date.today().strftime('%Y%m%d'))
   s3_resource.Object(DATA_BUCKET, file_path).put(Body=f.getvalue())    
