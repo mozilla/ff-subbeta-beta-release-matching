@@ -271,13 +271,13 @@ print(res_fs7_noreplace)
 Feature selection on only performance metrics, but including interaction terms. 
 
 ```{r fs1_int, error=TRUE}
-res_fs1 <- list()
+res_fs1_int <- list()
 for (bt in names(bts)){
-  res_fs1[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs1, size=NULL, workers = 10, add_interactions=TRUE,
+  res_fs1_int[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs1, size=NULL, workers = 10, add_interactions=TRUE,
                                       replace=TRUE, distance = 'mahalanobis')
 }
 save.image(results_file_path)
-print(res_fs1)
+print(res_fs1_int)
 ```
 
 # # Serialize and Push to GCP
