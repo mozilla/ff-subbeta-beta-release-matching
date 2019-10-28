@@ -280,7 +280,7 @@ save.image(results_file_path)
 print(res_fs1_int)
 ```
 
-# # Serialize and Push to GCP
+# Serialize and Push to GCP
 Save the resultant dataset and bootstrap samples to an R image. 
 
 ```{r serialize_dataset}
