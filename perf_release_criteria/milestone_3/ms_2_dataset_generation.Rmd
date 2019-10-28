@@ -57,8 +57,8 @@ load_df <- function(file_path){
     filter(startup_ms >= 0 & profile_age >= 0)
 }
 
-df_train <- load_df('data/df_pd_67.csv')
-df_validate <- load_df('data/df_pd_68.csv')
+df_train <- load_df('data/df_pd_67_20191026.csv')
+df_validate <- load_df('data/df_pd_68_20191026.csv')
 ```
 
 # Review 

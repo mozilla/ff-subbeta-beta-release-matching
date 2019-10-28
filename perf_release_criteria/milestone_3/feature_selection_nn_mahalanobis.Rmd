@@ -50,7 +50,10 @@ covs <- df_train_f %>%
   select(-client_id) %>%
   select(-label) %>%
   select(-is_release) %>%
-  select(-app_version) 
+  select(-app_version) %>%
+  select_if(is.numeric) %>% # Mahalanobis constraint
+  names()
+  
 
 results_file_name <- 'feature_selection_nn_mahalanobis.RData' 
 results_file_path <- file.path('data', results_file_name)
@@ -116,7 +119,7 @@ Feature selection on only performance metrics
 ```{r fs1, error=TRUE}
 res_fs1 <- list()
 for (bt in names(bts)){
-  res_fs1[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs1, size=50000, replace=TRUE, workers = 5)
+  res_fs1[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs1, size=NULL, replace=TRUE, workers = 10, distance = "mahalanobis")
 }
 save.image(results_file_path)
 print(res_fs1)
@@ -125,7 +128,7 @@ print(res_fs1)
 ```{r fs1_noreplace, error=TRUE}
 res_fs1_noreplace <- list()
 for (bt in names(bts)){
-  res_fs1_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs1, size=50000, replace=FALSE, workers = 5)
+  res_fs1_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs1, size=NULL, replace=FALSE, workers = 10, distance = "mahalanobis")
 }
 save.image(results_file_path)
 print(res_fs1_noreplace)
@@ -138,7 +141,7 @@ Performance metrics and the highest found by Boruta with original dataset.
 ```{r fs2, error=TRUE}
 res_fs2 <- list()
 for (bt in names(bts)){
-  res_fs2[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs2, size=50000, replace=TRUE, workers = 5)
+  res_fs2[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs2, size=NULL, replace=TRUE, workers = 10, distance = "mahalanobis")
 }
 save.image(results_file_path)
 print(res_fs2)
@@ -147,7 +150,7 @@ print(res_fs2)
 ```{r fs2_noreplace, error=TRUE}
 res_fs2_noreplace <- list()
 for (bt in names(bts)){
-  res_fs2_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs2, size=50000, replace=FALSE, workers = 5)
+  res_fs2_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs2, size=NULL, replace=FALSE, workers = 10, distance = "mahalanobis")
 }
 save.image(results_file_path)
 print(res_fs2_noreplace)
@@ -160,7 +163,7 @@ Performance metrics and the highest found by Boruta with equal labels dataset.
 ```{r fs3, error=TRUE}
 res_fs3 <- list()
 for (bt in names(bts)){
-  res_fs3[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs3, size=50000, replace=TRUE, workers = 5)
+  res_fs3[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs3, size=NULL, replace=TRUE, workers = 10, distance = "mahalanobis")
 }
 save.image(results_file_path)
 print(res_fs3)
@@ -169,7 +172,7 @@ print(res_fs3)
 ```{r fs3_noreplace, error=TRUE}
 res_fs3_noreplace <- list()
 for (bt in names(bts)){
-  res_fs3_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs3, size=50000, replace=FALSE, workers = 5)
+  res_fs3_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs3, size=NULL, replace=FALSE, workers = 10, distance = "mahalanobis")
 }
 save.image(results_file_path)
 print(res_fs3_noreplace)
@@ -182,7 +185,7 @@ Performance metrics and all covariates.
 ```{r fs4, error=TRUE}
 res_fs4 <- list()
 for (bt in names(bts)){
-  res_fs4[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs4, size=50000, replace=TRUE, workers = 5)
+  res_fs4[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs4, size=NULL, replace=TRUE, workers = 10, distance = "mahalanobis")
 }
 save.image(results_file_path)
 print(res_fs4)
@@ -191,7 +194,7 @@ print(res_fs4)
 ```{r fs4_noreplace, error=TRUE}
 res_fs4_noreplace <- list()
 for (bt in names(bts)){
-  res_fs4_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs4, size=50000, replace=FALSE, workers = 5)
+  res_fs4_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs4, size=NULL, replace=FALSE, workers = 10, distance = "mahalanobis")
 }
 save.image(results_file_path)
 print(res_fs4_noreplace)
@@ -204,7 +207,7 @@ Only the highest covariates found by Boruta (excluding performance).
 ```{r fs5, error=TRUE}
 res_fs5 <- list()
 for (bt in names(bts)){
-  res_fs5[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs5, size=50000, replace=TRUE, workers = 5)
+  res_fs5[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs5, size=NULL, replace=TRUE, workers = 10, distance = "mahalanobis")
 }
 save.image(results_file_path)
 print(res_fs5)
@@ -213,7 +216,7 @@ print(res_fs5)
 ```{r fs5_noreplace, error=TRUE}
 res_fs5_noreplace <- list()
 for (bt in names(bts)){
-  res_fs5_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs5, size=50000, replace=FALSE, workers = 5)
+  res_fs5_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs5, size=NULL, replace=FALSE, workers = 10, distance = "mahalanobis")
 }
 save.image(results_file_path)
 print(res_fs5_noreplace)
@@ -226,7 +229,7 @@ Only the highest covariates found by Boruta (equal labels, excluding performance
 ```{r fs6, error=TRUE}
 res_fs6 <- list()
 for (bt in names(bts)){
-  res_fs6[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs6, size=50000, replace=TRUE, workers = 5)
+  res_fs6[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs6, size=NULL, replace=TRUE, workers = 10, distance = "mahalanobis")
 }
 save.image(results_file_path)
 print(res_fs6)
@@ -235,7 +238,7 @@ print(res_fs6)
 ```{r fs6_noreplace, error=TRUE}
 res_fs6_noreplace <- list()
 for (bt in names(bts)){
-  res_fs6_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs6, size=50000, replace=FALSE, workers = 5)
+  res_fs6_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs6, size=NULL, replace=FALSE, workers = 10, distance = "mahalanobis")
 }
 save.image(results_file_path)
 print(res_fs6_noreplace)
@@ -248,7 +251,7 @@ Utilize all covariates (excluding performance).
 ```{r fs7, error=TRUE}
 res_fs7 <- list()
 for (bt in names(bts)){
-  res_fs7[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs7, size=50000, replace=TRUE, workers = 5)
+  res_fs7[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs7, size=NULL, replace=TRUE, workers = 10, distance = "mahalanobis")
 }
 save.image(results_file_path)
 print(res_fs7)
@@ -257,12 +260,43 @@ print(res_fs7)
 ```{r fs7_noreplace, error=TRUE}
 res_fs7_noreplace <- list()
 for (bt in names(bts)){
-  res_fs7_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs7, size=50000, replace=FALSE, workers = 5)
+  res_fs7_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs7, size=NULL, replace=FALSE, workers = 10, distance = "mahalanobis")
 }
 save.image(results_file_path)
 print(res_fs7_noreplace)
 ```
 
+# FS 1 Interactions
 
+Feature selection on only performance metrics, but including interaction terms. 
+
+```{r fs1_int, error=TRUE}
+res_fs1_int <- list()
+for (bt in names(bts)){
+  res_fs1_int[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs1, size=NULL, workers = 10, add_interactions=TRUE,
+                                      replace=TRUE, distance = 'mahalanobis')
+}
+save.image(results_file_path)
+print(res_fs1_int)
+```
+
+# Serialize and Push to GCP
+Save the resultant dataset and bootstrap samples to an R image. 
+
+```{r serialize_dataset}
+save(list = ls(pattern = 'res_fs'), file = results_file_path)
+```
+
+```{r gcp_storage_push, warning=FALSE}
+gcs_file_path <- file.path('data', 'milestone2', results_file_name)
+
+Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
+           "GCS_AUTH_FILE" = "moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json")
+
+library(googleCloudStorageR)
+
+upload_try <- gcs_upload(results_file_path, name = gcs_file_path)
+upload_try
+```
 
 
