@@ -128,7 +128,7 @@ run_matchit_sample <- function(df_train, bt, model_covs, seed, add_interactions,
   }
   
   test <- df_train %>% 
-    filter(client_id %in% bt$train) %>%
+    filter(client_id %in% bt$test) %>%
     filter(label == 'release')
   
   # train model 
