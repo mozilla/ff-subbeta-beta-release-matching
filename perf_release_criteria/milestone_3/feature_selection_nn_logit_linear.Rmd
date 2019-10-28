@@ -75,10 +75,10 @@ Retrieve Boruta features:
 file_name = 'feature_selection_boruta_initial_20191023.RData'
 image_file_path = file.path('data', file_name)
 
-Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
-           "GCS_AUTH_FILE" = "moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json")
-library(googleCloudStorageR)
-gcs_get_object(file.path('data', 'milestone2', file_name), saveToDisk = image_file_path, overwrite = TRUE)
+# Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
+#            "GCS_AUTH_FILE" = "moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json")
+# library(googleCloudStorageR)
+# gcs_get_object(file.path('data', 'milestone2', file_name), saveToDisk = image_file_path, overwrite = TRUE)
 
 load(image_file_path)
 ```
@@ -268,6 +268,46 @@ for (bt in names(bts)){
 save.image(results_file_path)
 print(res_fs7_noreplace)
 ```
+
+# FS 1 Interactions
+
+Feature selection on only performance metrics, but including interaction terms. 
+
+```{r fs1_int, error=TRUE}
+res_fs1 <- list()
+for (bt in names(bts)){
+  res_fs1[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs1, size=NULL, workers = 10, add_interactions=TRUE,
+                                      replace=TRUE, distance = 'linear.logit')
+}
+save.image(results_file_path)
+print(res_fs1)
+```
+
+```{r fs1_int_noreplace, error=TRUE}
+res_fs1_noreplace <- list()
+for (bt in names(bts)){
+  res_fs1_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs1, size=NULL, add_interactions=TRUE,
+                                                replace=FALSE, workers = 10, distance = 'linear.logit')
+}
+save.image(results_file_path)
+print(res_fs1_noreplace)
+```
+
+# FS 2
+
+Performance metrics and the highest found by Boruta with original dataset, but including interaction terms
+
+```{r fs2_int, error=TRUE}
+res_fs2 <- list()
+for (bt in names(bts)){
+  res_fs2[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs2, size=NULL, add_interactions=TRUE,
+                                      replace=TRUE, workers = 10, distance = 'linear.logit')
+}
+save.image(results_file_path)
+print(res_fs2)
+```
+
+Never completed after 2.5 days. Killed it...
 
 # Serialize and Push to GCP
 Save the resultant dataset and bootstrap samples to an R image. 
