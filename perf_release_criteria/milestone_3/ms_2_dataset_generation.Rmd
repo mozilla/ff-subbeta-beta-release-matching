@@ -174,9 +174,11 @@ release_overcount <- channel_counts$n[channel_counts$label == 'release'] - chann
 ```
 
 The feature selection will utilize 10 boostrap replicates, which are generated as follows:
+
+
 1. The entire `df_train` dataset is sampled at 100% with replacement.
 2. A sample of Release (`is_release = TRUE`) `client_id` are taken of the same size as Beta (`r channel_counts$n[channel_counts$label == 'beta']`)
-3. The entire (resampled) Beta `client_id` are combined with this sampled Release ids. 
+3. The entire (resampled) Beta `client_id` are combined with these sampled Release ids. 
     - These are the profiles that will be used for building the matching model. 
     - The matched Beta profiles will be used for scoring the model. 
 4. The remaining Release ids will be used for scoring the model. 
