@@ -120,7 +120,7 @@ get_matches <- function(model, data, group = "all", distance = "distance", weigh
 run_matchit_sample <- function(df_train, bt, model_covs, seed, add_interactions, size=50000, ...){
   # generate training and test dataset
   train <- df_train %>% 
-    filter(client_id %in% bt$train)
+    right_join(data.frame(client_id = bt$train, stringsAsFactors=FALSE), by='client_id', 'right')
   if (!is.null(size)){
     set.seed(seed)
     df_train <- df_train %>% 
@@ -128,7 +128,7 @@ run_matchit_sample <- function(df_train, bt, model_covs, seed, add_interactions,
   }
   
   test <- df_train %>% 
-    filter(client_id %in% bt$train) %>%
+    right_join(data.frame(client_id = bt$test, stringsAsFactors=FALSE), by='client_id', 'right') %>%
     filter(label == 'release')
   
   # train model 
