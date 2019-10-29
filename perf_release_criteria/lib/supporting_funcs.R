@@ -59,7 +59,6 @@ generate_formula <- function(tr_cov, label, add_interactions=FALSE){
   else {
     formula <- paste(label, '~', paste(tr_cov, collapse="+"))
   }
-  print(formula)
   return(as.formula(formula))
 }
 

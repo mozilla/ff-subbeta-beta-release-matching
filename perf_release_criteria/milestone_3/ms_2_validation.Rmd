@@ -1,0 +1,178 @@
+---
+title: 'Milestone 2: Model Validation'
+output:
+  html_notebook:
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+date: 'Last Updated: `r format(Sys.time(), "%B %d, %Y")`'
+---
+
+# tl;dr 
+This notebook determines the model framework utilized for this [PRD](https://docs.google.com/document/d/1Ygz6MkudYHZjnDnD9Z97kUyFrvV3KGWsjXyPjddhHq0/edit#heading=h.lvb9l8gw2nee). It utilizes the results from the hyperparameter tuning step, and trains the optimal model for each algorithm on the v67 dataset. The resultant predictions of these optimal models are compared to a v68 validation dataset. The framework used to generate the highest performant model (e.g., features, hyperparameters) will be used in online model training for the subsetting of Beta in production use.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+source('../lib/supporting_funcs.R')
+source('../lib/scoring.R')
+library(MatchIt)
+```
+
+```{r data_load, echo=FALSE}
+file_name = 'df_train_validate_20191025.RData'
+image_file_path = file.path('data', file_name)
+
+# Pull from GCP if necessary
+if (!file.exists(image_file_path)){
+  Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
+           "GCS_AUTH_FILE" = "moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json")
+  library(googleCloudStorageR)
+  gcs_get_object(file.path('data', 'milestone2', file_name), saveToDisk = image_file_path, overwrite = TRUE)
+}
+
+load(image_file_path)
+```
+
+```{r var_def, echo=FALSE}
+df_rel_val <- df_validate_f %>%
+  filter(label == 'release')
+
+df_beta_train <- df_train_f %>% filter(is_release == FALSE)
+df_rel_train <- df_train_f %>% filter(is_release == TRUE)
+n_beta <- nrow(df_beta_train)
+```
+
+# Features
+Feature sets: 
+
+1. Only performance metrics.
+2. Performance metrics and the highest found by Boruta with original dataset.
+3. Performance metrics and the highest found by Boruta with equal labels dataset.
+4. Performance metrics and all covariates.
+5. Only the highest covariates found by Boruta (excluding performance).
+6. Only the highest covariates found by Boruta (equal labels, excluding performance).
+7. Utilize all covariates (excluding performance). 
+
+Retrieve Boruta features:
+
+```{r boruta_import, echo=FALSE, warning=FALSE, message=FALSE}
+file_name = 'feature_selection_boruta_initial_20191023.RData'
+image_file_path = file.path('data', file_name)
+
+if (!file.exists(image_file_path)){
+  Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
+           "GCS_AUTH_FILE" = "moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json")
+  library(googleCloudStorageR)
+  gcs_get_object(file.path('data', 'milestone2', file_name), saveToDisk = image_file_path, overwrite = TRUE)
+}
+load(image_file_path)
+```
+
+```{r boruta_fs, echo=FALSE}
+extract_boruta_fs <- function(boruta_res, num=5){
+  features <- NULL
+  for(metric in names(boruta_results)){
+    features <- c(names(sort(apply(boruta_res[[metric]]$ImpHistory, 2, median), decreasing = TRUE)[1:num]), features)
+  }
+  return(sort(unique(features)))
+}
+
+features_top10 <- extract_boruta_fs(boruta_results, num=10)
+features_top10_eq <- extract_boruta_fs(boruta_results_eq, num=10)
+
+# filter out categorical
+features_top10 <- df_train_f %>% 
+  select(features_top10) %>% 
+  # select_if(is.numeric) %>% 
+  names()
+features_top10_eq <- df_train_f %>% 
+  select(features_top10_eq) %>% 
+  # select_if(is.numeric) %>% 
+  names()
+```
+
+```{r feature_sets, echo=FALSE}
+perf_metrics <- names(get_m2_metric_map())
+
+covs <- df_train_f %>%
+  select(-perf_metrics) %>%
+  select(-content_crashes) %>%
+  select(-client_id) %>%
+  select(-label) %>%
+  select(-is_release) %>%
+  select(-app_version) %>%
+  # select_if(is.numeric) %>% # Mahalanobis constraint
+  names()
+
+fs1 <- perf_metrics
+fs2 <- c(names(fs1), features_top10)
+fs3 <- c(names(fs1), features_top10_eq)
+fs4 <- c(names(fs1), covs)
+fs5 <- features_top10
+fs6 <- features_top10_eq
+fs7 <- covs
+```
+
+# Validation Bootstraps
+
+30 bootstrap replicates of v68 Release will be utilized to validate the models. There are `r nrow(df_rel_val)` profiles utilized for this purpose. 
+
+```{r bts_validate}
+bts = list()
+for(i in 1:30){
+  bts[[i]] <- df_rel_val %>% 
+    sample_frac(size = 1, replace = TRUE) %>%
+    pull(client_id) 
+}
+```
+
+# Oversampling
+
+The entire v67 dataset will be utilized for training. However, most of the matching algorithms are more performant with higher ratios of Beta to Release. There are `r n_beta` profiles utilized for this purpose.
+
+```{r oversampling}
+oversample <- function(oversampling, df_beta, df_rel) {
+  df_x <- df_rel %>%
+    sample_n(size = round(n_beta / oversampling)) %>%
+    rbind(df_beta)
+  return(df_x)
+  }
+
+oversamples <- c(1, 2, 4, 8, 16)
+dfs <- lapply(oversamples, oversample, df_beta = df_beta_train, df_rel = df_rel_train)
+names(dfs) <- as.character(oversamples)
+```
+
+# Model Training
+
+```{r trainer}
+train_matchit <- function(train, model_covs, add_interactions, ...){
+  # train model
+  formula <- generate_formula(model_covs, label = 'is_release', add_interactions)
+  model <- matchit(formula, train, ...)
+  
+  # extract beta subset
+  df_matched <- get_matches(model, train) %>%
+    select(-weights, -distance) %>%
+    filter(label == 'beta')
+  
+  return(list(model = model, matched = df_matched))
+}
+
+```
+
+## Nearest-Neighbors, Malahanobis 
+
+Hyperparameters:
+
+* Determined in `hyperparameter_tuning_nn_malahanobis.Rmd`
+*
+
+```{r nn_mal}
+nn.mal <- train_matchit(dfs[['4']], fs1, add_interactions = FALSE, replace = FALSE, distance = "mahalanobis")
+```
+
+# Serialize
+
+* The bootsraps and training datasets!
