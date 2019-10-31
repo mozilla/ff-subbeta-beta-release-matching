@@ -117,39 +117,47 @@ get_matches <- function(model, data, group = "all", distance = "distance", weigh
 #### Bootstramp Resampling
 # The following are for feature selection and hyperparameter tuning
 
-run_matchit_sample <- function(df_train, bt, model_covs, seed, add_interactions, size=50000, ...){
-  # generate training and test dataset
-  train <- df_train %>% 
-    right_join(data.frame(client_id = bt$train, stringsAsFactors=FALSE), by='client_id', 'right')
-  if (!is.null(size)){
-    set.seed(seed)
-    df_train <- df_train %>% 
-      sample_n(size = size)
+run_matchit_sample <- function(df_train, bt, model_covs, seed, add_interactions, size=NULL, ...){
+  score <- tryCatch({
+    # generate training and test dataset
+    train <- df_train %>% 
+      right_join(data.frame(client_id = bt$train, stringsAsFactors=FALSE), by='client_id', 'right')
+    if (!is.null(size)){
+      set.seed(seed)
+      df_train <- df_train %>% 
+        sample_n(size = size)
+    }
+    
+    test <- df_train %>% 
+      right_join(data.frame(client_id = bt$test, stringsAsFactors=FALSE), by='client_id', 'right') %>%
+      filter(label == 'release')
+    
+    # train model 
+    formula <- generate_formula(model_covs, label = 'is_release', add_interactions)
+    model <- matchit(formula, train, ...)
+    
+    # extract beta subset
+    df_matched <- get_matches(model, train) %>%
+      select(-weights, -distance) %>%
+      filter(label == 'beta')
+    
+    # build dataframe for scoring
+    df_scored <- df_matched %>%
+      bind_rows(test)
+    
+    #apply scoring
+    return(calc_score(df_scored, get_m2_metric_map()))
+  },
+  error = function(cond){
+    message(paste("Failed for bootstrap resample: ", cond))
+    return(NA)
   }
-  
-  test <- df_train %>% 
-    right_join(data.frame(client_id = bt$test, stringsAsFactors=FALSE), by='client_id', 'right') %>%
-    filter(label == 'release')
-  
-  # train model 
-  formula <- generate_formula(model_covs, label = 'is_release', add_interactions)
-  model <- matchit(formula, train, ...)
-  
-  # extract beta subset
-  df_matched <- get_matches(model, train) %>%
-    select(-weights, -distance) %>%
-    filter(label == 'beta')
-  
-  # build dataframe for scoring
-  df_scored <- df_matched %>%
-    bind_rows(test)
-  
-  #apply scoring
-  return(calc_score(df_scored, get_m2_metric_map()))
+  )
+  return(score)
 }
 
 perform_matchit_fs <- function(df_train, bts, model_covs, workers, seed, add_interactions=FALSE, 
-                               size=50000, ...){
+                               size=NULL, ...){
   if (missing(workers)) workers = detectCores()
   if (missing(seed)) seed <- 1984
   # registerDoMC(workers)
@@ -166,7 +174,6 @@ perform_matchit_fs <- function(df_train, bts, model_covs, workers, seed, add_int
                                                               size = size, 
                                                               ...)
                                   score
-                                  # scores[[i]] <- score
                                 }
     scores <- unlist(scores)
     c(mean = mean(scores), median = median(scores))
@@ -181,3 +188,55 @@ perform_matchit_fs <- function(df_train, bts, model_covs, workers, seed, add_int
   )
   return(final)
 }
+
+run_matchit_hp_tune <- function(df_train, bt, model_covs, workers, hps_grid, seed, add_interactions=FALSE, 
+                               size=NULL, ...){
+  if (missing(workers)) workers = detectCores()
+  if (missing(seed)) seed <- 1984
+  # registerDoMC(workers)
+  cl <- makePSOCKcluster(workers) # number of cores to use
+  registerDoParallel(cl)
+  final <- tryCatch({
+    scores <- foreach(i=1:nrow(hps_grid), 
+                      .packages = c('dplyr', 'MatchIt', 'transport'), 
+                      .export=c('run_matchit_sample', 'generate_formula', 'get_matches',
+                                'calc_score', 'get_m2_metric_map',
+                                'calc_cms')) %dopar% {
+                                  params <- c(list(...), as.list(hps_grid[i, ]))
+                                  params[['df_train']] <- df_train
+                                  params[['bt']] <- bt 
+                                  params[['model_covs']] <- model_covs
+                                  params[['seed']] <- seed
+                                  params[['add_interactions']] <- add_interactions
+                                  params[['size']] <- size
+                                  score <- do.call(run_matchit_sample, params) 
+                                  score
+                                }
+    # scores <- unlist(scores)
+    # c(mean = mean(scores), median = median(scores))
+    hps_grid$scores <- unlist(scores)
+    hps_grid
+  }, 
+  error = function(cond){
+    message(paste("Bootstrap matching failed: ", cond))
+    return(NA)
+  },
+  finally = {
+    stopCluster(cl)
+  }
+  )
+  return(final)
+}
+
+perform_matchit_hp_tune <- function(df_train, bts, model_covs, workers, hps_grid, seed, add_interactions=FALSE, 
+                                    size=NULL, ...){
+  results <- list()
+  for(i in 1:length(bts)){
+    bt <- bts[[i]]
+    results[[i]] <- run_matchit_hp_tune(df_train, bt, model_covs, workers, hps_grid, seed, add_interactions=FALSE,
+                                        size=NULL, ...)
+  }
+  return(results)
+  #return(list(full = results, mean = res_mean, median = res_median))
+}
+

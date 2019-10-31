@@ -1,8 +1,13 @@
 ---
 title: 'Milestone 2: Scoring Algorithms Test'
 output:
-  html_document:
-    df_print: paged
+  html_notebook:
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+date: 'Last Updated: `r format(Sys.time(), "%B %d, %Y")`'
 ---
 
 # tl;dr 
@@ -24,7 +29,7 @@ library(profmem)
 * Benchmark computation time, and memory usage
 
 ```{r data_load, echo=FALSE}
-load('data/milestone2/analysis_10022019_corr.RData')
+load('../data/milestone2/analysis_10022019_corr.RData')
 ```
 
 # transport
