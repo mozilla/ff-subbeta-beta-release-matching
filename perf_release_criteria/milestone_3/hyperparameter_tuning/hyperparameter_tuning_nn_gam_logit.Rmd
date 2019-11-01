@@ -1,0 +1,204 @@
+---
+title: "Milestone 2: Hyperparameter Tuning - Nearest Neighbors, GAM Logit"
+author: "Corey Dow-Hygelund, Mozilla Data Science"
+date: 'Last Updated: `r format(Sys.time(), "%B %d, %Y")`'
+output: 
+  html_notebook:
+    theme: cosmo
+    toc: true
+    toc_float: true
+---
+
+# tl;dr
+
+This analysis determines the optimal [hyperparameters] (https://docs.google.com/document/d/1SfuanvmYmvmEFAdQ7Z5djDeLezdNB1TESqVmj93O8to/edit#heading=h.yqukkyb8q4xw) to utilize for computationally intensive statistical matching algorithms proposed in the modeling approach for this [PRD](https://docs.google.com/document/d/1Ygz6MkudYHZjnDnD9Z97kUyFrvV3KGWsjXyPjddhHq0/edit#heading=h.lvb9l8gw2nee). 
+
+**Matching Algorithm Tested**: Nearest-neighbors with GAM logit distance metric.
+
+```{r setup, include=FALSE, echo=FALSE}
+require("knitr")
+knitr::opts_knit$set(root.dir = dirname(getwd()))
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+source('../lib/supporting_funcs.R')
+source('../lib/scoring.R')
+library(MatchIt)
+```
+
+```{r data_load, echo=FALSE}
+file_name = 'df_train_validate_20191025.RData'
+image_file_path = file.path('data', file_name)
+
+# Pull from GCP if necessary
+if (!file.exists(image_file_path)){
+  Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
+           "GCS_AUTH_FILE" = "moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json")
+  library(googleCloudStorageR)
+  gcs_get_object(file.path('data', 'milestone2', file_name), saveToDisk = image_file_path, overwrite = TRUE)
+
+}
+load(image_file_path)
+```
+
+```{r bts, echo=FALSE}
+bts = list(
+  bts_1x = bts.1x,
+  bts_4x = bts.4x,
+  bts_8x = bts.8x,
+  bts_16x = bts.16x
+)
+
+perf_metrics <- names(get_m2_metric_map())
+
+covs <- df_train_f %>%
+  select(-perf_metrics) %>%
+  select(-content_crashes) %>%
+  select(-client_id) %>%
+  select(-label) %>%
+  select(-is_release) %>%
+  select(-app_version) %>%
+  names()
+  
+
+results_file_name <- 'hyperparameter_tuning_nn_gam_logit.RData' 
+results_file_path <- file.path('data', results_file_name)
+```
+
+# Features
+The optimal feature set was found in `feature_selection_nn_gam_logit.Rmd`. At the time of this run they were:
+
+* Beta oversampling by 4x
+* FS 1 Interactions: Only performance metrics, with interaction terms
+
+To investigate, and possible utilize, a more general model, the second highest suite of features will also be tested:
+
+* Beta oversapmling by 8x
+* FS 5: Only the highest covariates found by Boruta (excluding performance)
+
+
+```{r boruta_import, echo=FALSE, warning=FALSE, message=FALSE}
+file_name = 'feature_selection_boruta_initial_20191023.RData'
+image_file_path = file.path('data', file_name)
+
+# Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
+#            "GCS_AUTH_FILE" = "moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json")
+# library(googleCloudStorageR)
+# gcs_get_object(file.path('data', 'milestone2', file_name), saveToDisk = image_file_path, overwrite = TRUE)
+
+load(image_file_path)
+```
+
+```{r boruta_fs, echo=FALSE, warning=FALSE, message=FALSE}
+extract_boruta_fs <- function(boruta_res, num=5){
+  features <- NULL
+  for(metric in names(boruta_results)){
+    features <- c(names(sort(apply(boruta_res[[metric]]$ImpHistory, 2, median), decreasing = TRUE)[1:num]), features)
+  }
+  return(sort(unique(features)))
+}
+
+features_top10 <- extract_boruta_fs(boruta_results, num=10)
+features_top10_eq <- extract_boruta_fs(boruta_results_eq, num=10)
+
+# filter out categorical
+features_top10 <- df_train_f %>% select(features_top10) %>% select_if(is.numeric) %>% names()
+features_top10_eq <- df_train_f %>% select(features_top10_eq) %>% select_if(is.numeric) %>% names()
+```
+
+```{r feature_sets}
+fs1 <- perf_metrics
+fs2 <- c(names(fs1), features_top10)
+fs3 <- c(names(fs1), features_top10_eq)
+fs4 <- c(names(fs1), covs)
+fs5 <- features_top10
+fs6 <- features_top10_eq
+fs7 <- covs
+```
+
+
+# Hyperparameters
+Hyperparameters tested for nearest-neighbors are the following:
+
+* Matching order (m.order)
+* Caliper
+* of control to treatments
+
+```{r hp}
+hps <- list(
+  replace = c(TRUE, FALSE),
+  caliper = c(0, 0.25, 0.5, 1, 3),
+  calclosest = c(TRUE, FALSE),
+  ratio = c(1, 2, 4)
+)
+
+hps_grid = expand.grid(hps)
+```
+
+# FS 1
+## Coarse Grid
+Hyperparameter tuning on optimal features. 
+
+```{r fs1, error=TRUE}
+fs1_results <- perform_matchit_hp_tune(df_train_f, bts[['bts_4x']], fs1, size=NULL, workers = 64, hps_grid = hps_grid, 
+                                       distance = 'GAMlogit', add_interactions=TRUE)
+
+fs1_results_df <- fs1_results %>% bind_rows()
+fs1_results_df %>% group_by_at(setdiff(names(fs1_results_df), "scores")) %>% 
+  summarise(mean = mean(scores), sd = sd(scores), median = median(scores)) -> fs1_results_df
+knitr::kable(fs1_results_df[order(fs1_results_df$mean), ] %>% head(20))
+```
+
+## Fine Grid
+
+```{r hp_fine}
+hps_fine <- list(
+  replace = c(TRUE, FALSE),
+  caliper = seq(0.5, 1.3, by=0.2),
+  calclosest = c(TRUE, FALSE),
+  ratio = c(1, 2, 3)
+)
+
+hps_fine_grid = expand.grid(hps_fine)
+```
+
+```{r fs1_fine, error=TRUE}
+hps_fine_grid = expand.grid(hps_fine)
+
+fs1_results_final <- perform_matchit_hp_tune(df_train_f, bts[['bts_4x']], fs1, size=NULL, workers = 64, hps_grid = hps_fine_grid, 
+                                       distance = 'GAMlogit', add_interactions=TRUE)
+save(list=ls(pattern = 'fs[0-9]_results'),  file = results_file_path)
+
+fs1_results_df <- fs1_results_final %>% bind_rows()
+fs1_results_df %>% group_by_at(setdiff(names(fs1_results_df), "scores")) %>% 
+  summarise(mean = mean(scores), sd = sd(scores), median = median(scores)) -> fs1_results_df
+knitr::kable(fs1_results_df[order(fs1_results_df$mean), ] %>% head(20))
+```
+
+
+# FS 5
+
+```{r fs5, error=TRUE}
+fs5_results <- perform_matchit_hp_tune(df_train_f, bts[['bts_4x']], fs5, size=NULL, workers = 64, hps_grid = hps_grid, 
+                                       distance = 'GAMlogit', add_interactions=FALSE)
+
+fs5_results_df <- fs5_results %>% bind_rows()
+fs5_results_df %>% group_by_at(setdiff(names(fs5_results_df), "scores")) %>% 
+  summarise(mean = mean(scores), sd = sd(scores), median = median(scores)) -> fs5_results_df
+knitr::kable(fs5_results_df[order(fs5_results_df$mean), ])
+```
+
+# Push to GCP
+Save the resultant dataset and bootstrap samples to an R image. 
+
+```{r gcp_storage_push, warning=FALSE}
+gcs_file_path <- file.path('data', 'milestone2', results_file_name)
+
+Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
+           "GCS_AUTH_FILE" = "moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json")
+
+library(googleCloudStorageR)
+
+upload_try <- gcs_upload(results_file_path, name = gcs_file_path)
+upload_try
+```
