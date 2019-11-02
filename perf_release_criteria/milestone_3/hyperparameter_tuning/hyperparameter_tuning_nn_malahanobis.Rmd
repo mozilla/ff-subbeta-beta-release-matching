@@ -15,6 +15,11 @@ This analysis determines the optimal [hyperparameters] (https://docs.google.com/
 
 **Matching Algorithm Tested**: Nearest-neighbors with Mahalanobis distance metric
 
+```{r setup, include=FALSE, echo=FALSE}
+require("knitr")
+knitr::opts_knit$set(root.dir = dirname(getwd()))
+```
+
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 source('../lib/supporting_funcs.R')
 source('../lib/scoring.R')
@@ -26,11 +31,13 @@ file_name = 'df_train_validate_20191025.RData'
 image_file_path = file.path('data', file_name)
 
 # Pull from GCP if necessary
-# library(googleCloudStorageR)
-# Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
-#            "GCS_AUTH_FILE" = "moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json")
-# gcs_get_object(file.path('data', 'milestone2', file_name), saveToDisk = image_file_path, overwrite = TRUE)
+if (!file.exists(image_file_path)){
+  Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
+           "GCS_AUTH_FILE" = "moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json")
+  library(googleCloudStorageR)
+  gcs_get_object(file.path('data', 'milestone2', file_name), saveToDisk = image_file_path, overwrite = TRUE)
 
+}
 load(image_file_path)
 ```
 
@@ -65,11 +72,15 @@ The optimal feature set was found in `feature_selection_nn_mahalanobis.Rmd`. At 
 * Beta oversampling by 4x
 * FS 1: Only performance metrics
 
-To investigate, and possible utilize, a more general model, the second highest suite of features will also be tested:
+To investigate, and possible utilize, a more general model, two other suite of high scoring features will also be tested:
 
-* Beta oversapmling by 16x
-* FS 3: Performance metrics and highest found by Boruta with equal labels dataset
 
+1. Contains performance metrics
+    * Beta oversapmling by 16x
+    * FS 3: Performance metrics and highest found by Boruta with equal labels dataset
+2. No performance metrics: 
+    * Beta oversapmling by 8x
+    * FS 5: Highest found by Boruta
 
 ```{r boruta_import, echo=FALSE, warning=FALSE, message=FALSE}
 file_name = 'feature_selection_boruta_initial_20191023.RData'
@@ -114,9 +125,10 @@ fs7 <- covs
 # Hyperparameters
 Hyperparameters tested for nearest-neighbors are the following:
 
-* Matching order (m.order)
-* Caliper
-* of control to treatments
+* `replace`: Can each control unit be matched to more than one treated unit?
+* `caliper`:  The number of standard deviations of the distance measure within which to draw control units.
+* `calclosest`: Whether to take the nearest available match if no matches are available within the `caliper`.
+* `ratio`: #  of control units to match to each test.
 
 ```{r hyperparameters}
 hps <- list(
@@ -130,12 +142,84 @@ hps_grid = expand.grid(hps)
 ```
 
 # FS 1
+## Coarse Grid
 Hyperparameter tuning on optimal features. 
 
 ```{r fs1, error=TRUE}
 bt <- bts[['bts_4x']]
 
-perform_matchit_hp_tune(df_train_f, bt[[1]], fs1, size=5000, workers = 10, hps_grid = hps_grid, distance = "mahalanobis")
+fs1_results <- perform_matchit_hp_tune(df_train_f, bt, fs1, size=NULL, workers = 64, hps_grid = hps_grid, distance = "mahalanobis")
+save(list=ls(pattern = 'fs[0-9]_results'),  file = results_file_path)
+
+fs1_results_df <- fs1_results %>% bind_rows()
+fs1_results_df %>% group_by_at(setdiff(names(fs1_results_df), "scores")) %>% 
+  summarise(mean = mean(scores), sd = sd(scores), median = median(scores)) -> fs1_results_df
+knitr::kable(fs1_results_df[order(fs1_results_df$mean), ] %>% head(n=20))
+
+```
+
+## Fine Grid
+
+```{r hp_fine}
+hps_fine <- list(
+  replace = c(FALSE),
+  caliper = seq(0, 3, by=0.2),
+  calclosest = c(TRUE, FALSE),
+  ratio = c(1, 2)
+)
+
+hps_fine_grid = expand.grid(hps_fine)
+```
+
+```{r fs1_fine, error=TRUE}
+hps_fine_grid = expand.grid(hps_fine)
+
+fs1_results_final <- perform_matchit_hp_tune(df_train_f, bts[['bts_4x']], fs1, size=NULL, workers = 64, hps_grid = hps_fine_grid, 
+                                       distance = "mahalanobis", add_interactions=FALSE)
+save(list=ls(pattern = 'fs[0-9]_results'),  file = results_file_path)
+
+fs1_results_df <- fs1_results_final %>% bind_rows()
+fs1_results_df %>% group_by_at(setdiff(names(fs1_results_df), "scores")) %>% 
+  summarise(mean = mean(scores), sd = sd(scores), median = median(scores)) -> fs1_results_df
+knitr::kable(fs1_results_df[order(fs1_results_df$median), ] %>% head(20))
 ```
 
 
+# FS 3
+
+```{r fs3, error=TRUE}
+fs3_results <- perform_matchit_hp_tune(df_train_f, bts[['bts_16x']], fs3, size=NULL, workers = 64, hps_grid = hps_grid, distance = "mahalanobis")
+save(list=ls(pattern = 'fs[0-9]_results'),  file = results_file_path)
+
+fs3_results_df <- fs3_results %>% bind_rows()
+fs3_results_df %>% group_by_at(setdiff(names(fs3_results_df), "scores")) %>% 
+  summarise(mean = mean(scores), sd = sd(scores), median = median(scores)) -> fs3_results_df
+knitr::kable(fs3_results_df[order(fs3_results_df$median), ] %>% head(n=20))
+```
+
+# FS 5
+
+```{r fs5, error=TRUE}
+fs5_results <- perform_matchit_hp_tune(df_train_f, bts[['bts_8x']], fs5, size=NULL, workers = 64, hps_grid = hps_grid, distance = "mahalanobis")
+save(list=ls(pattern = 'fs[0-9]_results'),  file = results_file_path)
+
+fs5_results_df <- fs5_results %>% bind_rows()
+fs5_results_df %>% group_by_at(setdiff(names(fs5_results_df), "scores")) %>% 
+  summarise(mean = mean(scores), sd = sd(scores), median = median(scores)) -> fs5_results_df
+knitr::kable(fs5_results_df[order(fs5_results_df$median), ])
+```
+
+# Push to GCP
+Save the resultant dataset and bootstrap samples to an R image. 
+
+```{r gcp_storage_push, warning=FALSE}
+gcs_file_path <- file.path('data', 'milestone2', results_file_name)
+
+Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
+           "GCS_AUTH_FILE" = "moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json")
+
+library(googleCloudStorageR)
+
+upload_try <- gcs_upload(results_file_path, name = gcs_file_path)
+upload_try
+```
