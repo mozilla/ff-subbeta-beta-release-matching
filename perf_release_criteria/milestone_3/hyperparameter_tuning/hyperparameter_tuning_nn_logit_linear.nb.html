@@ -13,7 +13,7 @@
 <meta name="author" content="Corey Dow-Hygelund, Mozilla Data Science" />
 
 
-<title>Milestone 2: Feature Selection - Nearest Neighbors, Logit w/Linear Propensity Score</title>
+<title>Milestone 2: Hyperparameter Tuning - Nearest Neighbors, Logit w/Linear Propensity Score</title>
 
 <script>/*! jQuery v1.11.3 | (c) 2005, 2015 jQuery Foundation, Inc. | jquery.org/license */
 !function(a,b){"object"==typeof module&&"object"==typeof module.exports?module.exports=a.document?b(a,!0):function(a){if(!a.document)throw new Error("jQuery requires a window with a document");return b(a)}:b(a)}("undefined"!=typeof window?window:this,function(a,b){var c=[],d=c.slice,e=c.concat,f=c.push,g=c.indexOf,h={},i=h.toString,j=h.hasOwnProperty,k={},l="1.11.3",m=function(a,b){return new m.fn.init(a,b)},n=/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g,o=/^-ms-/,p=/-([\da-z])/gi,q=function(a,b){return b.toUpperCase()};m.fn=m.prototype={jquery:l,constructor:m,selector:"",length:0,toArray:function(){return d.call(this)},get:function(a){return null!=a?0>a?this[a+this.length]:this[a]:d.call(this)},pushStack:function(a){var b=m.merge(this.constructor(),a);return b.prevObject=this,b.context=this.context,b},each:function(a,b){return m.each(this,a,b)},map:function(a){return this.pushStack(m.map(this,function(b,c){return a.call(b,c,b)}))},slice:function(){return this.pushStack(d.apply(this,arguments))},first:function(){return this.eq(0)},last:function(){return this.eq(-1)},eq:function(a){var b=this.length,c=+a+(0>a?b:0);return this.pushStack(c>=0&&b>c?[this[c]]:[])},end:function(){return this.prevObject||this.constructor(null)},push:f,sort:c.sort,splice:c.splice},m.extend=m.fn.extend=function(){var a,b,c,d,e,f,g=arguments[0]||{},h=1,i=arguments.length,j=!1;for("boolean"==typeof g&&(j=g,g=arguments[h]||{},h++),"object"==typeof g||m.isFunction(g)||(g={}),h===i&&(g=this,h--);i>h;h++)if(null!=(e=arguments[h]))for(d in e)a=g[d],c=e[d],g!==c&&(j&&c&&(m.isPlainObject(c)||(b=m.isArray(c)))?(b?(b=!1,f=a&&m.isArray(a)?a:[]):f=a&&m.isPlainObject(a)?a:{},g[d]=m.extend(j,f,c)):void 0!==c&&(g[d]=c));return g},m.extend({expando:"jQuery"+(l+Math.random()).replace(/\D/g,""),isReady:!0,error:function(a){throw new Error(a)},noop:function(){},isFunction:function(a){return"function"===m.type(a)},isArray:Array.isArray||function(a){return"array"===m.type(a)},isWindow:function(a){return null!=a&&a==a.window},isNumeric:function(a){return!m.isArray(a)&&a-parseFloat(a)+1>=0},isEmptyObject:function(a){var b;for(b in a)return!1;return!0},isPlainObject:function(a){var b;if(!a||"object"!==m.type(a)||a.nodeType||m.isWindow(a))return!1;try{if(a.constructor&&!j.call(a,"constructor")&&!j.call(a.constructor.prototype,"isPrototypeOf"))return!1}catch(c){return!1}if(k.ownLast)for(b in a)return j.call(a,b);for(b in a);return void 0===b||j.call(a,b)},type:function(a){return null==a?a+"":"object"==typeof a||"function"==typeof a?h[i.call(a)]||"object":typeof a},globalEval:function(b){b&&m.trim(b)&&(a.execScript||function(b){a.eval.call(a,b)})(b)},camelCase:function(a){return a.replace(o,"ms-").replace(p,q)},nodeName:function(a,b){return a.nodeName&&a.nodeName.toLowerCase()===b.toLowerCase()},each:function(a,b,c){var d,e=0,f=a.length,g=r(a);if(c){if(g){for(;f>e;e++)if(d=b.apply(a[e],c),d===!1)break}else for(e in a)if(d=b.apply(a[e],c),d===!1)break}else if(g){for(;f>e;e++)if(d=b.call(a[e],e,a[e]),d===!1)break}else for(e in a)if(d=b.call(a[e],e,a[e]),d===!1)break;return a},trim:function(a){return null==a?"":(a+"").replace(n,"")},makeArray:function(a,b){var c=b||[];return null!=a&&(r(Object(a))?m.merge(c,"string"==typeof a?[a]:a):f.call(c,a)),c},inArray:function(a,b,c){var d;if(b){if(g)return g.call(b,a,c);for(d=b.length,c=c?0>c?Math.max(0,d+c):c:0;d>c;c++)if(c in b&&b[c]===a)return c}return-1},merge:function(a,b){var c=+b.length,d=0,e=a.length;while(c>d)a[e++]=b[d++];if(c!==c)while(void 0!==b[d])a[e++]=b[d++];return a.length=e,a},grep:function(a,b,c){for(var d,e=[],f=0,g=a.length,h=!c;g>f;f++)d=!b(a[f],f),d!==h&&e.push(a[f]);return e},map:function(a,b,c){var d,f=0,g=a.length,h=r(a),i=[];if(h)for(;g>f;f++)d=b(a[f],f,c),null!=d&&i.push(d);else for(f in a)d=b(a[f],f,c),null!=d&&i.push(d);return e.apply([],i)},guid:1,proxy:function(a,b){var c,e,f;return"string"==typeof b&&(f=a[b],b=a,a=f),m.isFunction(a)?(c=d.call(arguments,2),e=function(){return a.apply(b||this,c.concat(d.call(arguments)))},e.guid=a.guid=a.guid||m.guid++,e):void 0},now:function(){return+new Date},support:k}),m.each("Boolean Number String Function Array Date RegExp Object Error".split(" "),function(a,b){h["[object "+b+"]"]=b.toLowerCase()});function r(a){var b="length"in a&&a.length,c=m.type(a);return"function"===c||m.isWindow(a)?!1:1===a.nodeType&&b?!0:"array"===c||0===b||"number"==typeof b&&b>0&&b-1 in a}var s=function(a){var b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u="sizzle"+1*new Date,v=a.document,w=0,x=0,y=ha(),z=ha(),A=ha(),B=function(a,b){return a===b&&(l=!0),0},C=1<<31,D={}.hasOwnProperty,E=[],F=E.pop,G=E.push,H=E.push,I=E.slice,J=function(a,b){for(var c=0,d=a.length;d>c;c++)if(a[c]===b)return c;return-1},K="checked|selected|async|autofocus|autoplay|controls|defer|disabled|hidden|ismap|loop|multiple|open|readonly|required|scoped",L="[\\x20\\t\\r\\n\\f]",M="(?:\\\\.|[\\w-]|[^\\x00-\\xa0])+",N=M.replace("w","w#"),O="\\["+L+"*("+M+")(?:"+L+"*([*^$|!~]?=)"+L+"*(?:'((?:\\\\.|[^\\\\'])*)'|\"((?:\\\\.|[^\\\\\"])*)\"|("+N+"))|)"+L+"*\\]",P=":("+M+")(?:\\((('((?:\\\\.|[^\\\\'])*)'|\"((?:\\\\.|[^\\\\\"])*)\")|((?:\\\\.|[^\\\\()[\\]]|"+O+")*)|.*)\\)|)",Q=new RegExp(L+"+","g"),R=new RegExp("^"+L+"+|((?:^|[^\\\\])(?:\\\\.)*)"+L+"+$","g"),S=new RegExp("^"+L+"*,"+L+"*"),T=new RegExp("^"+L+"*([>+~]|"+L+")"+L+"*"),U=new RegExp("="+L+"*([^\\]'\"]*?)"+L+"*\\]","g"),V=new RegExp(P),W=new RegExp("^"+N+"$"),X={ID:new RegExp("^#("+M+")"),CLASS:new RegExp("^\\.("+M+")"),TAG:new RegExp("^("+M.replace("w","w*")+")"),ATTR:new RegExp("^"+O),PSEUDO:new RegExp("^"+P),CHILD:new RegExp("^:(only|first|last|nth|nth-last)-(child|of-type)(?:\\("+L+"*(even|odd|(([+-]|)(\\d*)n|)"+L+"*(?:([+-]|)"+L+"*(\\d+)|))"+L+"*\\)|)","i"),bool:new RegExp("^(?:"+K+")$","i"),needsContext:new RegExp("^"+L+"*[>+~]|:(even|odd|eq|gt|lt|nth|first|last)(?:\\("+L+"*((?:-\\d)?\\d*)"+L+"*\\)|)(?=[^-]|$)","i")},Y=/^(?:input|select|textarea|button)$/i,Z=/^h\d$/i,$=/^[^{]+\{\s*\[native \w/,_=/^(?:#([\w-]+)|(\w+)|\.([\w-]+))$/,aa=/[+~]/,ba=/'|\\/g,ca=new RegExp("\\\\([\\da-f]{1,6}"+L+"?|("+L+")|.)","ig"),da=function(a,b,c){var d="0x"+b-65536;return d!==d||c?b:0>d?String.fromCharCode(d+65536):String.fromCharCode(d>>10|55296,1023&d|56320)},ea=function(){m()};try{H.apply(E=I.call(v.childNodes),v.childNodes),E[v.childNodes.length].nodeType}catch(fa){H={apply:E.length?function(a,b){G.apply(a,I.call(b))}:function(a,b){var c=a.length,d=0;while(a[c++]=b[d++]);a.length=c-1}}}function ga(a,b,d,e){var f,h,j,k,l,o,r,s,w,x;if((b?b.ownerDocument||b:v)!==n&&m(b),b=b||n,d=d||[],k=b.nodeType,"string"!=typeof a||!a||1!==k&&9!==k&&11!==k)return d;if(!e&&p){if(11!==k&&(f=_.exec(a)))if(j=f[1]){if(9===k){if(h=b.getElementById(j),!h||!h.parentNode)return d;if(h.id===j)return d.push(h),d}else if(b.ownerDocument&&(h=b.ownerDocument.getElementById(j))&&t(b,h)&&h.id===j)return d.push(h),d}else{if(f[2])return H.apply(d,b.getElementsByTagName(a)),d;if((j=f[3])&&c.getElementsByClassName)return H.apply(d,b.getElementsByClassName(j)),d}if(c.qsa&&(!q||!q.test(a))){if(s=r=u,w=b,x=1!==k&&a,1===k&&"object"!==b.nodeName.toLowerCase()){o=g(a),(r=b.getAttribute("id"))?s=r.replace(ba,"\\$&"):b.setAttribute("id",s),s="[id='"+s+"'] ",l=o.length;while(l--)o[l]=s+ra(o[l]);w=aa.test(a)&&pa(b.parentNode)||b,x=o.join(",")}if(x)try{return H.apply(d,w.querySelectorAll(x)),d}catch(y){}finally{r||b.removeAttribute("id")}}}return i(a.replace(R,"$1"),b,d,e)}function ha(){var a=[];function b(c,e){return a.push(c+" ")>d.cacheLength&&delete b[a.shift()],b[c+" "]=e}return b}function ia(a){return a[u]=!0,a}function ja(a){var b=n.createElement("div");try{return!!a(b)}catch(c){return!1}finally{b.parentNode&&b.parentNode.removeChild(b),b=null}}function ka(a,b){var c=a.split("|"),e=a.length;while(e--)d.attrHandle[c[e]]=b}function la(a,b){var c=b&&a,d=c&&1===a.nodeType&&1===b.nodeType&&(~b.sourceIndex||C)-(~a.sourceIndex||C);if(d)return d;if(c)while(c=c.nextSibling)if(c===b)return-1;return a?1:-1}function ma(a){return function(b){var c=b.nodeName.toLowerCase();return"input"===c&&b.type===a}}function na(a){return function(b){var c=b.nodeName.toLowerCase();return("input"===c||"button"===c)&&b.type===a}}function oa(a){return ia(function(b){return b=+b,ia(function(c,d){var e,f=a([],c.length,b),g=f.length;while(g--)c[e=f[g]]&&(c[e]=!(d[e]=c[e]))})})}function pa(a){return a&&"undefined"!=typeof a.getElementsByTagName&&a}c=ga.support={},f=ga.isXML=function(a){var b=a&&(a.ownerDocument||a).documentElement;return b?"HTML"!==b.nodeName:!1},m=ga.setDocument=function(a){var b,e,g=a?a.ownerDocument||a:v;return g!==n&&9===g.nodeType&&g.documentElement?(n=g,o=g.documentElement,e=g.defaultView,e&&e!==e.top&&(e.addEventListener?e.addEventListener("unload",ea,!1):e.attachEvent&&e.attachEvent("onunload",ea)),p=!f(g),c.attributes=ja(function(a){return a.className="i",!a.getAttribute("className")}),c.getElementsByTagName=ja(function(a){return a.appendChild(g.createComment("")),!a.getElementsByTagName("*").length}),c.getElementsByClassName=$.test(g.getElementsByClassName),c.getById=ja(function(a){return o.appendChild(a).id=u,!g.getElementsByName||!g.getElementsByName(u).length}),c.getById?(d.find.ID=function(a,b){if("undefined"!=typeof b.getElementById&&p){var c=b.getElementById(a);return c&&c.parentNode?[c]:[]}},d.filter.ID=function(a){var b=a.replace(ca,da);return function(a){return a.getAttribute("id")===b}}):(delete d.find.ID,d.filter.ID=function(a){var b=a.replace(ca,da);return function(a){var c="undefined"!=typeof a.getAttributeNode&&a.getAttributeNode("id");return c&&c.value===b}}),d.find.TAG=c.getElementsByTagName?function(a,b){return"undefined"!=typeof b.getElementsByTagName?b.getElementsByTagName(a):c.qsa?b.querySelectorAll(a):void 0}:function(a,b){var c,d=[],e=0,f=b.getElementsByTagName(a);if("*"===a){while(c=f[e++])1===c.nodeType&&d.push(c);return d}return f},d.find.CLASS=c.getElementsByClassName&&function(a,b){return p?b.getElementsByClassName(a):void 0},r=[],q=[],(c.qsa=$.test(g.querySelectorAll))&&(ja(function(a){o.appendChild(a).innerHTML="<a id='"+u+"'></a><select id='"+u+"-\f]' msallowcapture=''><option selected=''></option></select>",a.querySelectorAll("[msallowcapture^='']").length&&q.push("[*^$]="+L+"*(?:''|\"\")"),a.querySelectorAll("[selected]").length||q.push("\\["+L+"*(?:value|"+K+")"),a.querySelectorAll("[id~="+u+"-]").length||q.push("~="),a.querySelectorAll(":checked").length||q.push(":checked"),a.querySelectorAll("a#"+u+"+*").length||q.push(".#.+[+~]")}),ja(function(a){var b=g.createElement("input");b.setAttribute("type","hidden"),a.appendChild(b).setAttribute("name","D"),a.querySelectorAll("[name=d]").length&&q.push("name"+L+"*[*^$|!~]?="),a.querySelectorAll(":enabled").length||q.push(":enabled",":disabled"),a.querySelectorAll("*,:x"),q.push(",.*:")})),(c.matchesSelector=$.test(s=o.matches||o.webkitMatchesSelector||o.mozMatchesSelector||o.oMatchesSelector||o.msMatchesSelector))&&ja(function(a){c.disconnectedMatch=s.call(a,"div"),s.call(a,"[s!='']:x"),r.push("!=",P)}),q=q.length&&new RegExp(q.join("|")),r=r.length&&new RegExp(r.join("|")),b=$.test(o.compareDocumentPosition),t=b||$.test(o.contains)?function(a,b){var c=9===a.nodeType?a.documentElement:a,d=b&&b.parentNode;return a===d||!(!d||1!==d.nodeType||!(c.contains?c.contains(d):a.compareDocumentPosition&&16&a.compareDocumentPosition(d)))}:function(a,b){if(b)while(b=b.parentNode)if(b===a)return!0;return!1},B=b?function(a,b){if(a===b)return l=!0,0;var d=!a.compareDocumentPosition-!b.compareDocumentPosition;return d?d:(d=(a.ownerDocument||a)===(b.ownerDocument||b)?a.compareDocumentPosition(b):1,1&d||!c.sortDetached&&b.compareDocumentPosition(a)===d?a===g||a.ownerDocument===v&&t(v,a)?-1:b===g||b.ownerDocument===v&&t(v,b)?1:k?J(k,a)-J(k,b):0:4&d?-1:1)}:function(a,b){if(a===b)return l=!0,0;var c,d=0,e=a.parentNode,f=b.parentNode,h=[a],i=[b];if(!e||!f)return a===g?-1:b===g?1:e?-1:f?1:k?J(k,a)-J(k,b):0;if(e===f)return la(a,b);c=a;while(c=c.parentNode)h.unshift(c);c=b;while(c=c.parentNode)i.unshift(c);while(h[d]===i[d])d++;return d?la(h[d],i[d]):h[d]===v?-1:i[d]===v?1:0},g):n},ga.matches=function(a,b){return ga(a,null,null,b)},ga.matchesSelector=function(a,b){if((a.ownerDocument||a)!==n&&m(a),b=b.replace(U,"='$1']"),!(!c.matchesSelector||!p||r&&r.test(b)||q&&q.test(b)))try{var d=s.call(a,b);if(d||c.disconnectedMatch||a.document&&11!==a.document.nodeType)return d}catch(e){}return ga(b,n,null,[a]).length>0},ga.contains=function(a,b){return(a.ownerDocument||a)!==n&&m(a),t(a,b)},ga.attr=function(a,b){(a.ownerDocument||a)!==n&&m(a);var e=d.attrHandle[b.toLowerCase()],f=e&&D.call(d.attrHandle,b.toLowerCase())?e(a,b,!p):void 0;return void 0!==f?f:c.attributes||!p?a.getAttribute(b):(f=a.getAttributeNode(b))&&f.specified?f.value:null},ga.error=function(a){throw new Error("Syntax error, unrecognized expression: "+a)},ga.uniqueSort=function(a){var b,d=[],e=0,f=0;if(l=!c.detectDuplicates,k=!c.sortStable&&a.slice(0),a.sort(B),l){while(b=a[f++])b===a[f]&&(e=d.push(f));while(e--)a.splice(d[e],1)}return k=null,a},e=ga.getText=function(a){var b,c="",d=0,f=a.nodeType;if(f){if(1===f||9===f||11===f){if("string"==typeof a.textContent)return a.textContent;for(a=a.firstChild;a;a=a.nextSibling)c+=e(a)}else if(3===f||4===f)return a.nodeValue}else while(b=a[d++])c+=e(b);return c},d=ga.selectors={cacheLength:50,createPseudo:ia,match:X,attrHandle:{},find:{},relative:{">":{dir:"parentNode",first:!0}," ":{dir:"parentNode"},"+":{dir:"previousSibling",first:!0},"~":{dir:"previousSibling"}},preFilter:{ATTR:function(a){return a[1]=a[1].replace(ca,da),a[3]=(a[3]||a[4]||a[5]||"").replace(ca,da),"~="===a[2]&&(a[3]=" "+a[3]+" "),a.slice(0,4)},CHILD:function(a){return a[1]=a[1].toLowerCase(),"nth"===a[1].slice(0,3)?(a[3]||ga.error(a[0]),a[4]=+(a[4]?a[5]+(a[6]||1):2*("even"===a[3]||"odd"===a[3])),a[5]=+(a[7]+a[8]||"odd"===a[3])):a[3]&&ga.error(a[0]),a},PSEUDO:function(a){var b,c=!a[6]&&a[2];return X.CHILD.test(a[0])?null:(a[3]?a[2]=a[4]||a[5]||"":c&&V.test(c)&&(b=g(c,!0))&&(b=c.indexOf(")",c.length-b)-c.length)&&(a[0]=a[0].slice(0,b),a[2]=c.slice(0,b)),a.slice(0,3))}},filter:{TAG:function(a){var b=a.replace(ca,da).toLowerCase();return"*"===a?function(){return!0}:function(a){return a.nodeName&&a.nodeName.toLowerCase()===b}},CLASS:function(a){var b=y[a+" "];return b||(b=new RegExp("(^|"+L+")"+a+"("+L+"|$)"))&&y(a,function(a){return b.test("string"==typeof a.className&&a.className||"undefined"!=typeof a.getAttribute&&a.getAttribute("class")||"")})},ATTR:function(a,b,c){return function(d){var e=ga.attr(d,a);return null==e?"!="===b:b?(e+="","="===b?e===c:"!="===b?e!==c:"^="===b?c&&0===e.indexOf(c):"*="===b?c&&e.indexOf(c)>-1:"$="===b?c&&e.slice(-c.length)===c:"~="===b?(" "+e.replace(Q," ")+" ").indexOf(c)>-1:"|="===b?e===c||e.slice(0,c.length+1)===c+"-":!1):!0}},CHILD:function(a,b,c,d,e){var f="nth"!==a.slice(0,3),g="last"!==a.slice(-4),h="of-type"===b;return 1===d&&0===e?function(a){return!!a.parentNode}:function(b,c,i){var j,k,l,m,n,o,p=f!==g?"nextSibling":"previousSibling",q=b.parentNode,r=h&&b.nodeName.toLowerCase(),s=!i&&!h;if(q){if(f){while(p){l=b;while(l=l[p])if(h?l.nodeName.toLowerCase()===r:1===l.nodeType)return!1;o=p="only"===a&&!o&&"nextSibling"}return!0}if(o=[g?q.firstChild:q.lastChild],g&&s){k=q[u]||(q[u]={}),j=k[a]||[],n=j[0]===w&&j[1],m=j[0]===w&&j[2],l=n&&q.childNodes[n];while(l=++n&&l&&l[p]||(m=n=0)||o.pop())if(1===l.nodeType&&++m&&l===b){k[a]=[w,n,m];break}}else if(s&&(j=(b[u]||(b[u]={}))[a])&&j[0]===w)m=j[1];else while(l=++n&&l&&l[p]||(m=n=0)||o.pop())if((h?l.nodeName.toLowerCase()===r:1===l.nodeType)&&++m&&(s&&((l[u]||(l[u]={}))[a]=[w,m]),l===b))break;return m-=e,m===d||m%d===0&&m/d>=0}}},PSEUDO:function(a,b){var c,e=d.pseudos[a]||d.setFilters[a.toLowerCase()]||ga.error("unsupported pseudo: "+a);return e[u]?e(b):e.length>1?(c=[a,a,"",b],d.setFilters.hasOwnProperty(a.toLowerCase())?ia(function(a,c){var d,f=e(a,b),g=f.length;while(g--)d=J(a,f[g]),a[d]=!(c[d]=f[g])}):function(a){return e(a,0,c)}):e}},pseudos:{not:ia(function(a){var b=[],c=[],d=h(a.replace(R,"$1"));return d[u]?ia(function(a,b,c,e){var f,g=d(a,null,e,[]),h=a.length;while(h--)(f=g[h])&&(a[h]=!(b[h]=f))}):function(a,e,f){return b[0]=a,d(b,null,f,c),b[0]=null,!c.pop()}}),has:ia(function(a){return function(b){return ga(a,b).length>0}}),contains:ia(function(a){return a=a.replace(ca,da),function(b){return(b.textContent||b.innerText||e(b)).indexOf(a)>-1}}),lang:ia(function(a){return W.test(a||"")||ga.error("unsupported lang: "+a),a=a.replace(ca,da).toLowerCase(),function(b){var c;do if(c=p?b.lang:b.getAttribute("xml:lang")||b.getAttribute("lang"))return c=c.toLowerCase(),c===a||0===c.indexOf(a+"-");while((b=b.parentNode)&&1===b.nodeType);return!1}}),target:function(b){var c=a.location&&a.location.hash;return c&&c.slice(1)===b.id},root:function(a){return a===o},focus:function(a){return a===n.activeElement&&(!n.hasFocus||n.hasFocus())&&!!(a.type||a.href||~a.tabIndex)},enabled:function(a){return a.disabled===!1},disabled:function(a){return a.disabled===!0},checked:function(a){var b=a.nodeName.toLowerCase();return"input"===b&&!!a.checked||"option"===b&&!!a.selected},selected:function(a){return a.parentNode&&a.parentNode.selectedIndex,a.selected===!0},empty:function(a){for(a=a.firstChild;a;a=a.nextSibling)if(a.nodeType<6)return!1;return!0},parent:function(a){return!d.pseudos.empty(a)},header:function(a){return Z.test(a.nodeName)},input:function(a){return Y.test(a.nodeName)},button:function(a){var b=a.nodeName.toLowerCase();return"input"===b&&"button"===a.type||"button"===b},text:function(a){var b;return"input"===a.nodeName.toLowerCase()&&"text"===a.type&&(null==(b=a.getAttribute("type"))||"text"===b.toLowerCase())},first:oa(function(){return[0]}),last:oa(function(a,b){return[b-1]}),eq:oa(function(a,b,c){return[0>c?c+b:c]}),even:oa(function(a,b){for(var c=0;b>c;c+=2)a.push(c);return a}),odd:oa(function(a,b){for(var c=1;b>c;c+=2)a.push(c);return a}),lt:oa(function(a,b,c){for(var d=0>c?c+b:c;--d>=0;)a.push(d);return a}),gt:oa(function(a,b,c){for(var d=0>c?c+b:c;++d<b;)a.push(d);return a})}},d.pseudos.nth=d.pseudos.eq;for(b in{radio:!0,checkbox:!0,file:!0,password:!0,image:!0})d.pseudos[b]=ma(b);for(b in{submit:!0,reset:!0})d.pseudos[b]=na(b);function qa(){}qa.prototype=d.filters=d.pseudos,d.setFilters=new qa,g=ga.tokenize=function(a,b){var c,e,f,g,h,i,j,k=z[a+" "];if(k)return b?0:k.slice(0);h=a,i=[],j=d.preFilter;while(h){(!c||(e=S.exec(h)))&&(e&&(h=h.slice(e[0].length)||h),i.push(f=[])),c=!1,(e=T.exec(h))&&(c=e.shift(),f.push({value:c,type:e[0].replace(R," ")}),h=h.slice(c.length));for(g in d.filter)!(e=X[g].exec(h))||j[g]&&!(e=j[g](e))||(c=e.shift(),f.push({value:c,type:g,matches:e}),h=h.slice(c.length));if(!c)break}return b?h.length:h?ga.error(a):z(a,i).slice(0)};function ra(a){for(var b=0,c=a.length,d="";c>b;b++)d+=a[b].value;return d}function sa(a,b,c){var d=b.dir,e=c&&"parentNode"===d,f=x++;return b.first?function(b,c,f){while(b=b[d])if(1===b.nodeType||e)return a(b,c,f)}:function(b,c,g){var h,i,j=[w,f];if(g){while(b=b[d])if((1===b.nodeType||e)&&a(b,c,g))return!0}else while(b=b[d])if(1===b.nodeType||e){if(i=b[u]||(b[u]={}),(h=i[d])&&h[0]===w&&h[1]===f)return j[2]=h[2];if(i[d]=j,j[2]=a(b,c,g))return!0}}}function ta(a){return a.length>1?function(b,c,d){var e=a.length;while(e--)if(!a[e](b,c,d))return!1;return!0}:a[0]}function ua(a,b,c){for(var d=0,e=b.length;e>d;d++)ga(a,b[d],c);return c}function va(a,b,c,d,e){for(var f,g=[],h=0,i=a.length,j=null!=b;i>h;h++)(f=a[h])&&(!c||c(f,d,e))&&(g.push(f),j&&b.push(h));return g}function wa(a,b,c,d,e,f){return d&&!d[u]&&(d=wa(d)),e&&!e[u]&&(e=wa(e,f)),ia(function(f,g,h,i){var j,k,l,m=[],n=[],o=g.length,p=f||ua(b||"*",h.nodeType?[h]:h,[]),q=!a||!f&&b?p:va(p,m,a,h,i),r=c?e||(f?a:o||d)?[]:g:q;if(c&&c(q,r,h,i),d){j=va(r,n),d(j,[],h,i),k=j.length;while(k--)(l=j[k])&&(r[n[k]]=!(q[n[k]]=l))}if(f){if(e||a){if(e){j=[],k=r.length;while(k--)(l=r[k])&&j.push(q[k]=l);e(null,r=[],j,i)}k=r.length;while(k--)(l=r[k])&&(j=e?J(f,l):m[k])>-1&&(f[j]=!(g[j]=l))}}else r=va(r===g?r.splice(o,r.length):r),e?e(null,g,r,i):H.apply(g,r)})}function xa(a){for(var b,c,e,f=a.length,g=d.relative[a[0].type],h=g||d.relative[" "],i=g?1:0,k=sa(function(a){return a===b},h,!0),l=sa(function(a){return J(b,a)>-1},h,!0),m=[function(a,c,d){var e=!g&&(d||c!==j)||((b=c).nodeType?k(a,c,d):l(a,c,d));return b=null,e}];f>i;i++)if(c=d.relative[a[i].type])m=[sa(ta(m),c)];else{if(c=d.filter[a[i].type].apply(null,a[i].matches),c[u]){for(e=++i;f>e;e++)if(d.relative[a[e].type])break;return wa(i>1&&ta(m),i>1&&ra(a.slice(0,i-1).concat({value:" "===a[i-2].type?"*":""})).replace(R,"$1"),c,e>i&&xa(a.slice(i,e)),f>e&&xa(a=a.slice(e)),f>e&&ra(a))}m.push(c)}return ta(m)}function ya(a,b){var c=b.length>0,e=a.length>0,f=function(f,g,h,i,k){var l,m,o,p=0,q="0",r=f&&[],s=[],t=j,u=f||e&&d.find.TAG("*",k),v=w+=null==t?1:Math.random()||.1,x=u.length;for(k&&(j=g!==n&&g);q!==x&&null!=(l=u[q]);q++){if(e&&l){m=0;while(o=a[m++])if(o(l,g,h)){i.push(l);break}k&&(w=v)}c&&((l=!o&&l)&&p--,f&&r.push(l))}if(p+=q,c&&q!==p){m=0;while(o=b[m++])o(r,s,g,h);if(f){if(p>0)while(q--)r[q]||s[q]||(s[q]=F.call(i));s=va(s)}H.apply(i,s),k&&!f&&s.length>0&&p+b.length>1&&ga.uniqueSort(i)}return k&&(w=v,j=t),r};return c?ia(f):f}return h=ga.compile=function(a,b){var c,d=[],e=[],f=A[a+" "];if(!f){b||(b=g(a)),c=b.length;while(c--)f=xa(b[c]),f[u]?d.push(f):e.push(f);f=A(a,ya(e,d)),f.selector=a}return f},i=ga.select=function(a,b,e,f){var i,j,k,l,m,n="function"==typeof a&&a,o=!f&&g(a=n.selector||a);if(e=e||[],1===o.length){if(j=o[0]=o[0].slice(0),j.length>2&&"ID"===(k=j[0]).type&&c.getById&&9===b.nodeType&&p&&d.relative[j[1].type]){if(b=(d.find.ID(k.matches[0].replace(ca,da),b)||[])[0],!b)return e;n&&(b=b.parentNode),a=a.slice(j.shift().value.length)}i=X.needsContext.test(a)?0:j.length;while(i--){if(k=j[i],d.relative[l=k.type])break;if((m=d.find[l])&&(f=m(k.matches[0].replace(ca,da),aa.test(j[0].type)&&pa(b.parentNode)||b))){if(j.splice(i,1),a=f.length&&ra(j),!a)return H.apply(e,f),e;break}}}return(n||h(a,o))(f,b,!p,e,aa.test(a)&&pa(b.parentNode)||b),e},c.sortStable=u.split("").sort(B).join("")===u,c.detectDuplicates=!!l,m(),c.sortDetached=ja(function(a){return 1&a.compareDocumentPosition(n.createElement("div"))}),ja(function(a){return a.innerHTML="<a href='#'></a>","#"===a.firstChild.getAttribute("href")})||ka("type|href|height|width",function(a,b,c){return c?void 0:a.getAttribute(b,"type"===b.toLowerCase()?1:2)}),c.attributes&&ja(function(a){return a.innerHTML="<input/>",a.firstChild.setAttribute("value",""),""===a.firstChild.getAttribute("value")})||ka("value",function(a,b,c){return c||"input"!==a.nodeName.toLowerCase()?void 0:a.defaultValue}),ja(function(a){return null==a.getAttribute("disabled")})||ka(K,function(a,b,c){var d;return c?void 0:a[b]===!0?b.toLowerCase():(d=a.getAttributeNode(b))&&d.specified?d.value:null}),ga}(a);m.find=s,m.expr=s.selectors,m.expr[":"]=m.expr.pseudos,m.unique=s.uniqueSort,m.text=s.getText,m.isXMLDoc=s.isXML,m.contains=s.contains;var t=m.expr.match.needsContext,u=/^<(\w+)\s*\/?>(?:<\/\1>|)$/,v=/^.[^:#\[\.,]*$/;function w(a,b,c){if(m.isFunction(b))return m.grep(a,function(a,d){return!!b.call(a,d,a)!==c});if(b.nodeType)return m.grep(a,function(a){return a===b!==c});if("string"==typeof b){if(v.test(b))return m.filter(b,a,c);b=m.filter(b,a)}return m.grep(a,function(a){return m.inArray(a,b)>=0!==c})}m.filter=function(a,b,c){var d=b[0];return c&&(a=":not("+a+")"),1===b.length&&1===d.nodeType?m.find.matchesSelector(d,a)?[d]:[]:m.find.matches(a,m.grep(b,function(a){return 1===a.nodeType}))},m.fn.extend({find:function(a){var b,c=[],d=this,e=d.length;if("string"!=typeof a)return this.pushStack(m(a).filter(function(){for(b=0;e>b;b++)if(m.contains(d[b],this))return!0}));for(b=0;e>b;b++)m.find(a,d[b],c);return c=this.pushStack(e>1?m.unique(c):c),c.selector=this.selector?this.selector+" "+a:a,c},filter:function(a){return this.pushStack(w(this,a||[],!1))},not:function(a){return this.pushStack(w(this,a||[],!0))},is:function(a){return!!w(this,"string"==typeof a&&t.test(a)?m(a):a||[],!1).length}});var x,y=a.document,z=/^(?:\s*(<[\w\W]+>)[^>]*|#([\w-]*))$/,A=m.fn.init=function(a,b){var c,d;if(!a)return this;if("string"==typeof a){if(c="<"===a.charAt(0)&&">"===a.charAt(a.length-1)&&a.length>=3?[null,a,null]:z.exec(a),!c||!c[1]&&b)return!b||b.jquery?(b||x).find(a):this.constructor(b).find(a);if(c[1]){if(b=b instanceof m?b[0]:b,m.merge(this,m.parseHTML(c[1],b&&b.nodeType?b.ownerDocument||b:y,!0)),u.test(c[1])&&m.isPlainObject(b))for(c in b)m.isFunction(this[c])?this[c](b[c]):this.attr(c,b[c]);return this}if(d=y.getElementById(c[2]),d&&d.parentNode){if(d.id!==c[2])return x.find(a);this.length=1,this[0]=d}return this.context=y,this.selector=a,this}return a.nodeType?(this.context=this[0]=a,this.length=1,this):m.isFunction(a)?"undefined"!=typeof x.ready?x.ready(a):a(m):(void 0!==a.selector&&(this.selector=a.selector,this.context=a.context),m.makeArray(a,this))};A.prototype=m.fn,x=m(y);var B=/^(?:parents|prev(?:Until|All))/,C={children:!0,contents:!0,next:!0,prev:!0};m.extend({dir:function(a,b,c){var d=[],e=a[b];while(e&&9!==e.nodeType&&(void 0===c||1!==e.nodeType||!m(e).is(c)))1===e.nodeType&&d.push(e),e=e[b];return d},sibling:function(a,b){for(var c=[];a;a=a.nextSibling)1===a.nodeType&&a!==b&&c.push(a);return c}}),m.fn.extend({has:function(a){var b,c=m(a,this),d=c.length;return this.filter(function(){for(b=0;d>b;b++)if(m.contains(this,c[b]))return!0})},closest:function(a,b){for(var c,d=0,e=this.length,f=[],g=t.test(a)||"string"!=typeof a?m(a,b||this.context):0;e>d;d++)for(c=this[d];c&&c!==b;c=c.parentNode)if(c.nodeType<11&&(g?g.index(c)>-1:1===c.nodeType&&m.find.matchesSelector(c,a))){f.push(c);break}return this.pushStack(f.length>1?m.unique(f):f)},index:function(a){return a?"string"==typeof a?m.inArray(this[0],m(a)):m.inArray(a.jquery?a[0]:a,this):this[0]&&this[0].parentNode?this.first().prevAll().length:-1},add:function(a,b){return this.pushStack(m.unique(m.merge(this.get(),m(a,b))))},addBack:function(a){return this.add(null==a?this.prevObject:this.prevObject.filter(a))}});function D(a,b){do a=a[b];while(a&&1!==a.nodeType);return a}m.each({parent:function(a){var b=a.parentNode;return b&&11!==b.nodeType?b:null},parents:function(a){return m.dir(a,"parentNode")},parentsUntil:function(a,b,c){return m.dir(a,"parentNode",c)},next:function(a){return D(a,"nextSibling")},prev:function(a){return D(a,"previousSibling")},nextAll:function(a){return m.dir(a,"nextSibling")},prevAll:function(a){return m.dir(a,"previousSibling")},nextUntil:function(a,b,c){return m.dir(a,"nextSibling",c)},prevUntil:function(a,b,c){return m.dir(a,"previousSibling",c)},siblings:function(a){return m.sibling((a.parentNode||{}).firstChild,a)},children:function(a){return m.sibling(a.firstChild)},contents:function(a){return m.nodeName(a,"iframe")?a.contentDocument||a.contentWindow.document:m.merge([],a.childNodes)}},function(a,b){m.fn[a]=function(c,d){var e=m.map(this,b,c);return"Until"!==a.slice(-5)&&(d=c),d&&"string"==typeof d&&(e=m.filter(d,e)),this.length>1&&(C[a]||(e=m.unique(e)),B.test(a)&&(e=e.reverse())),this.pushStack(e)}});var E=/\S+/g,F={};function G(a){var b=F[a]={};return m.each(a.match(E)||[],function(a,c){b[c]=!0}),b}m.Callbacks=function(a){a="string"==typeof a?F[a]||G(a):m.extend({},a);var b,c,d,e,f,g,h=[],i=!a.once&&[],j=function(l){for(c=a.memory&&l,d=!0,f=g||0,g=0,e=h.length,b=!0;h&&e>f;f++)if(h[f].apply(l[0],l[1])===!1&&a.stopOnFalse){c=!1;break}b=!1,h&&(i?i.length&&j(i.shift()):c?h=[]:k.disable())},k={add:function(){if(h){var d=h.length;!function f(b){m.each(b,function(b,c){var d=m.type(c);"function"===d?a.unique&&k.has(c)||h.push(c):c&&c.length&&"string"!==d&&f(c)})}(arguments),b?e=h.length:c&&(g=d,j(c))}return this},remove:function(){return h&&m.each(arguments,function(a,c){var d;while((d=m.inArray(c,h,d))>-1)h.splice(d,1),b&&(e>=d&&e--,f>=d&&f--)}),this},has:function(a){return a?m.inArray(a,h)>-1:!(!h||!h.length)},empty:function(){return h=[],e=0,this},disable:function(){return h=i=c=void 0,this},disabled:function(){return!h},lock:function(){return i=void 0,c||k.disable(),this},locked:function(){return!i},fireWith:function(a,c){return!h||d&&!i||(c=c||[],c=[a,c.slice?c.slice():c],b?i.push(c):j(c)),this},fire:function(){return k.fireWith(this,arguments),this},fired:function(){return!!d}};return k},m.extend({Deferred:function(a){var b=[["resolve","done",m.Callbacks("once memory"),"resolved"],["reject","fail",m.Callbacks("once memory"),"rejected"],["notify","progress",m.Callbacks("memory")]],c="pending",d={state:function(){return c},always:function(){return e.done(arguments).fail(arguments),this},then:function(){var a=arguments;return m.Deferred(function(c){m.each(b,function(b,f){var g=m.isFunction(a[b])&&a[b];e[f[1]](function(){var a=g&&g.apply(this,arguments);a&&m.isFunction(a.promise)?a.promise().done(c.resolve).fail(c.reject).progress(c.notify):c[f[0]+"With"](this===d?c.promise():this,g?[a]:arguments)})}),a=null}).promise()},promise:function(a){return null!=a?m.extend(a,d):d}},e={};return d.pipe=d.then,m.each(b,function(a,f){var g=f[2],h=f[3];d[f[1]]=g.add,h&&g.add(function(){c=h},b[1^a][2].disable,b[2][2].lock),e[f[0]]=function(){return e[f[0]+"With"](this===e?d:this,arguments),this},e[f[0]+"With"]=g.fireWith}),d.promise(e),a&&a.call(e,e),e},when:function(a){var b=0,c=d.call(arguments),e=c.length,f=1!==e||a&&m.isFunction(a.promise)?e:0,g=1===f?a:m.Deferred(),h=function(a,b,c){return function(e){b[a]=this,c[a]=arguments.length>1?d.call(arguments):e,c===i?g.notifyWith(b,c):--f||g.resolveWith(b,c)}},i,j,k;if(e>1)for(i=new Array(e),j=new Array(e),k=new Array(e);e>b;b++)c[b]&&m.isFunction(c[b].promise)?c[b].promise().done(h(b,k,c)).fail(g.reject).progress(h(b,j,i)):--f;return f||g.resolveWith(k,c),g.promise()}});var H;m.fn.ready=function(a){return m.ready.promise().done(a),this},m.extend({isReady:!1,readyWait:1,holdReady:function(a){a?m.readyWait++:m.ready(!0)},ready:function(a){if(a===!0?!--m.readyWait:!m.isReady){if(!y.body)return setTimeout(m.ready);m.isReady=!0,a!==!0&&--m.readyWait>0||(H.resolveWith(y,[m]),m.fn.triggerHandler&&(m(y).triggerHandler("ready"),m(y).off("ready")))}}});function I(){y.addEventListener?(y.removeEventListener("DOMContentLoaded",J,!1),a.removeEventListener("load",J,!1)):(y.detachEvent("onreadystatechange",J),a.detachEvent("onload",J))}function J(){(y.addEventListener||"load"===event.type||"complete"===y.readyState)&&(I(),m.ready())}m.ready.promise=function(b){if(!H)if(H=m.Deferred(),"complete"===y.readyState)setTimeout(m.ready);else if(y.addEventListener)y.addEventListener("DOMContentLoaded",J,!1),a.addEventListener("load",J,!1);else{y.attachEvent("onreadystatechange",J),a.attachEvent("onload",J);var c=!1;try{c=null==a.frameElement&&y.documentElement}catch(d){}c&&c.doScroll&&!function e(){if(!m.isReady){try{c.doScroll("left")}catch(a){return setTimeout(e,50)}I(),m.ready()}}()}return H.promise(b)};var K="undefined",L;for(L in m(k))break;k.ownLast="0"!==L,k.inlineBlockNeedsLayout=!1,m(function(){var a,b,c,d;c=y.getElementsByTagName("body")[0],c&&c.style&&(b=y.createElement("div"),d=y.createElement("div"),d.style.cssText="position:absolute;border:0;width:0;height:0;top:0;left:-9999px",c.appendChild(d).appendChild(b),typeof b.style.zoom!==K&&(b.style.cssText="display:inline;margin:0;border:0;padding:1px;width:1px;zoom:1",k.inlineBlockNeedsLayout=a=3===b.offsetWidth,a&&(c.style.zoom=1)),c.removeChild(d))}),function(){var a=y.createElement("div");if(null==k.deleteExpando){k.deleteExpando=!0;try{delete a.test}catch(b){k.deleteExpando=!1}}a=null}(),m.acceptData=function(a){var b=m.noData[(a.nodeName+" ").toLowerCase()],c=+a.nodeType||1;return 1!==c&&9!==c?!1:!b||b!==!0&&a.getAttribute("classid")===b};var M=/^(?:\{[\w\W]*\}|\[[\w\W]*\])$/,N=/([A-Z])/g;function O(a,b,c){if(void 0===c&&1===a.nodeType){var d="data-"+b.replace(N,"-$1").toLowerCase();if(c=a.getAttribute(d),"string"==typeof c){try{c="true"===c?!0:"false"===c?!1:"null"===c?null:+c+""===c?+c:M.test(c)?m.parseJSON(c):c}catch(e){}m.data(a,b,c)}else c=void 0}return c}function P(a){var b;for(b in a)if(("data"!==b||!m.isEmptyObject(a[b]))&&"toJSON"!==b)return!1;
@@ -2903,7 +2903,7 @@ div.tocify {
 
 
 
-<h1 class="title toc-ignore">Milestone 2: Feature Selection - Nearest Neighbors, Logit w/Linear Propensity Score</h1>
+<h1 class="title toc-ignore">Milestone 2: Hyperparameter Tuning - Nearest Neighbors, Logit w/Linear Propensity Score</h1>
 <h4 class="author">Corey Dow-Hygelund, Mozilla Data Science</h4>
 <h4 class="date">Last Updated: October 31, 2019</h4>
 
@@ -2913,7 +2913,7 @@ div.tocify {
 <!-- rnb-text-begin -->
 <div id="tldr" class="section level1">
 <h1>tl;dr</h1>
-<p>This analysis determines the relevant <a href="https://docs.google.com/document/d/1SfuanvmYmvmEFAdQ7Z5djDeLezdNB1TESqVmj93O8to/edit#heading=h.nwwrif453n80">covariates (features)</a> to utilize for computationally intensive statistical matching algorithms proposed in the modeling approach for this <a href="https://docs.google.com/document/d/1Ygz6MkudYHZjnDnD9Z97kUyFrvV3KGWsjXyPjddhHq0/edit#heading=h.lvb9l8gw2nee">PRD</a>.</p>
+<p>This analysis determines the optimal <a href="https://docs.google.com/document/d/1SfuanvmYmvmEFAdQ7Z5djDeLezdNB1TESqVmj93O8to/edit#heading=h.yqukkyb8q4xw">hyperparameters</a> to utilize for computationally intensive statistical matching algorithms proposed in the modeling approach for this <a href="https://docs.google.com/document/d/1Ygz6MkudYHZjnDnD9Z97kUyFrvV3KGWsjXyPjddhHq0/edit#heading=h.lvb9l8gw2nee">PRD</a>.</p>
 <p><strong>Matching Algorithm Tested</strong>: Nearest-neighbors with logit distance metric transformed back to linear scale.</p>
 <!-- rnb-text-end -->
 <!-- rnb-text-begin -->
@@ -2932,56 +2932,22 @@ div.tocify {
 </div>
 <div id="features" class="section level1">
 <h1>Features</h1>
-<p>Feature sets:</p>
-<ol style="list-style-type: decimal">
-<li>Only performance metrics.</li>
-<li>Performance metrics and the highest found by Boruta with original dataset.</li>
-<li>Performance metrics and the highest found by Boruta with equal labels dataset.</li>
-<li>Performance metrics and all covariates.</li>
-<li>Only the highest covariates found by Boruta (excluding performance).</li>
-<li>Only the highest covariates found by Boruta (equal labels, excluding performance).</li>
-<li>Utilize all covariates (excluding performance).</li>
-</ol>
-<p>Retrieve Boruta features:</p>
+<p>The optimal feature set was found in <code>feature_selection_nn_logit_linear.Rmd</code>. At the time of this run they were:</p>
+<ul>
+<li>Beta oversampling by 4x</li>
+<li>FS 1 Interactions: Only performance metrics, with interaction terms</li>
+</ul>
+<p>To investigate, and possible utilize, a more general model, the second highest suite of features will also be tested:</p>
+<ul>
+<li>Beta oversapmling by 8x</li>
+<li>FS 5: Only the highest covariates found by Boruta (excluding performance)</li>
+</ul>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZmlsZV9uYW1lID0gJ2ZlYXR1cmVfc2VsZWN0aW9uX2JvcnV0YV9pbml0aWFsXzIwMTkxMDIzLlJEYXRhJ1xuaW1hZ2VfZmlsZV9wYXRoID0gZmlsZS5wYXRoKCdkYXRhJywgZmlsZV9uYW1lKVxuXG4jIFN5cy5zZXRlbnYoXCJHQ1NfREVGQVVMVF9CVUNLRVRcIiA9IFwibW96LWZ4LWRldi1zdWJiZXRhXCIsXG4jICAgICAgICAgICAgXCJHQ1NfQVVUSF9GSUxFXCIgPSBcIm1vei1meC1kZXYtY2Rvd2h5Z2x1bmQtc3ViQmV0YS03ODhmOGYwZDQ2MjcuanNvblwiKVxuIyBsaWJyYXJ5KGdvb2dsZUNsb3VkU3RvcmFnZVIpXG4jIGdjc19nZXRfb2JqZWN0KGZpbGUucGF0aCgnZGF0YScsICdtaWxlc3RvbmUyJywgZmlsZV9uYW1lKSwgc2F2ZVRvRGlzayA9IGltYWdlX2ZpbGVfcGF0aCwgb3ZlcndyaXRlID0gVFJVRSlcblxubG9hZChpbWFnZV9maWxlX3BhdGgpXG5gYGAifQ== -->
-<pre class="r"><code>file_name = 'feature_selection_boruta_initial_20191023.RData'
-image_file_path = file.path('data', file_name)
-
-# Sys.setenv(&quot;GCS_DEFAULT_BUCKET&quot; = &quot;moz-fx-dev-subbeta&quot;,
-#            &quot;GCS_AUTH_FILE&quot; = &quot;moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json&quot;)
-# library(googleCloudStorageR)
-# gcs_get_object(file.path('data', 'milestone2', file_name), saveToDisk = image_file_path, overwrite = TRUE)
-
-load(image_file_path)</code></pre>
-<!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZXh0cmFjdF9ib3J1dGFfZnMgPC0gZnVuY3Rpb24oYm9ydXRhX3JlcywgbnVtPTUpe1xuICBmZWF0dXJlcyA8LSBOVUxMXG4gIGZvcihtZXRyaWMgaW4gbmFtZXMoYm9ydXRhX3Jlc3VsdHMpKXtcbiAgICBmZWF0dXJlcyA8LSBjKG5hbWVzKHNvcnQoYXBwbHkoYm9ydXRhX3Jlc1tbbWV0cmljXV0kSW1wSGlzdG9yeSwgMiwgbWVkaWFuKSwgZGVjcmVhc2luZyA9IFRSVUUpWzE6bnVtXSksIGZlYXR1cmVzKVxuICB9XG4gIHJldHVybihzb3J0KHVuaXF1ZShmZWF0dXJlcykpKVxufVxuXG5mZWF0dXJlc190b3AxMCA8LSBleHRyYWN0X2JvcnV0YV9mcyhib3J1dGFfcmVzdWx0cywgbnVtPTEwKVxuZmVhdHVyZXNfdG9wMTBfZXEgPC0gZXh0cmFjdF9ib3J1dGFfZnMoYm9ydXRhX3Jlc3VsdHNfZXEsIG51bT0xMClcblxuIyBmaWx0ZXIgb3V0IGNhdGVnb3JpY2FsXG5mZWF0dXJlc190b3AxMCA8LSBkZl90cmFpbl9mICU+JSBcbiAgc2VsZWN0KGZlYXR1cmVzX3RvcDEwKSAlPiUgXG4gICMgc2VsZWN0X2lmKGlzLm51bWVyaWMpICU+JSBcbiAgbmFtZXMoKVxuZmVhdHVyZXNfdG9wMTBfZXEgPC0gZGZfdHJhaW5fZiAlPiUgXG4gIHNlbGVjdChmZWF0dXJlc190b3AxMF9lcSkgJT4lIFxuICAjIHNlbGVjdF9pZihpcy5udW1lcmljKSAlPiUgXG4gIG5hbWVzKClcbmBgYCJ9 -->
-<pre class="r"><code>extract_boruta_fs &lt;- function(boruta_res, num=5){
-  features &lt;- NULL
-  for(metric in names(boruta_results)){
-    features &lt;- c(names(sort(apply(boruta_res[[metric]]$ImpHistory, 2, median), decreasing = TRUE)[1:num]), features)
-  }
-  return(sort(unique(features)))
-}
-
-features_top10 &lt;- extract_boruta_fs(boruta_results, num=10)
-features_top10_eq &lt;- extract_boruta_fs(boruta_results_eq, num=10)
-
-# filter out categorical
-features_top10 &lt;- df_train_f %&gt;% 
-  select(features_top10) %&gt;% 
-  # select_if(is.numeric) %&gt;% 
-  names()
-features_top10_eq &lt;- df_train_f %&gt;% 
-  select(features_top10_eq) %&gt;% 
-  # select_if(is.numeric) %&gt;% 
-  names()</code></pre>
-<!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
@@ -2998,517 +2964,723 @@ fs7 &lt;- covs</code></pre>
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 </div>
+<div id="hyperparameters" class="section level1">
+<h1>Hyperparameters</h1>
+<p>Hyperparameters tested for nearest-neighbors are the following:</p>
+<ul>
+<li>Matching order (m.order)</li>
+<li>Caliper</li>
+<li>of control to treatments</li>
+</ul>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuaHBzIDwtIGxpc3QoXG4gIHJlcGxhY2UgPSBjKFRSVUUsIEZBTFNFKSxcbiAgY2FsaXBlciA9IGMoMCwgMC4yNSwgMC41LCAxLCAzKSxcbiAgY2FsY2xvc2VzdCA9IGMoVFJVRSwgRkFMU0UpLFxuICByYXRpbyA9IGMoMSwgMiwgNClcbilcblxuaHBzX2dyaWQgPSBleHBhbmQuZ3JpZChocHMpXG5gYGAifQ== -->
+<pre class="r"><code>hps &lt;- list(
+  replace = c(TRUE, FALSE),
+  caliper = c(0, 0.25, 0.5, 1, 3),
+  calclosest = c(TRUE, FALSE),
+  ratio = c(1, 2, 4)
+)
+
+hps_grid = expand.grid(hps)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
 <div id="fs-1" class="section level1">
 <h1>FS 1</h1>
-<p>Feature selection on only performance metrics</p>
+<div id="coarse-grid" class="section level2">
+<h2>Coarse Grid</h2>
+<p>Hyperparameter tuning on optimal features.</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHJpbnQocmVzX2ZzMSlcblxuYGBgIn0= -->
-<pre class="r"><code>print(res_fs1)
-</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiJGJ0c18xeFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwMzA1MzEyOSAwLjAwMjg3ODQwNyBcblxuJGJ0c180eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwMTY4MDk2NSAwLjAwMTE2MjIzNCBcblxuJGJ0c184eFxuICAgICAgICBtZWFuICAgICAgIG1lZGlhbiBcbjAuMDAwOTUyMjEyNiAwLjAwMDkyNzYyNjIgXG5cbiRidHNfMTZ4XG4gICAgICAgbWVhbiAgICAgIG1lZGlhbiBcbjAuMDAxNjYxMjg0IDAuMDAxMDY1MDUyIFxuIn0= -->
-<pre><code>$bts_1x
-       mean      median 
-0.003053129 0.002878407 
 
-$bts_4x
-       mean      median 
-0.001680965 0.001162234 
+<!-- rnb-html-begin eyJtZXRhZGF0YSI6eyJjbGFzc2VzIjpbImtuaXRfYXNpcyJdLCJzaXppbmdQb2xpY3kiOltdfX0= -->
 
-$bts_8x
-        mean       median 
-0.0009522126 0.0009276262 
+<table>
+<thead>
+<tr class="header">
+<th align="left">replace</th>
+<th align="right">caliper</th>
+<th align="left">calclosest</th>
+<th align="right">ratio</th>
+<th align="right">mean</th>
+<th align="right">sd</th>
+<th align="right">median</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">FALSE</td>
+<td align="right">0.50</td>
+<td align="left">TRUE</td>
+<td align="right">2</td>
+<td align="right">0.0005828</td>
+<td align="right">0.0000616</td>
+<td align="right">0.0005877</td>
+</tr>
+<tr class="even">
+<td align="left">FALSE</td>
+<td align="right">0.50</td>
+<td align="left">FALSE</td>
+<td align="right">2</td>
+<td align="right">0.0005985</td>
+<td align="right">0.0000499</td>
+<td align="right">0.0006082</td>
+</tr>
+<tr class="odd">
+<td align="left">TRUE</td>
+<td align="right">0.50</td>
+<td align="left">TRUE</td>
+<td align="right">1</td>
+<td align="right">0.0006613</td>
+<td align="right">0.0000839</td>
+<td align="right">0.0006344</td>
+</tr>
+<tr class="even">
+<td align="left">FALSE</td>
+<td align="right">0.25</td>
+<td align="left">TRUE</td>
+<td align="right">2</td>
+<td align="right">0.0006908</td>
+<td align="right">0.0000776</td>
+<td align="right">0.0006835</td>
+</tr>
+<tr class="odd">
+<td align="left">FALSE</td>
+<td align="right">0.25</td>
+<td align="left">FALSE</td>
+<td align="right">2</td>
+<td align="right">0.0006975</td>
+<td align="right">0.0000816</td>
+<td align="right">0.0007008</td>
+</tr>
+<tr class="even">
+<td align="left">FALSE</td>
+<td align="right">0.50</td>
+<td align="left">FALSE</td>
+<td align="right">1</td>
+<td align="right">0.0007026</td>
+<td align="right">0.0000862</td>
+<td align="right">0.0007160</td>
+</tr>
+<tr class="odd">
+<td align="left">FALSE</td>
+<td align="right">0.50</td>
+<td align="left">TRUE</td>
+<td align="right">1</td>
+<td align="right">0.0007105</td>
+<td align="right">0.0000654</td>
+<td align="right">0.0007240</td>
+</tr>
+<tr class="even">
+<td align="left">TRUE</td>
+<td align="right">0.50</td>
+<td align="left">TRUE</td>
+<td align="right">2</td>
+<td align="right">0.0007182</td>
+<td align="right">0.0001121</td>
+<td align="right">0.0007443</td>
+</tr>
+<tr class="odd">
+<td align="left">TRUE</td>
+<td align="right">0.50</td>
+<td align="left">FALSE</td>
+<td align="right">1</td>
+<td align="right">0.0007312</td>
+<td align="right">0.0001065</td>
+<td align="right">0.0007506</td>
+</tr>
+<tr class="even">
+<td align="left">TRUE</td>
+<td align="right">0.50</td>
+<td align="left">FALSE</td>
+<td align="right">2</td>
+<td align="right">0.0007346</td>
+<td align="right">0.0001571</td>
+<td align="right">0.0007411</td>
+</tr>
+<tr class="odd">
+<td align="left">FALSE</td>
+<td align="right">0.25</td>
+<td align="left">TRUE</td>
+<td align="right">1</td>
+<td align="right">0.0007680</td>
+<td align="right">0.0001150</td>
+<td align="right">0.0007561</td>
+</tr>
+<tr class="even">
+<td align="left">FALSE</td>
+<td align="right">0.00</td>
+<td align="left">FALSE</td>
+<td align="right">2</td>
+<td align="right">0.0007697</td>
+<td align="right">0.0000797</td>
+<td align="right">0.0007759</td>
+</tr>
+<tr class="odd">
+<td align="left">FALSE</td>
+<td align="right">0.00</td>
+<td align="left">TRUE</td>
+<td align="right">2</td>
+<td align="right">0.0007697</td>
+<td align="right">0.0000797</td>
+<td align="right">0.0007759</td>
+</tr>
+<tr class="even">
+<td align="left">FALSE</td>
+<td align="right">0.00</td>
+<td align="left">FALSE</td>
+<td align="right">1</td>
+<td align="right">0.0007752</td>
+<td align="right">0.0000833</td>
+<td align="right">0.0007896</td>
+</tr>
+<tr class="odd">
+<td align="left">FALSE</td>
+<td align="right">0.00</td>
+<td align="left">TRUE</td>
+<td align="right">1</td>
+<td align="right">0.0007752</td>
+<td align="right">0.0000833</td>
+<td align="right">0.0007896</td>
+</tr>
+<tr class="even">
+<td align="left">TRUE</td>
+<td align="right">0.25</td>
+<td align="left">TRUE</td>
+<td align="right">1</td>
+<td align="right">0.0007815</td>
+<td align="right">0.0000852</td>
+<td align="right">0.0007834</td>
+</tr>
+<tr class="odd">
+<td align="left">TRUE</td>
+<td align="right">0.25</td>
+<td align="left">FALSE</td>
+<td align="right">1</td>
+<td align="right">0.0008049</td>
+<td align="right">0.0000833</td>
+<td align="right">0.0008251</td>
+</tr>
+<tr class="even">
+<td align="left">FALSE</td>
+<td align="right">0.25</td>
+<td align="left">FALSE</td>
+<td align="right">1</td>
+<td align="right">0.0008057</td>
+<td align="right">0.0001236</td>
+<td align="right">0.0007736</td>
+</tr>
+<tr class="odd">
+<td align="left">TRUE</td>
+<td align="right">0.25</td>
+<td align="left">FALSE</td>
+<td align="right">2</td>
+<td align="right">0.0008415</td>
+<td align="right">0.0001626</td>
+<td align="right">0.0008239</td>
+</tr>
+<tr class="even">
+<td align="left">TRUE</td>
+<td align="right">0.25</td>
+<td align="left">TRUE</td>
+<td align="right">2</td>
+<td align="right">0.0008475</td>
+<td align="right">0.0001360</td>
+<td align="right">0.0008137</td>
+</tr>
+</tbody>
+</table>
 
-$bts_16x
-       mean      median 
-0.001661284 0.001065052 </code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHJpbnQocmVzX2ZzMV9ub3JlcGxhY2UpXG5cbmBgYCJ9 -->
-<pre class="r"><code>print(res_fs1_noreplace)
-</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiJGJ0c18xeFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwODA4MzQ0MSAwLjAwODA2NzU0MSBcblxuJGJ0c180eFxuICAgICAgICBtZWFuICAgICAgIG1lZGlhbiBcbjAuMDAxMTc3Mzk1OCAwLjAwMDY1NjMzNTEgXG5cbiRidHNfOHhcbiAgICAgICAgbWVhbiAgICAgICBtZWRpYW4gXG4wLjAwMDgyMjAyMjUgMC4wMDA4MTkwNDEwIFxuXG4kYnRzXzE2eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwMTY0NzgxNiAwLjAwMTA2OTUzMyBcbiJ9 -->
-<pre><code>$bts_1x
-       mean      median 
-0.008083441 0.008067541 
 
-$bts_4x
-        mean       median 
-0.0011773958 0.0006563351 
+<!-- rnb-html-end -->
 
-$bts_8x
-        mean       median 
-0.0008220225 0.0008190410 
-
-$bts_16x
-       mean      median 
-0.001647816 0.001069533 </code></pre>
-<!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 </div>
-<div id="fs-2" class="section level1">
-<h1>FS 2</h1>
-<p>Performance metrics and the highest found by Boruta with original dataset.</p>
+<div id="fine-grid" class="section level2">
+<h2>Fine Grid</h2>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHJpbnQocmVzX2ZzMilcblxuYGBgIn0= -->
-<pre class="r"><code>print(res_fs2)
-</code></pre>
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuaHBzX2ZpbmUgPC0gbGlzdChcbiAgcmVwbGFjZSA9IGMoVFJVRSwgRkFMU0UpLFxuICBjYWxpcGVyID0gc2VxKDAuMiwgMC44LCBieT0wLjIpLFxuICBjYWxjbG9zZXN0ID0gYyhUUlVFLCBGQUxTRSksXG4gIHJhdGlvID0gYygxLCAyLCAzKVxuKVxuXG5ocHNfZmluZV9ncmlkID0gZXhwYW5kLmdyaWQoaHBzX2ZpbmUpXG5gYGAifQ== -->
+<pre class="r"><code>hps_fine &lt;- list(
+  replace = c(TRUE, FALSE),
+  caliper = seq(0.2, 0.8, by=0.2),
+  calclosest = c(TRUE, FALSE),
+  ratio = c(1, 2, 3)
+)
+
+hps_fine_grid = expand.grid(hps_fine)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiJGJ0c18xeFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNjE5OTEzMiAwLjAwNjE5MDM3MSBcblxuJGJ0c180eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNTY0NjEzNSAwLjAwNTYyODI0MyBcblxuJGJ0c184eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNTc3MjU2OCAwLjAwNTY2ODY3OSBcblxuJGJ0c18xNnhcbiAgICAgICBtZWFuICAgICAgbWVkaWFuIFxuMC4wMDU2MTEzNDAgMC4wMDU2NDc4OTYgXG4ifQ== -->
-<pre><code>$bts_1x
-       mean      median 
-0.006199132 0.006190371 
-
-$bts_4x
-       mean      median 
-0.005646135 0.005628243 
-
-$bts_8x
-       mean      median 
-0.005772568 0.005668679 
-
-$bts_16x
-       mean      median 
-0.005611340 0.005647896 </code></pre>
-<!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHJpbnQocmVzX2ZzMl9ub3JlcGxhY2UpXG5cbmBgYCJ9 -->
-<pre class="r"><code>print(res_fs2_noreplace)
-</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiJGJ0c18xeFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwODA4MzQ0MSAwLjAwODA2NzU0MSBcblxuJGJ0c180eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNTQwODcyMCAwLjAwNTQzMTUzMiBcblxuJGJ0c184eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNDE3NDI5OCAwLjAwNDIwMTE2OCBcblxuJGJ0c18xNnhcbiAgICAgICBtZWFuICAgICAgbWVkaWFuIFxuMC4wMDQ4NTc0NjIgMC4wMDQ5MDQyNzIgXG4ifQ== -->
-<pre><code>$bts_1x
-       mean      median 
-0.008083441 0.008067541 
 
-$bts_4x
-       mean      median 
-0.005408720 0.005431532 
+<!-- rnb-html-begin eyJtZXRhZGF0YSI6eyJjbGFzc2VzIjpbImtuaXRfYXNpcyJdLCJzaXppbmdQb2xpY3kiOltdfX0= -->
 
-$bts_8x
-       mean      median 
-0.004174298 0.004201168 
+<table>
+<thead>
+<tr class="header">
+<th align="left">replace</th>
+<th align="right">caliper</th>
+<th align="left">calclosest</th>
+<th align="right">ratio</th>
+<th align="right">mean</th>
+<th align="right">sd</th>
+<th align="right">median</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">FALSE</td>
+<td align="right">0.4</td>
+<td align="left">TRUE</td>
+<td align="right">3</td>
+<td align="right">0.0005596</td>
+<td align="right">0.0000707</td>
+<td align="right">0.0005768</td>
+</tr>
+<tr class="even">
+<td align="left">FALSE</td>
+<td align="right">0.2</td>
+<td align="left">FALSE</td>
+<td align="right">3</td>
+<td align="right">0.0005609</td>
+<td align="right">0.0000469</td>
+<td align="right">0.0005663</td>
+</tr>
+<tr class="odd">
+<td align="left">FALSE</td>
+<td align="right">0.2</td>
+<td align="left">TRUE</td>
+<td align="right">3</td>
+<td align="right">0.0005639</td>
+<td align="right">0.0000537</td>
+<td align="right">0.0005574</td>
+</tr>
+<tr class="even">
+<td align="left">FALSE</td>
+<td align="right">0.4</td>
+<td align="left">FALSE</td>
+<td align="right">3</td>
+<td align="right">0.0005643</td>
+<td align="right">0.0000847</td>
+<td align="right">0.0005740</td>
+</tr>
+<tr class="odd">
+<td align="left">FALSE</td>
+<td align="right">0.4</td>
+<td align="left">TRUE</td>
+<td align="right">2</td>
+<td align="right">0.0005872</td>
+<td align="right">0.0000460</td>
+<td align="right">0.0005933</td>
+</tr>
+<tr class="even">
+<td align="left">FALSE</td>
+<td align="right">0.6</td>
+<td align="left">TRUE</td>
+<td align="right">2</td>
+<td align="right">0.0006112</td>
+<td align="right">0.0000606</td>
+<td align="right">0.0005987</td>
+</tr>
+<tr class="odd">
+<td align="left">FALSE</td>
+<td align="right">0.4</td>
+<td align="left">FALSE</td>
+<td align="right">2</td>
+<td align="right">0.0006238</td>
+<td align="right">0.0000447</td>
+<td align="right">0.0006251</td>
+</tr>
+<tr class="even">
+<td align="left">FALSE</td>
+<td align="right">0.6</td>
+<td align="left">FALSE</td>
+<td align="right">2</td>
+<td align="right">0.0006272</td>
+<td align="right">0.0000683</td>
+<td align="right">0.0006206</td>
+</tr>
+<tr class="odd">
+<td align="left">FALSE</td>
+<td align="right">0.6</td>
+<td align="left">FALSE</td>
+<td align="right">1</td>
+<td align="right">0.0006330</td>
+<td align="right">0.0000754</td>
+<td align="right">0.0006347</td>
+</tr>
+<tr class="even">
+<td align="left">TRUE</td>
+<td align="right">0.6</td>
+<td align="left">TRUE</td>
+<td align="right">1</td>
+<td align="right">0.0006337</td>
+<td align="right">0.0000638</td>
+<td align="right">0.0006438</td>
+</tr>
+<tr class="odd">
+<td align="left">FALSE</td>
+<td align="right">0.6</td>
+<td align="left">TRUE</td>
+<td align="right">1</td>
+<td align="right">0.0006695</td>
+<td align="right">0.0000616</td>
+<td align="right">0.0006631</td>
+</tr>
+<tr class="even">
+<td align="left">FALSE</td>
+<td align="right">0.2</td>
+<td align="left">FALSE</td>
+<td align="right">2</td>
+<td align="right">0.0006868</td>
+<td align="right">0.0000619</td>
+<td align="right">0.0006905</td>
+</tr>
+<tr class="odd">
+<td align="left">TRUE</td>
+<td align="right">0.6</td>
+<td align="left">FALSE</td>
+<td align="right">1</td>
+<td align="right">0.0007046</td>
+<td align="right">0.0000328</td>
+<td align="right">0.0006934</td>
+</tr>
+<tr class="even">
+<td align="left">FALSE</td>
+<td align="right">0.2</td>
+<td align="left">TRUE</td>
+<td align="right">2</td>
+<td align="right">0.0007084</td>
+<td align="right">0.0000639</td>
+<td align="right">0.0006839</td>
+</tr>
+<tr class="odd">
+<td align="left">TRUE</td>
+<td align="right">0.6</td>
+<td align="left">FALSE</td>
+<td align="right">2</td>
+<td align="right">0.0007282</td>
+<td align="right">0.0001259</td>
+<td align="right">0.0007053</td>
+</tr>
+<tr class="even">
+<td align="left">FALSE</td>
+<td align="right">0.4</td>
+<td align="left">FALSE</td>
+<td align="right">1</td>
+<td align="right">0.0007325</td>
+<td align="right">0.0001223</td>
+<td align="right">0.0006830</td>
+</tr>
+<tr class="odd">
+<td align="left">FALSE</td>
+<td align="right">0.4</td>
+<td align="left">TRUE</td>
+<td align="right">1</td>
+<td align="right">0.0007427</td>
+<td align="right">0.0000539</td>
+<td align="right">0.0007536</td>
+</tr>
+<tr class="even">
+<td align="left">TRUE</td>
+<td align="right">0.4</td>
+<td align="left">TRUE</td>
+<td align="right">1</td>
+<td align="right">0.0007499</td>
+<td align="right">0.0001166</td>
+<td align="right">0.0007318</td>
+</tr>
+<tr class="odd">
+<td align="left">TRUE</td>
+<td align="right">0.4</td>
+<td align="left">FALSE</td>
+<td align="right">2</td>
+<td align="right">0.0007563</td>
+<td align="right">0.0001459</td>
+<td align="right">0.0007670</td>
+</tr>
+<tr class="even">
+<td align="left">TRUE</td>
+<td align="right">0.6</td>
+<td align="left">TRUE</td>
+<td align="right">2</td>
+<td align="right">0.0007617</td>
+<td align="right">0.0001739</td>
+<td align="right">0.0007399</td>
+</tr>
+</tbody>
+</table>
 
-$bts_16x
-       mean      median 
-0.004857462 0.004904272 </code></pre>
-<!-- rnb-output-end -->
+
+<!-- rnb-html-end -->
+
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 </div>
-<div id="fs-3" class="section level1">
-<h1>FS 3</h1>
-<p>Performance metrics and the highest found by Boruta with equal labels dataset.</p>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHJpbnQocmVzX2ZzMylcblxuYGBgIn0= -->
-<pre class="r"><code>print(res_fs3)
-</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiJGJ0c18xeFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNjI1MjMxNiAwLjAwNjIyMjcwOCBcblxuJGJ0c180eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNTc5NjgyNCAwLjAwNTg3MDEzMyBcblxuJGJ0c184eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNjI3NjMxOCAwLjAwNjI1NTA1MiBcblxuJGJ0c18xNnhcbiAgICAgICBtZWFuICAgICAgbWVkaWFuIFxuMC4wMDU4NzQ3NzMgMC4wMDU4MzcxNzMgXG4ifQ== -->
-<pre><code>$bts_1x
-       mean      median 
-0.006252316 0.006222708 
-
-$bts_4x
-       mean      median 
-0.005796824 0.005870133 
-
-$bts_8x
-       mean      median 
-0.006276318 0.006255052 
-
-$bts_16x
-       mean      median 
-0.005874773 0.005837173 </code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHJpbnQocmVzX2ZzM19ub3JlcGxhY2UpXG5cbmBgYCJ9 -->
-<pre class="r"><code>print(res_fs3_noreplace)
-</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiJGJ0c18xeFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwODA4MzQ0MSAwLjAwODA2NzU0MSBcblxuJGJ0c180eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNTYwNDc1MyAwLjAwNTY5MTYwMCBcblxuJGJ0c184eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNDY1OTYzOCAwLjAwNDY5NDU4MiBcblxuJGJ0c18xNnhcbiAgICAgICBtZWFuICAgICAgbWVkaWFuIFxuMC4wMDU0NjA0OTMgMC4wMDUzNzY1NTQgXG4ifQ== -->
-<pre><code>$bts_1x
-       mean      median 
-0.008083441 0.008067541 
-
-$bts_4x
-       mean      median 
-0.005604753 0.005691600 
-
-$bts_8x
-       mean      median 
-0.004659638 0.004694582 
-
-$bts_16x
-       mean      median 
-0.005460493 0.005376554 </code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-</div>
-<div id="fs-4" class="section level1">
-<h1>FS 4</h1>
-<p>Performance metrics and all covariates.</p>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHJpbnQocmVzX2ZzNClcblxuYGBgIn0= -->
-<pre class="r"><code>print(res_fs4)
-</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiJGJ0c18xeFxuICAgICAgbWVhbiAgICAgbWVkaWFuIFxuMC4wMjk5ODUyMyAwLjAyNzI4NTI4IFxuXG4kYnRzXzR4XG4gICAgICBtZWFuICAgICBtZWRpYW4gXG4wLjAyMjczMTQyIDAuMDIxNTc0NTIgXG5cbiRidHNfOHhcbiAgICAgIG1lYW4gICAgIG1lZGlhbiBcbjAuMDI0NjA0ODkgMC4wMjIxNjk3NCBcblxuJGJ0c18xNnhcbiAgICAgIG1lYW4gICAgIG1lZGlhbiBcbjAuMDI5NTk5MTIgMC4wMzA3MDEwMyBcbiJ9 -->
-<pre><code>$bts_1x
-      mean     median 
-0.02998523 0.02728528 
-
-$bts_4x
-      mean     median 
-0.02273142 0.02157452 
-
-$bts_8x
-      mean     median 
-0.02460489 0.02216974 
-
-$bts_16x
-      mean     median 
-0.02959912 0.03070103 </code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYGBgclxuYGBgclxucmVzX2ZzNF9ub3JlcGxhY2UgPC0gbGlzdCgpXG5mb3IgKGJ0IGluIG5hbWVzKGJ0cykpe1xuICByZXNfZnM0X25vcmVwbGFjZVtbYnRdXSA8LSBwZXJmb3JtX21hdGNoaXRfZnMoZGZfdHJhaW5fZiwgYnRzW1tidF1dLCBmczQsIHNpemU9TlVMTCwgcmVwbGFjZT1GQUxTRSwgd29ya2VycyA9IDEwLCBkaXN0YW5jZSA9ICdsaW5lYXIubG9naXQnKVxufVxuc2F2ZS5pbWFnZShyZXN1bHRzX2ZpbGVfcGF0aClcbnByaW50KHJlc19mczRfbm9yZXBsYWNlKVxuYGBgXG5gYGBcbmBgYCJ9 -->
-<p><code>r</code>r</p>
-<pre class="r"><code>res_fs4_noreplace &lt;- list()
-for (bt in names(bts)){
-  res_fs4_noreplace[[bt]] &lt;- perform_matchit_fs(df_train_f, bts[[bt]], fs4, size=NULL, replace=FALSE, workers = 10, distance = 'linear.logit')
-}
-save.image(results_file_path)
-print(res_fs4_noreplace)</code></pre>
-<pre><code></code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiJGJ0c18xeFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwODA4MzQ0MSAwLjAwODA2NzU0MSBcblxuJGJ0c180eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNzg5OTY5NCAwLjAwNzQyODE5MCBcblxuJGJ0c184eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwODU3NzQ2MyAwLjAwODE4NDQ4NyBcblxuJGJ0c18xNnhcbiAgICAgICBtZWFuICAgICAgbWVkaWFuIFxuMC4wMDgyNTQxMjMgMC4wMDc2NTM0NTAgXG4ifQ== -->
-<pre><code>$bts_1x
-       mean      median 
-0.008083441 0.008067541 
-
-$bts_4x
-       mean      median 
-0.007899694 0.007428190 
-
-$bts_8x
-       mean      median 
-0.008577463 0.008184487 
-
-$bts_16x
-       mean      median 
-0.008254123 0.007653450 </code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
 </div>
 <div id="fs-5" class="section level1">
 <h1>FS 5</h1>
-<p>Only the highest covariates found by Boruta (excluding performance).</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHJpbnQocmVzX2ZzNSlcblxuYGBgIn0= -->
-<pre class="r"><code>print(res_fs5)
-</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiJGJ0c18xeFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNjE5OTEzMiAwLjAwNjE5MDM3MSBcblxuJGJ0c180eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNTY0NjEzNSAwLjAwNTYyODI0MyBcblxuJGJ0c184eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNTc3MjU2OCAwLjAwNTY2ODY3OSBcblxuJGJ0c18xNnhcbiAgICAgICBtZWFuICAgICAgbWVkaWFuIFxuMC4wMDU2MTEzNDAgMC4wMDU2NDc4OTYgXG4ifQ== -->
-<pre><code>$bts_1x
-       mean      median 
-0.006199132 0.006190371 
 
-$bts_4x
-       mean      median 
-0.005646135 0.005628243 
+<!-- rnb-html-begin eyJtZXRhZGF0YSI6eyJjbGFzc2VzIjpbImtuaXRfYXNpcyJdLCJzaXppbmdQb2xpY3kiOltdfX0= -->
 
-$bts_8x
-       mean      median 
-0.005772568 0.005668679 
+<table>
+<thead>
+<tr class="header">
+<th align="left">replace</th>
+<th align="right">caliper</th>
+<th align="left">calclosest</th>
+<th align="right">ratio</th>
+<th align="right">mean</th>
+<th align="right">sd</th>
+<th align="right">median</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">FALSE</td>
+<td align="right">0.00</td>
+<td align="left">FALSE</td>
+<td align="right">1</td>
+<td align="right">0.0043066</td>
+<td align="right">0.0003827</td>
+<td align="right">0.0042900</td>
+</tr>
+<tr class="even">
+<td align="left">FALSE</td>
+<td align="right">0.00</td>
+<td align="left">TRUE</td>
+<td align="right">1</td>
+<td align="right">0.0043066</td>
+<td align="right">0.0003827</td>
+<td align="right">0.0042900</td>
+</tr>
+<tr class="odd">
+<td align="left">FALSE</td>
+<td align="right">0.25</td>
+<td align="left">TRUE</td>
+<td align="right">1</td>
+<td align="right">0.0046743</td>
+<td align="right">0.0003225</td>
+<td align="right">0.0046142</td>
+</tr>
+<tr class="even">
+<td align="left">FALSE</td>
+<td align="right">0.25</td>
+<td align="left">FALSE</td>
+<td align="right">1</td>
+<td align="right">0.0047435</td>
+<td align="right">0.0002504</td>
+<td align="right">0.0047223</td>
+</tr>
+<tr class="odd">
+<td align="left">FALSE</td>
+<td align="right">0.00</td>
+<td align="left">FALSE</td>
+<td align="right">2</td>
+<td align="right">0.0047520</td>
+<td align="right">0.0002325</td>
+<td align="right">0.0047129</td>
+</tr>
+<tr class="even">
+<td align="left">FALSE</td>
+<td align="right">0.00</td>
+<td align="left">TRUE</td>
+<td align="right">2</td>
+<td align="right">0.0047520</td>
+<td align="right">0.0002325</td>
+<td align="right">0.0047129</td>
+</tr>
+<tr class="odd">
+<td align="left">FALSE</td>
+<td align="right">0.25</td>
+<td align="left">FALSE</td>
+<td align="right">2</td>
+<td align="right">0.0049848</td>
+<td align="right">0.0002663</td>
+<td align="right">0.0050138</td>
+</tr>
+<tr class="even">
+<td align="left">FALSE</td>
+<td align="right">0.25</td>
+<td align="left">TRUE</td>
+<td align="right">2</td>
+<td align="right">0.0049897</td>
+<td align="right">0.0001502</td>
+<td align="right">0.0049548</td>
+</tr>
+<tr class="odd">
+<td align="left">TRUE</td>
+<td align="right">0.25</td>
+<td align="left">TRUE</td>
+<td align="right">1</td>
+<td align="right">0.0050622</td>
+<td align="right">0.0002373</td>
+<td align="right">0.0050418</td>
+</tr>
+<tr class="even">
+<td align="left">TRUE</td>
+<td align="right">0.25</td>
+<td align="left">FALSE</td>
+<td align="right">1</td>
+<td align="right">0.0051949</td>
+<td align="right">0.0003929</td>
+<td align="right">0.0052798</td>
+</tr>
+<tr class="odd">
+<td align="left">TRUE</td>
+<td align="right">0.00</td>
+<td align="left">TRUE</td>
+<td align="right">1</td>
+<td align="right">0.0053201</td>
+<td align="right">0.0004428</td>
+<td align="right">0.0053369</td>
+</tr>
+<tr class="even">
+<td align="left">TRUE</td>
+<td align="right">0.25</td>
+<td align="left">FALSE</td>
+<td align="right">2</td>
+<td align="right">0.0053355</td>
+<td align="right">0.0002751</td>
+<td align="right">0.0053210</td>
+</tr>
+<tr class="odd">
+<td align="left">FALSE</td>
+<td align="right">0.00</td>
+<td align="left">FALSE</td>
+<td align="right">4</td>
+<td align="right">0.0053461</td>
+<td align="right">0.0002268</td>
+<td align="right">0.0053543</td>
+</tr>
+<tr class="even">
+<td align="left">FALSE</td>
+<td align="right">0.00</td>
+<td align="left">TRUE</td>
+<td align="right">4</td>
+<td align="right">0.0053461</td>
+<td align="right">0.0002268</td>
+<td align="right">0.0053543</td>
+</tr>
+<tr class="odd">
+<td align="left">TRUE</td>
+<td align="right">0.00</td>
+<td align="left">FALSE</td>
+<td align="right">1</td>
+<td align="right">0.0053464</td>
+<td align="right">0.0004611</td>
+<td align="right">0.0053261</td>
+</tr>
+<tr class="even">
+<td align="left">FALSE</td>
+<td align="right">0.50</td>
+<td align="left">TRUE</td>
+<td align="right">1</td>
+<td align="right">0.0053464</td>
+<td align="right">0.0005468</td>
+<td align="right">0.0053533</td>
+</tr>
+<tr class="odd">
+<td align="left">TRUE</td>
+<td align="right">0.00</td>
+<td align="left">TRUE</td>
+<td align="right">2</td>
+<td align="right">0.0053966</td>
+<td align="right">0.0004595</td>
+<td align="right">0.0054499</td>
+</tr>
+<tr class="even">
+<td align="left">TRUE</td>
+<td align="right">0.00</td>
+<td align="left">FALSE</td>
+<td align="right">2</td>
+<td align="right">0.0053976</td>
+<td align="right">0.0004833</td>
+<td align="right">0.0054623</td>
+</tr>
+<tr class="odd">
+<td align="left">FALSE</td>
+<td align="right">0.50</td>
+<td align="left">FALSE</td>
+<td align="right">1</td>
+<td align="right">0.0054013</td>
+<td align="right">0.0005402</td>
+<td align="right">0.0054534</td>
+</tr>
+<tr class="even">
+<td align="left">TRUE</td>
+<td align="right">0.50</td>
+<td align="left">FALSE</td>
+<td align="right">1</td>
+<td align="right">0.0054154</td>
+<td align="right">0.0003346</td>
+<td align="right">0.0052549</td>
+</tr>
+</tbody>
+</table>
 
-$bts_16x
-       mean      median 
-0.005611340 0.005647896 </code></pre>
-<!-- rnb-output-end -->
+
+<!-- rnb-html-end -->
+
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHJpbnQocmVzX2ZzNV9ub3JlcGxhY2UpXG5cbmBgYCJ9 -->
-<pre class="r"><code>print(res_fs5_noreplace)
-</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiJGJ0c18xeFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwODA4MzQ0MSAwLjAwODA2NzU0MSBcblxuJGJ0c180eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNTQwODcyMCAwLjAwNTQzMTUzMiBcblxuJGJ0c184eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNDE3NDI5OCAwLjAwNDIwMTE2OCBcblxuJGJ0c18xNnhcbiAgICAgICBtZWFuICAgICAgbWVkaWFuIFxuMC4wMDQ4NTc0NjIgMC4wMDQ5MDQyNzIgXG4ifQ== -->
-<pre><code>$bts_1x
-       mean      median 
-0.008083441 0.008067541 
-
-$bts_4x
-       mean      median 
-0.005408720 0.005431532 
-
-$bts_8x
-       mean      median 
-0.004174298 0.004201168 
-
-$bts_16x
-       mean      median 
-0.004857462 0.004904272 </code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-</div>
-<div id="fs-6" class="section level1">
-<h1>FS 6</h1>
-<p>Only the highest covariates found by Boruta (equal labels, excluding performance).</p>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHJpbnQocmVzX2ZzNilcblxuYGBgIn0= -->
-<pre class="r"><code>print(res_fs6)
-</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiJGJ0c18xeFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNjI1MjMxNiAwLjAwNjIyMjcwOCBcblxuJGJ0c180eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNTc5NjgyNCAwLjAwNTg3MDEzMyBcblxuJGJ0c184eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNjI3NjMxOCAwLjAwNjI1NTA1MiBcblxuJGJ0c18xNnhcbiAgICAgICBtZWFuICAgICAgbWVkaWFuIFxuMC4wMDU4NzQ3NzMgMC4wMDU4MzcxNzMgXG4ifQ== -->
-<pre><code>$bts_1x
-       mean      median 
-0.006252316 0.006222708 
-
-$bts_4x
-       mean      median 
-0.005796824 0.005870133 
-
-$bts_8x
-       mean      median 
-0.006276318 0.006255052 
-
-$bts_16x
-       mean      median 
-0.005874773 0.005837173 </code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHJpbnQocmVzX2ZzNl9ub3JlcGxhY2UpXG5cbmBgYCJ9 -->
-<pre class="r"><code>print(res_fs6_noreplace)
-</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiJGJ0c18xeFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwODA4MzQ0MSAwLjAwODA2NzU0MSBcblxuJGJ0c180eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNTYwNDc1MyAwLjAwNTY5MTYwMCBcblxuJGJ0c184eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNDY1OTYzOCAwLjAwNDY5NDU4MiBcblxuJGJ0c18xNnhcbiAgICAgICBtZWFuICAgICAgbWVkaWFuIFxuMC4wMDU0NjA0OTMgMC4wMDUzNzY1NTQgXG4ifQ== -->
-<pre><code>$bts_1x
-       mean      median 
-0.008083441 0.008067541 
-
-$bts_4x
-       mean      median 
-0.005604753 0.005691600 
-
-$bts_8x
-       mean      median 
-0.004659638 0.004694582 
-
-$bts_16x
-       mean      median 
-0.005460493 0.005376554 </code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-</div>
-<div id="fs-7" class="section level1">
-<h1>FS 7</h1>
-<p>Utilize all covariates (excluding performance).</p>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHJpbnQocmVzX2ZzNylcblxuYGBgIn0= -->
-<pre class="r"><code>print(res_fs7)
-</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiJGJ0c18xeFxuICAgICAgbWVhbiAgICAgbWVkaWFuIFxuMC4wMjk5ODUyMyAwLjAyNzI4NTI4IFxuXG4kYnRzXzR4XG4gICAgICBtZWFuICAgICBtZWRpYW4gXG4wLjAyMjczMTQyIDAuMDIxNTc0NTIgXG5cbiRidHNfOHhcbiAgICAgIG1lYW4gICAgIG1lZGlhbiBcbjAuMDI0NjA0ODkgMC4wMjIxNjk3NCBcblxuJGJ0c18xNnhcbiAgICAgIG1lYW4gICAgIG1lZGlhbiBcbjAuMDI5NTk5MTIgMC4wMzA3MDEwMyBcbiJ9 -->
-<pre><code>$bts_1x
-      mean     median 
-0.02998523 0.02728528 
-
-$bts_4x
-      mean     median 
-0.02273142 0.02157452 
-
-$bts_8x
-      mean     median 
-0.02460489 0.02216974 
-
-$bts_16x
-      mean     median 
-0.02959912 0.03070103 </code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHJpbnQocmVzX2ZzN19ub3JlcGxhY2UpXG5cbmBgYCJ9 -->
-<pre class="r"><code>print(res_fs7_noreplace)
-</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiJGJ0c18xeFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwODA4MzQ0MSAwLjAwODA2NzU0MSBcblxuJGJ0c180eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwNzkwMDIyMiAwLjAwNzQzMDIxMCBcblxuJGJ0c184eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwODU4MDU2MCAwLjAwODE4NTAzOSBcblxuJGJ0c18xNnhcbiAgICAgICBtZWFuICAgICAgbWVkaWFuIFxuMC4wMDgyNTc5NjggMC4wMDc2NTg0NDggXG4ifQ== -->
-<pre><code>$bts_1x
-       mean      median 
-0.008083441 0.008067541 
-
-$bts_4x
-       mean      median 
-0.007900222 0.007430210 
-
-$bts_8x
-       mean      median 
-0.008580560 0.008185039 
-
-$bts_16x
-       mean      median 
-0.008257968 0.007658448 </code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-</div>
-<div id="fs-1-interactions" class="section level1">
-<h1>FS 1 Interactions</h1>
-<p>Feature selection on only performance metrics, but including interaction terms.</p>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHJpbnQocmVzX2ZzMSlcblxuYGBgIn0= -->
-<pre class="r"><code>print(res_fs1)
-</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiJGJ0c18xeFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwMzA1MzEyOSAwLjAwMjg3ODQwNyBcblxuJGJ0c180eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwMTY4MDk2NSAwLjAwMTE2MjIzNCBcblxuJGJ0c184eFxuICAgICAgICBtZWFuICAgICAgIG1lZGlhbiBcbjAuMDAwOTUyMjEyNiAwLjAwMDkyNzYyNjIgXG5cbiRidHNfMTZ4XG4gICAgICAgbWVhbiAgICAgIG1lZGlhbiBcbjAuMDAxNjYxMjg0IDAuMDAxMDY1MDUyIFxuIn0= -->
-<pre><code>$bts_1x
-       mean      median 
-0.003053129 0.002878407 
-
-$bts_4x
-       mean      median 
-0.001680965 0.001162234 
-
-$bts_8x
-        mean       median 
-0.0009522126 0.0009276262 
-
-$bts_16x
-       mean      median 
-0.001661284 0.001065052 </code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHJpbnQocmVzX2ZzMV9ub3JlcGxhY2UpXG5cbmBgYCJ9 -->
-<pre class="r"><code>print(res_fs1_noreplace)
-</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiJGJ0c18xeFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwODA4MzQ0MSAwLjAwODA2NzU0MSBcblxuJGJ0c180eFxuICAgICAgICBtZWFuICAgICAgIG1lZGlhbiBcbjAuMDAxMTc3Mzk1OCAwLjAwMDY1NjMzNTEgXG5cbiRidHNfOHhcbiAgICAgICAgbWVhbiAgICAgICBtZWRpYW4gXG4wLjAwMDgyMjAyMjUgMC4wMDA4MTkwNDEwIFxuXG4kYnRzXzE2eFxuICAgICAgIG1lYW4gICAgICBtZWRpYW4gXG4wLjAwMTY0NzgxNiAwLjAwMTA2OTUzMyBcbiJ9 -->
-<pre><code>$bts_1x
-       mean      median 
-0.008083441 0.008067541 
-
-$bts_4x
-        mean       median 
-0.0011773958 0.0006563351 
-
-$bts_8x
-        mean       median 
-0.0008220225 0.0008190410 
-
-$bts_16x
-       mean      median 
-0.001647816 0.001069533 </code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-</div>
-<div id="fs-2-1" class="section level1">
-<h1>FS 2</h1>
-<p>Performance metrics and the highest found by Boruta with original dataset, but including interaction terms</p>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYGBgclxuYGBgclxucmVzX2ZzMiA8LSBsaXN0KClcbmZvciAoYnQgaW4gbmFtZXMoYnRzKSl7XG4gIHJlc19mczJbW2J0XV0gPC0gcGVyZm9ybV9tYXRjaGl0X2ZzKGRmX3RyYWluX2YsIGJ0c1tbYnRdXSwgZnMyLCBzaXplPU5VTEwsIGFkZF9pbnRlcmFjdGlvbnM9VFJVRSxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcmVwbGFjZT1UUlVFLCB3b3JrZXJzID0gMTAsIGRpc3RhbmNlID0gJ2xpbmVhci5sb2dpdCcpXG59XG5gYGBcbmBgYFxuYGBgIn0= -->
-<p><code>r</code>r</p>
-<pre class="r"><code>res_fs2 &lt;- list()
-for (bt in names(bts)){
-  res_fs2[[bt]] &lt;- perform_matchit_fs(df_train_f, bts[[bt]], fs2, size=NULL, add_interactions=TRUE,
-                                      replace=TRUE, workers = 10, distance = 'linear.logit')
-}</code></pre>
-<pre><code></code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<p>Never completed after 2.5 days. Killed it…</p>
 </div>
 <div id="serialize-and-push-to-gcp" class="section level1">
 <h1>Serialize and Push to GCP</h1>
 <p>Save the resultant dataset and bootstrap samples to an R image.</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYGBgclxuYGBgclxuc2F2ZShsaXN0ID0gbHMocGF0dGVybiA9ICdyZXNfZnMnKSwgZmlsZSA9IHJlc3VsdHNfZmlsZV9wYXRoKVxuYGBgXG5gYGBcbmBgYCJ9 -->
-<p><code>r</code>r</p>
-<pre class="r"><code>save(list = ls(pattern = 'res_fs'), file = results_file_path)</code></pre>
-<pre><code></code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZ2NzX2ZpbGVfcGF0aCA8LSBmaWxlLnBhdGgoJ2RhdGEnLCAnbWlsZXN0b25lMicsIHJlc3VsdHNfZmlsZV9uYW1lKVxuXG5TeXMuc2V0ZW52KFwiR0NTX0RFRkFVTFRfQlVDS0VUXCIgPSBcIm1vei1meC1kZXYtc3ViYmV0YVwiLFxuICAgICAgICAgICBcIkdDU19BVVRIX0ZJTEVcIiA9IFwibW96LWZ4LWRldi1jZG93aHlnbHVuZC1zdWJCZXRhLTc4OGY4ZjBkNDYyNy5qc29uXCIpXG5cbmxpYnJhcnkoZ29vZ2xlQ2xvdWRTdG9yYWdlUilcblxudXBsb2FkX3RyeSA8LSBnY3NfdXBsb2FkKHJlc3VsdHNfZmlsZV9wYXRoLCBuYW1lID0gZ2NzX2ZpbGVfcGF0aClcbmBgYCJ9 -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZ2NzX2ZpbGVfcGF0aCA8LSBmaWxlLnBhdGgoJ2RhdGEnLCAnbWlsZXN0b25lMicsIHJlc3VsdHNfZmlsZV9uYW1lKVxuXG5TeXMuc2V0ZW52KFwiR0NTX0RFRkFVTFRfQlVDS0VUXCIgPSBcIm1vei1meC1kZXYtc3ViYmV0YVwiLFxuICAgICAgICAgICBcIkdDU19BVVRIX0ZJTEVcIiA9IFwibW96LWZ4LWRldi1jZG93aHlnbHVuZC1zdWJCZXRhLTc4OGY4ZjBkNDYyNy5qc29uXCIpXG5cbmxpYnJhcnkoZ29vZ2xlQ2xvdWRTdG9yYWdlUilcbmBgYCJ9 -->
 <pre class="r"><code>gcs_file_path &lt;- file.path('data', 'milestone2', results_file_name)
 
 Sys.setenv(&quot;GCS_DEFAULT_BUCKET&quot; = &quot;moz-fx-dev-subbeta&quot;,
            &quot;GCS_AUTH_FILE&quot; = &quot;moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json&quot;)
 
-library(googleCloudStorageR)
-
-upload_try &lt;- gcs_upload(results_file_path, name = gcs_file_path)</code></pre>
+library(googleCloudStorageR)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiMjAxOS0xMC0zMSAwODozMzoyMyAtLSBGaWxlIHNpemUgZGV0ZWN0ZWQgYXMgNS40IEtiXG4ifQ== -->
-<pre><code>2019-10-31 08:33:23 -- File size detected as 5.4 Kb</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiU3VjY2Vzc2Z1bGx5IGF1dG8tYXV0aGVudGljYXRlZCB2aWEgbW96LWZ4LWRldi1jZG93aHlnbHVuZC1zdWJCZXRhLTc4OGY4ZjBkNDYyNy5qc29uXG5TZXQgZGVmYXVsdCBidWNrZXQgbmFtZSB0byAnbW96LWZ4LWRldi1zdWJiZXRhJ1xuIn0= -->
+<pre><code>Successfully auto-authenticated via moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json
+Set default bucket name to 'moz-fx-dev-subbeta'</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudXBsb2FkX3RyeSA8LSBnY3NfdXBsb2FkKHJlc3VsdHNfZmlsZV9wYXRoLCBuYW1lID0gZ2NzX2ZpbGVfcGF0aClcbmBgYCJ9 -->
+<pre class="r"><code>upload_try &lt;- gcs_upload(results_file_path, name = gcs_file_path)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiMjAxOS0xMC0zMSAwODoxOTowMyAtLSBGaWxlIHNpemUgZGV0ZWN0ZWQgYXMgODEuMSBLYlxuIn0= -->
+<pre><code>2019-10-31 08:19:03 -- File size detected as 81.1 Kb</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudXBsb2FkX3RyeVxuYGBgIn0= -->
 <pre class="r"><code>upload_try</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiPT1Hb29nbGUgQ2xvdWQgU3RvcmFnZSBPYmplY3Q9PVxuTmFtZTogICAgICAgICAgICAgICAgZGF0YS9taWxlc3RvbmUyL2ZlYXR1cmVfc2VsZWN0aW9uX25uX2xvZ2l0X2xpbmVhci5SRGF0YSBcblR5cGU6ICAgICAgICAgICAgICAgIGFwcGxpY2F0aW9uL29jdGV0LXN0cmVhbSBcblNpemU6ICAgICAgICAgICAgICAgIDUuNCBLYiBcbk1lZGlhIFVSTDogICAgICAgICAgIGh0dHBzOi8vd3d3Lmdvb2dsZWFwaXMuY29tL2Rvd25sb2FkL3N0b3JhZ2UvdjEvYi9tb3otZngtZGV2LXN1YmJldGEvby9kYXRhJTJGbWlsZXN0b25lMiUyRmZlYXR1cmVfc2VsZWN0aW9uX25uX2xvZ2l0X2xpbmVhci5SRGF0YT9nZW5lcmF0aW9uPTE1NzI1MzYwMDMyNzY2ODAmYWx0PW1lZGlhIFxuRG93bmxvYWQgVVJMOiAgICAgICAgaHR0cHM6Ly9zdG9yYWdlLmNsb3VkLmdvb2dsZS5jb20vbW96LWZ4LWRldi1zdWJiZXRhL2RhdGElMkZtaWxlc3RvbmUyJTJGZmVhdHVyZV9zZWxlY3Rpb25fbm5fbG9naXRfbGluZWFyLlJEYXRhIFxuUHVibGljIERvd25sb2FkIFVSTDogaHR0cHM6Ly9zdG9yYWdlLmdvb2dsZWFwaXMuY29tL21vei1meC1kZXYtc3ViYmV0YS9kYXRhJTJGbWlsZXN0b25lMiUyRmZlYXR1cmVfc2VsZWN0aW9uX25uX2xvZ2l0X2xpbmVhci5SRGF0YSBcbkJ1Y2tldDogICAgICAgICAgICAgIG1vei1meC1kZXYtc3ViYmV0YSBcbklEOiAgICAgICAgICAgICAgICAgIG1vei1meC1kZXYtc3ViYmV0YS9kYXRhL21pbGVzdG9uZTIvZmVhdHVyZV9zZWxlY3Rpb25fbm5fbG9naXRfbGluZWFyLlJEYXRhLzE1NzI1MzYwMDMyNzY2ODAgXG5NRDUgSGFzaDogICAgICAgICAgICBkKzQrVVliK01iaURLNUhmcGZNSDBRPT0gXG5DbGFzczogICAgICAgICAgICAgICBTVEFOREFSRCBcbkNyZWF0ZWQ6ICAgICAgICAgICAgIDIwMTktMTAtMzEgMTU6MzM6MjMgXG5VcGRhdGVkOiAgICAgICAgICAgICAyMDE5LTEwLTMxIDE1OjMzOjIzIFxuR2VuZXJhdGlvbjogICAgICAgICAgMTU3MjUzNjAwMzI3NjY4MCBcbk1ldGEgR2VuZXJhdGlvbjogICAgIDEgXG5lVGFnOiAgICAgICAgICAgICAgICBDSWpmL0k3cHh1VUNFQUU9IFxuY3JjMzJjOiAgICAgICAgICAgICAgZDJVaElRPT0gXG4ifQ== -->
+<!-- rnb-output-begin eyJkYXRhIjoiPT1Hb29nbGUgQ2xvdWQgU3RvcmFnZSBPYmplY3Q9PVxuTmFtZTogICAgICAgICAgICAgICAgZGF0YS9taWxlc3RvbmUyL2h5cGVycGFyYW1ldGVyX3R1bmluZ19ubl9sb2dpdF9saW5lYXIuUkRhdGEgXG5UeXBlOiAgICAgICAgICAgICAgICBhcHBsaWNhdGlvbi9vY3RldC1zdHJlYW0gXG5TaXplOiAgICAgICAgICAgICAgICA4MS4xIEtiIFxuTWVkaWEgVVJMOiAgICAgICAgICAgaHR0cHM6Ly93d3cuZ29vZ2xlYXBpcy5jb20vZG93bmxvYWQvc3RvcmFnZS92MS9iL21vei1meC1kZXYtc3ViYmV0YS9vL2RhdGElMkZtaWxlc3RvbmUyJTJGaHlwZXJwYXJhbWV0ZXJfdHVuaW5nX25uX2xvZ2l0X2xpbmVhci5SRGF0YT9nZW5lcmF0aW9uPTE1NzI1MzUxNDM3NDc0ODAmYWx0PW1lZGlhIFxuRG93bmxvYWQgVVJMOiAgICAgICAgaHR0cHM6Ly9zdG9yYWdlLmNsb3VkLmdvb2dsZS5jb20vbW96LWZ4LWRldi1zdWJiZXRhL2RhdGElMkZtaWxlc3RvbmUyJTJGaHlwZXJwYXJhbWV0ZXJfdHVuaW5nX25uX2xvZ2l0X2xpbmVhci5SRGF0YSBcblB1YmxpYyBEb3dubG9hZCBVUkw6IGh0dHBzOi8vc3RvcmFnZS5nb29nbGVhcGlzLmNvbS9tb3otZngtZGV2LXN1YmJldGEvZGF0YSUyRm1pbGVzdG9uZTIlMkZoeXBlcnBhcmFtZXRlcl90dW5pbmdfbm5fbG9naXRfbGluZWFyLlJEYXRhIFxuQnVja2V0OiAgICAgICAgICAgICAgbW96LWZ4LWRldi1zdWJiZXRhIFxuSUQ6ICAgICAgICAgICAgICAgICAgbW96LWZ4LWRldi1zdWJiZXRhL2RhdGEvbWlsZXN0b25lMi9oeXBlcnBhcmFtZXRlcl90dW5pbmdfbm5fbG9naXRfbGluZWFyLlJEYXRhLzE1NzI1MzUxNDM3NDc0ODAgXG5NRDUgSGFzaDogICAgICAgICAgICBhbHdWU1J3L25NZ3FPY1ArZ2NFS0RBPT0gXG5DbGFzczogICAgICAgICAgICAgICBTVEFOREFSRCBcbkNyZWF0ZWQ6ICAgICAgICAgICAgIDIwMTktMTAtMzEgMTU6MTk6MDMgXG5VcGRhdGVkOiAgICAgICAgICAgICAyMDE5LTEwLTMxIDE1OjE5OjAzIFxuR2VuZXJhdGlvbjogICAgICAgICAgMTU3MjUzNTE0Mzc0NzQ4MCBcbk1ldGEgR2VuZXJhdGlvbjogICAgIDEgXG5lVGFnOiAgICAgICAgICAgICAgICBDSmlmai9YbHh1VUNFQUU9IFxuY3JjMzJjOiAgICAgICAgICAgICAgUTk0RXZ3PT0gXG4ifQ== -->
 <pre><code>==Google Cloud Storage Object==
-Name:                data/milestone2/feature_selection_nn_logit_linear.RData 
+Name:                data/milestone2/hyperparameter_tuning_nn_logit_linear.RData 
 Type:                application/octet-stream 
-Size:                5.4 Kb 
-Media URL:           https://www.googleapis.com/download/storage/v1/b/moz-fx-dev-subbeta/o/data%2Fmilestone2%2Ffeature_selection_nn_logit_linear.RData?generation=1572536003276680&amp;alt=media 
-Download URL:        https://storage.cloud.google.com/moz-fx-dev-subbeta/data%2Fmilestone2%2Ffeature_selection_nn_logit_linear.RData 
-Public Download URL: https://storage.googleapis.com/moz-fx-dev-subbeta/data%2Fmilestone2%2Ffeature_selection_nn_logit_linear.RData 
+Size:                81.1 Kb 
+Media URL:           https://www.googleapis.com/download/storage/v1/b/moz-fx-dev-subbeta/o/data%2Fmilestone2%2Fhyperparameter_tuning_nn_logit_linear.RData?generation=1572535143747480&amp;alt=media 
+Download URL:        https://storage.cloud.google.com/moz-fx-dev-subbeta/data%2Fmilestone2%2Fhyperparameter_tuning_nn_logit_linear.RData 
+Public Download URL: https://storage.googleapis.com/moz-fx-dev-subbeta/data%2Fmilestone2%2Fhyperparameter_tuning_nn_logit_linear.RData 
 Bucket:              moz-fx-dev-subbeta 
-ID:                  moz-fx-dev-subbeta/data/milestone2/feature_selection_nn_logit_linear.RData/1572536003276680 
-MD5 Hash:            d+4+UYb+MbiDK5HfpfMH0Q== 
+ID:                  moz-fx-dev-subbeta/data/milestone2/hyperparameter_tuning_nn_logit_linear.RData/1572535143747480 
+MD5 Hash:            alwVSRw/nMgqOcP+gcEKDA== 
 Class:               STANDARD 
-Created:             2019-10-31 15:33:23 
-Updated:             2019-10-31 15:33:23 
-Generation:          1572536003276680 
+Created:             2019-10-31 15:19:03 
+Updated:             2019-10-31 15:19:03 
+Generation:          1572535143747480 
 Meta Generation:     1 
-eTag:                CIjf/I7pxuUCEAE= 
-crc32c:              d2UhIQ== </code></pre>
+eTag:                CJifj/XlxuUCEAE= 
+crc32c:              Q94Evw== </code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
 </div>
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiTWlsZXN0b25lIDI6IEZlYXR1cmUgU2VsZWN0aW9uIC0gTmVhcmVzdCBOZWlnaGJvcnMsIExvZ2l0IHcvTGluZWFyIFByb3BlbnNpdHkgU2NvcmUiCmF1dGhvcjogIkNvcmV5IERvdy1IeWdlbHVuZCwgTW96aWxsYSBEYXRhIFNjaWVuY2UiCmRhdGU6ICdMYXN0IFVwZGF0ZWQ6IGByIGZvcm1hdChTeXMudGltZSgpLCAiJUIgJWQsICVZIilgJwpvdXRwdXQ6IAogIGh0bWxfbm90ZWJvb2s6CiAgICB0aGVtZTogY29zbW8KICAgIHRvYzogdHJ1ZQogICAgdG9jX2Zsb2F0OiB0cnVlCi0tLQoKIyB0bDtkcgoKVGhpcyBhbmFseXNpcyBkZXRlcm1pbmVzIHRoZSByZWxldmFudCBbY292YXJpYXRlcyAoZmVhdHVyZXMpXShodHRwczovL2RvY3MuZ29vZ2xlLmNvbS9kb2N1bWVudC9kLzFTZnVhbnZtWW12bUVGQWRRN1o1ZGpEZUxlemROQjFURVNxVm1qOTNPOHRvL2VkaXQjaGVhZGluZz1oLm53d3JpZjQ1M244MCkgdG8gdXRpbGl6ZSBmb3IgY29tcHV0YXRpb25hbGx5IGludGVuc2l2ZSBzdGF0aXN0aWNhbCBtYXRjaGluZyBhbGdvcml0aG1zIHByb3Bvc2VkIGluIHRoZSBtb2RlbGluZyBhcHByb2FjaCBmb3IgdGhpcyBbUFJEXShodHRwczovL2RvY3MuZ29vZ2xlLmNvbS9kb2N1bWVudC9kLzFZZ3o2TWt1ZFlIWmpuRG5EOVo5N2tVeUZydlYzS0dXc2pYeVBqZGRoSHEwL2VkaXQjaGVhZGluZz1oLmx2YjlsOGd3Mm5lZSkuIAoKKipNYXRjaGluZyBBbGdvcml0aG0gVGVzdGVkKio6IE5lYXJlc3QtbmVpZ2hib3JzIHdpdGggbG9naXQgZGlzdGFuY2UgbWV0cmljIHRyYW5zZm9ybWVkIGJhY2sgdG8gbGluZWFyIHNjYWxlLgoKYGBge3Igc2V0dXAsIGluY2x1ZGU9RkFMU0UsIGVjaG89RkFMU0V9CnJlcXVpcmUoImtuaXRyIikKa25pdHI6Om9wdHNfa25pdCRzZXQocm9vdC5kaXIgPSBkaXJuYW1lKGdldHdkKCkpKQpgYGAKCmBgYHtyLCBlY2hvPUZBTFNFLCB3YXJuaW5nPUZBTFNFLCBtZXNzYWdlPUZBTFNFfQpzb3VyY2UoJy4uL2xpYi9zdXBwb3J0aW5nX2Z1bmNzLlInKQpzb3VyY2UoJy4uL2xpYi9zY29yaW5nLlInKQpsaWJyYXJ5KE1hdGNoSXQpCmBgYAoKYGBge3IgZGF0YV9sb2FkLCBlY2hvPUZBTFNFLCBtZXNzYWdlPUZBTFNFfQpmaWxlX25hbWUgPSAnZGZfdHJhaW5fdmFsaWRhdGVfMjAxOTEwMjUuUkRhdGEnCmltYWdlX2ZpbGVfcGF0aCA9IGZpbGUucGF0aCgnZGF0YScsIGZpbGVfbmFtZSkKCiMgUHVsbCBmcm9tIEdDUCBpZiBuZWNlc3NhcnkKaWYgKCFmaWxlLmV4aXN0cyhpbWFnZV9maWxlX3BhdGgpKXsKICBTeXMuc2V0ZW52KCJHQ1NfREVGQVVMVF9CVUNLRVQiID0gIm1vei1meC1kZXYtc3ViYmV0YSIsCiAgICAgICAgICAgIkdDU19BVVRIX0ZJTEUiID0gIm1vei1meC1kZXYtY2Rvd2h5Z2x1bmQtc3ViQmV0YS03ODhmOGYwZDQ2MjcuanNvbiIpCiAgbGlicmFyeShnb29nbGVDbG91ZFN0b3JhZ2VSKQogIGdjc19nZXRfb2JqZWN0KGZpbGUucGF0aCgnZGF0YScsICdtaWxlc3RvbmUyJywgZmlsZV9uYW1lKSwgc2F2ZVRvRGlzayA9IGltYWdlX2ZpbGVfcGF0aCwgb3ZlcndyaXRlID0gVFJVRSkKfQoKbG9hZChpbWFnZV9maWxlX3BhdGgpCmBgYAoKYGBge3IgYnRzLCBlY2hvPUZBTFNFfQpidHMgPSBsaXN0KAogIGJ0c18xeCA9IGJ0cy4xeCwKICBidHNfNHggPSBidHMuNHgsCiAgYnRzXzh4ID0gYnRzLjh4LAogIGJ0c18xNnggPSBidHMuMTZ4CikKCnBlcmZfbWV0cmljcyA8LSBuYW1lcyhnZXRfbTJfbWV0cmljX21hcCgpKQoKY292cyA8LSBkZl90cmFpbl9mICU+JQogIHNlbGVjdCgtcGVyZl9tZXRyaWNzKSAlPiUKICBzZWxlY3QoLWNvbnRlbnRfY3Jhc2hlcykgJT4lCiAgc2VsZWN0KC1jbGllbnRfaWQpICU+JQogIHNlbGVjdCgtbGFiZWwpICU+JQogIHNlbGVjdCgtaXNfcmVsZWFzZSkgJT4lCiAgc2VsZWN0KC1hcHBfdmVyc2lvbikgJT4lCiAgIyBzZWxlY3RfaWYoaXMubnVtZXJpYykgJT4lICMgTWFoYWxhbm9iaXMgY29uc3RyYWludAogIG5hbWVzKCkKCnJlc3VsdHNfZmlsZV9uYW1lIDwtICdmZWF0dXJlX3NlbGVjdGlvbl9ubl9sb2dpdF9saW5lYXIuUkRhdGEnIApyZXN1bHRzX2ZpbGVfcGF0aCA8LSBmaWxlLnBhdGgoJ2RhdGEnLCByZXN1bHRzX2ZpbGVfbmFtZSkKYGBgCgojIEZlYXR1cmVzCkZlYXR1cmUgc2V0czogCgoxLiBPbmx5IHBlcmZvcm1hbmNlIG1ldHJpY3MuCjIuIFBlcmZvcm1hbmNlIG1ldHJpY3MgYW5kIHRoZSBoaWdoZXN0IGZvdW5kIGJ5IEJvcnV0YSB3aXRoIG9yaWdpbmFsIGRhdGFzZXQuCjMuIFBlcmZvcm1hbmNlIG1ldHJpY3MgYW5kIHRoZSBoaWdoZXN0IGZvdW5kIGJ5IEJvcnV0YSB3aXRoIGVxdWFsIGxhYmVscyBkYXRhc2V0Lgo0LiBQZXJmb3JtYW5jZSBtZXRyaWNzIGFuZCBhbGwgY292YXJpYXRlcy4KNS4gT25seSB0aGUgaGlnaGVzdCBjb3ZhcmlhdGVzIGZvdW5kIGJ5IEJvcnV0YSAoZXhjbHVkaW5nIHBlcmZvcm1hbmNlKS4KNi4gT25seSB0aGUgaGlnaGVzdCBjb3ZhcmlhdGVzIGZvdW5kIGJ5IEJvcnV0YSAoZXF1YWwgbGFiZWxzLCBleGNsdWRpbmcgcGVyZm9ybWFuY2UpLgo3LiBVdGlsaXplIGFsbCBjb3ZhcmlhdGVzIChleGNsdWRpbmcgcGVyZm9ybWFuY2UpLiAKClJldHJpZXZlIEJvcnV0YSBmZWF0dXJlczoKCmBgYHtyIGJvcnV0YV9pbXBvcnR9CmZpbGVfbmFtZSA9ICdmZWF0dXJlX3NlbGVjdGlvbl9ib3J1dGFfaW5pdGlhbF8yMDE5MTAyMy5SRGF0YScKaW1hZ2VfZmlsZV9wYXRoID0gZmlsZS5wYXRoKCdkYXRhJywgZmlsZV9uYW1lKQoKIyBTeXMuc2V0ZW52KCJHQ1NfREVGQVVMVF9CVUNLRVQiID0gIm1vei1meC1kZXYtc3ViYmV0YSIsCiMgICAgICAgICAgICAiR0NTX0FVVEhfRklMRSIgPSAibW96LWZ4LWRldi1jZG93aHlnbHVuZC1zdWJCZXRhLTc4OGY4ZjBkNDYyNy5qc29uIikKIyBsaWJyYXJ5KGdvb2dsZUNsb3VkU3RvcmFnZVIpCiMgZ2NzX2dldF9vYmplY3QoZmlsZS5wYXRoKCdkYXRhJywgJ21pbGVzdG9uZTInLCBmaWxlX25hbWUpLCBzYXZlVG9EaXNrID0gaW1hZ2VfZmlsZV9wYXRoLCBvdmVyd3JpdGUgPSBUUlVFKQoKbG9hZChpbWFnZV9maWxlX3BhdGgpCmBgYAoKYGBge3IgYm9ydXRhX2ZzfQpleHRyYWN0X2JvcnV0YV9mcyA8LSBmdW5jdGlvbihib3J1dGFfcmVzLCBudW09NSl7CiAgZmVhdHVyZXMgPC0gTlVMTAogIGZvcihtZXRyaWMgaW4gbmFtZXMoYm9ydXRhX3Jlc3VsdHMpKXsKICAgIGZlYXR1cmVzIDwtIGMobmFtZXMoc29ydChhcHBseShib3J1dGFfcmVzW1ttZXRyaWNdXSRJbXBIaXN0b3J5LCAyLCBtZWRpYW4pLCBkZWNyZWFzaW5nID0gVFJVRSlbMTpudW1dKSwgZmVhdHVyZXMpCiAgfQogIHJldHVybihzb3J0KHVuaXF1ZShmZWF0dXJlcykpKQp9CgpmZWF0dXJlc190b3AxMCA8LSBleHRyYWN0X2JvcnV0YV9mcyhib3J1dGFfcmVzdWx0cywgbnVtPTEwKQpmZWF0dXJlc190b3AxMF9lcSA8LSBleHRyYWN0X2JvcnV0YV9mcyhib3J1dGFfcmVzdWx0c19lcSwgbnVtPTEwKQoKIyBmaWx0ZXIgb3V0IGNhdGVnb3JpY2FsCmZlYXR1cmVzX3RvcDEwIDwtIGRmX3RyYWluX2YgJT4lIAogIHNlbGVjdChmZWF0dXJlc190b3AxMCkgJT4lIAogICMgc2VsZWN0X2lmKGlzLm51bWVyaWMpICU+JSAKICBuYW1lcygpCmZlYXR1cmVzX3RvcDEwX2VxIDwtIGRmX3RyYWluX2YgJT4lIAogIHNlbGVjdChmZWF0dXJlc190b3AxMF9lcSkgJT4lIAogICMgc2VsZWN0X2lmKGlzLm51bWVyaWMpICU+JSAKICBuYW1lcygpCmBgYAoKYGBge3IgZmVhdHVyZV9zZXRzfQpmczEgPC0gcGVyZl9tZXRyaWNzCmZzMiA8LSBjKG5hbWVzKGZzMSksIGZlYXR1cmVzX3RvcDEwKQpmczMgPC0gYyhuYW1lcyhmczEpLCBmZWF0dXJlc190b3AxMF9lcSkKZnM0IDwtIGMobmFtZXMoZnMxKSwgY292cykKZnM1IDwtIGZlYXR1cmVzX3RvcDEwCmZzNiA8LSBmZWF0dXJlc190b3AxMF9lcQpmczcgPC0gY292cwpgYGAKCiMgRlMgMQpGZWF0dXJlIHNlbGVjdGlvbiBvbiBvbmx5IHBlcmZvcm1hbmNlIG1ldHJpY3MgCgpgYGB7ciBmczEsIGVycm9yPVRSVUV9CnJlc19mczEgPC0gbGlzdCgpCmZvciAoYnQgaW4gbmFtZXMoYnRzKSl7CiAgcmVzX2ZzMVtbYnRdXSA8LSBwZXJmb3JtX21hdGNoaXRfZnMoZGZfdHJhaW5fZiwgYnRzW1tidF1dLCBmczEsIHNpemU9TlVMTCwgcmVwbGFjZT1UUlVFLCB3b3JrZXJzID0gMTAsIGRpc3RhbmNlID0gJ2xpbmVhci5sb2dpdCcpCn0Kc2F2ZS5pbWFnZShyZXN1bHRzX2ZpbGVfcGF0aCkKcHJpbnQocmVzX2ZzMSkKYGBgCgpgYGB7ciBmczFfbm9yZXBsYWNlLCBlcnJvcj1UUlVFfQpyZXNfZnMxX25vcmVwbGFjZSA8LSBsaXN0KCkKZm9yIChidCBpbiBuYW1lcyhidHMpKXsKICByZXNfZnMxX25vcmVwbGFjZVtbYnRdXSA8LSBwZXJmb3JtX21hdGNoaXRfZnMoZGZfdHJhaW5fZiwgYnRzW1tidF1dLCBmczEsIHNpemU9TlVMTCwgcmVwbGFjZT1GQUxTRSwgd29ya2VycyA9IDEwLCBkaXN0YW5jZSA9ICdsaW5lYXIubG9naXQnKQp9CnNhdmUuaW1hZ2UocmVzdWx0c19maWxlX3BhdGgpCnByaW50KHJlc19mczFfbm9yZXBsYWNlKQpgYGAKCiMgRlMgMgoKUGVyZm9ybWFuY2UgbWV0cmljcyBhbmQgdGhlIGhpZ2hlc3QgZm91bmQgYnkgQm9ydXRhIHdpdGggb3JpZ2luYWwgZGF0YXNldC4KCmBgYHtyIGZzMiwgZXJyb3I9VFJVRX0KcmVzX2ZzMiA8LSBsaXN0KCkKZm9yIChidCBpbiBuYW1lcyhidHMpKXsKICByZXNfZnMyW1tidF1dIDwtIHBlcmZvcm1fbWF0Y2hpdF9mcyhkZl90cmFpbl9mLCBidHNbW2J0XV0sIGZzMiwgc2l6ZT1OVUxMLCByZXBsYWNlPVRSVUUsIHdvcmtlcnMgPSAxMCwgZGlzdGFuY2UgPSAnbGluZWFyLmxvZ2l0JykKfQpzYXZlLmltYWdlKHJlc3VsdHNfZmlsZV9wYXRoKQpwcmludChyZXNfZnMyKQpgYGAKCmBgYHtyIGZzMl9ub3JlcGxhY2UsIGVycm9yPVRSVUV9CnJlc19mczJfbm9yZXBsYWNlIDwtIGxpc3QoKQpmb3IgKGJ0IGluIG5hbWVzKGJ0cykpewogIHJlc19mczJfbm9yZXBsYWNlW1tidF1dIDwtIHBlcmZvcm1fbWF0Y2hpdF9mcyhkZl90cmFpbl9mLCBidHNbW2J0XV0sIGZzMiwgc2l6ZT1OVUxMLCByZXBsYWNlPUZBTFNFLCB3b3JrZXJzID0gMTAsIGRpc3RhbmNlID0gJ2xpbmVhci5sb2dpdCcpCn0Kc2F2ZS5pbWFnZShyZXN1bHRzX2ZpbGVfcGF0aCkKcHJpbnQocmVzX2ZzMl9ub3JlcGxhY2UpCmBgYAoKIyBGUyAzCgpQZXJmb3JtYW5jZSBtZXRyaWNzIGFuZCB0aGUgaGlnaGVzdCBmb3VuZCBieSBCb3J1dGEgd2l0aCBlcXVhbCBsYWJlbHMgZGF0YXNldC4KCmBgYHtyIGZzMywgZXJyb3I9VFJVRX0KcmVzX2ZzMyA8LSBsaXN0KCkKZm9yIChidCBpbiBuYW1lcyhidHMpKXsKICByZXNfZnMzW1tidF1dIDwtIHBlcmZvcm1fbWF0Y2hpdF9mcyhkZl90cmFpbl9mLCBidHNbW2J0XV0sIGZzMywgc2l6ZT1OVUxMLCByZXBsYWNlPVRSVUUsIHdvcmtlcnMgPSAxMCwgZGlzdGFuY2UgPSAnbGluZWFyLmxvZ2l0JykKfQpzYXZlLmltYWdlKHJlc3VsdHNfZmlsZV9wYXRoKQpwcmludChyZXNfZnMzKQpgYGAKCmBgYHtyIGZzM19ub3JlcGxhY2UsIGVycm9yPVRSVUV9CnJlc19mczNfbm9yZXBsYWNlIDwtIGxpc3QoKQpmb3IgKGJ0IGluIG5hbWVzKGJ0cykpewogIHJlc19mczNfbm9yZXBsYWNlW1tidF1dIDwtIHBlcmZvcm1fbWF0Y2hpdF9mcyhkZl90cmFpbl9mLCBidHNbW2J0XV0sIGZzMywgc2l6ZT1OVUxMLCByZXBsYWNlPUZBTFNFLCB3b3JrZXJzID0gMTAsIGRpc3RhbmNlID0gJ2xpbmVhci5sb2dpdCcpCn0Kc2F2ZS5pbWFnZShyZXN1bHRzX2ZpbGVfcGF0aCkKcHJpbnQocmVzX2ZzM19ub3JlcGxhY2UpCmBgYAoKIyBGUyA0CgpQZXJmb3JtYW5jZSBtZXRyaWNzIGFuZCBhbGwgY292YXJpYXRlcy4KCmBgYHtyIGZzNCwgZXJyb3I9VFJVRX0KcmVzX2ZzNCA8LSBsaXN0KCkKZm9yIChidCBpbiBuYW1lcyhidHMpKXsKICByZXNfZnM0W1tidF1dIDwtIHBlcmZvcm1fbWF0Y2hpdF9mcyhkZl90cmFpbl9mLCBidHNbW2J0XV0sIGZzNCwgc2l6ZT1OVUxMLCByZXBsYWNlPVRSVUUsIHdvcmtlcnMgPSAxMCwgZGlzdGFuY2UgPSAnbGluZWFyLmxvZ2l0JykKfQpzYXZlLmltYWdlKHJlc3VsdHNfZmlsZV9wYXRoKQpwcmludChyZXNfZnM0KQpgYGAKCmBgYHtyIGZzNF9ub3JlcGxhY2UsIGVycm9yPVRSVUV9CnJlc19mczRfbm9yZXBsYWNlIDwtIGxpc3QoKQpmb3IgKGJ0IGluIG5hbWVzKGJ0cykpewogIHJlc19mczRfbm9yZXBsYWNlW1tidF1dIDwtIHBlcmZvcm1fbWF0Y2hpdF9mcyhkZl90cmFpbl9mLCBidHNbW2J0XV0sIGZzNCwgc2l6ZT1OVUxMLCByZXBsYWNlPUZBTFNFLCB3b3JrZXJzID0gMTAsIGRpc3RhbmNlID0gJ2xpbmVhci5sb2dpdCcpCn0Kc2F2ZS5pbWFnZShyZXN1bHRzX2ZpbGVfcGF0aCkKcHJpbnQocmVzX2ZzNF9ub3JlcGxhY2UpCmBgYAoKIyBGUyA1CgpPbmx5IHRoZSBoaWdoZXN0IGNvdmFyaWF0ZXMgZm91bmQgYnkgQm9ydXRhIChleGNsdWRpbmcgcGVyZm9ybWFuY2UpLgoKYGBge3IgZnM1LCBlcnJvcj1UUlVFfQpyZXNfZnM1IDwtIGxpc3QoKQpmb3IgKGJ0IGluIG5hbWVzKGJ0cykpewogIHJlc19mczVbW2J0XV0gPC0gcGVyZm9ybV9tYXRjaGl0X2ZzKGRmX3RyYWluX2YsIGJ0c1tbYnRdXSwgZnM1LCBzaXplPU5VTEwsIHJlcGxhY2U9VFJVRSwgd29ya2VycyA9IDEwLCBkaXN0YW5jZSA9ICdsaW5lYXIubG9naXQnKQp9CnNhdmUuaW1hZ2UocmVzdWx0c19maWxlX3BhdGgpCnByaW50KHJlc19mczUpCmBgYAoKYGBge3IgZnM1X25vcmVwbGFjZSwgZXJyb3I9VFJVRX0KcmVzX2ZzNV9ub3JlcGxhY2UgPC0gbGlzdCgpCmZvciAoYnQgaW4gbmFtZXMoYnRzKSl7CiAgcmVzX2ZzNV9ub3JlcGxhY2VbW2J0XV0gPC0gcGVyZm9ybV9tYXRjaGl0X2ZzKGRmX3RyYWluX2YsIGJ0c1tbYnRdXSwgZnM1LCBzaXplPU5VTEwsIHJlcGxhY2U9RkFMU0UsIHdvcmtlcnMgPSAxMCwgZGlzdGFuY2UgPSAnbGluZWFyLmxvZ2l0JykKfQpzYXZlLmltYWdlKHJlc3VsdHNfZmlsZV9wYXRoKQpwcmludChyZXNfZnM1X25vcmVwbGFjZSkKYGBgCgojIEZTIDYKCk9ubHkgdGhlIGhpZ2hlc3QgY292YXJpYXRlcyBmb3VuZCBieSBCb3J1dGEgKGVxdWFsIGxhYmVscywgZXhjbHVkaW5nIHBlcmZvcm1hbmNlKS4KCmBgYHtyIGZzNiwgZXJyb3I9VFJVRX0KcmVzX2ZzNiA8LSBsaXN0KCkKZm9yIChidCBpbiBuYW1lcyhidHMpKXsKICByZXNfZnM2W1tidF1dIDwtIHBlcmZvcm1fbWF0Y2hpdF9mcyhkZl90cmFpbl9mLCBidHNbW2J0XV0sIGZzNiwgc2l6ZT1OVUxMLCByZXBsYWNlPVRSVUUsIHdvcmtlcnMgPSAxMCwgZGlzdGFuY2UgPSAnbGluZWFyLmxvZ2l0JykKfQpzYXZlLmltYWdlKHJlc3VsdHNfZmlsZV9wYXRoKQpwcmludChyZXNfZnM2KQpgYGAKCmBgYHtyIGZzNl9ub3JlcGxhY2UsIGVycm9yPVRSVUV9CnJlc19mczZfbm9yZXBsYWNlIDwtIGxpc3QoKQpmb3IgKGJ0IGluIG5hbWVzKGJ0cykpewogIHJlc19mczZfbm9yZXBsYWNlW1tidF1dIDwtIHBlcmZvcm1fbWF0Y2hpdF9mcyhkZl90cmFpbl9mLCBidHNbW2J0XV0sIGZzNiwgc2l6ZT1OVUxMLCByZXBsYWNlPUZBTFNFLCB3b3JrZXJzID0gMTAsIGRpc3RhbmNlID0gJ2xpbmVhci5sb2dpdCcpCn0Kc2F2ZS5pbWFnZShyZXN1bHRzX2ZpbGVfcGF0aCkKcHJpbnQocmVzX2ZzNl9ub3JlcGxhY2UpCmBgYAoKIyBGUyA3CgpVdGlsaXplIGFsbCBjb3ZhcmlhdGVzIChleGNsdWRpbmcgcGVyZm9ybWFuY2UpLiAKCmBgYHtyIGZzNywgZXJyb3I9VFJVRX0KcmVzX2ZzNyA8LSBsaXN0KCkKZm9yIChidCBpbiBuYW1lcyhidHMpKXsKICByZXNfZnM3W1tidF1dIDwtIHBlcmZvcm1fbWF0Y2hpdF9mcyhkZl90cmFpbl9mLCBidHNbW2J0XV0sIGZzNywgc2l6ZT1OVUxMLCByZXBsYWNlPVRSVUUsIHdvcmtlcnMgPSAxMCwgZGlzdGFuY2UgPSAnbGluZWFyLmxvZ2l0JykKfQpzYXZlLmltYWdlKHJlc3VsdHNfZmlsZV9wYXRoKQpwcmludChyZXNfZnM3KQpgYGAKCmBgYHtyIGZzN19ub3JlcGxhY2UsIGVycm9yPVRSVUV9CnJlc19mczdfbm9yZXBsYWNlIDwtIGxpc3QoKQpmb3IgKGJ0IGluIG5hbWVzKGJ0cykpewogIHJlc19mczdfbm9yZXBsYWNlW1tidF1dIDwtIHBlcmZvcm1fbWF0Y2hpdF9mcyhkZl90cmFpbl9mLCBidHNbW2J0XV0sIGZzNywgc2l6ZT1OVUxMLCByZXBsYWNlPUZBTFNFLCB3b3JrZXJzID0gMTAsIGRpc3RhbmNlID0gJ2xpbmVhci5sb2dpdCcpCn0Kc2F2ZS5pbWFnZShyZXN1bHRzX2ZpbGVfcGF0aCkKcHJpbnQocmVzX2ZzN19ub3JlcGxhY2UpCmBgYAoKIyBGUyAxIEludGVyYWN0aW9ucwoKRmVhdHVyZSBzZWxlY3Rpb24gb24gb25seSBwZXJmb3JtYW5jZSBtZXRyaWNzLCBidXQgaW5jbHVkaW5nIGludGVyYWN0aW9uIHRlcm1zLiAKCmBgYHtyIGZzMV9pbnQsIGVycm9yPVRSVUV9CnJlc19mczEgPC0gbGlzdCgpCmZvciAoYnQgaW4gbmFtZXMoYnRzKSl7CiAgcmVzX2ZzMVtbYnRdXSA8LSBwZXJmb3JtX21hdGNoaXRfZnMoZGZfdHJhaW5fZiwgYnRzW1tidF1dLCBmczEsIHNpemU9TlVMTCwgd29ya2VycyA9IDEwLCBhZGRfaW50ZXJhY3Rpb25zPVRSVUUsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcmVwbGFjZT1UUlVFLCBkaXN0YW5jZSA9ICdsaW5lYXIubG9naXQnKQp9CnNhdmUuaW1hZ2UocmVzdWx0c19maWxlX3BhdGgpCnByaW50KHJlc19mczEpCmBgYAoKYGBge3IgZnMxX2ludF9ub3JlcGxhY2UsIGVycm9yPVRSVUV9CnJlc19mczFfbm9yZXBsYWNlIDwtIGxpc3QoKQpmb3IgKGJ0IGluIG5hbWVzKGJ0cykpewogIHJlc19mczFfbm9yZXBsYWNlW1tidF1dIDwtIHBlcmZvcm1fbWF0Y2hpdF9mcyhkZl90cmFpbl9mLCBidHNbW2J0XV0sIGZzMSwgc2l6ZT1OVUxMLCBhZGRfaW50ZXJhY3Rpb25zPVRSVUUsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHJlcGxhY2U9RkFMU0UsIHdvcmtlcnMgPSAxMCwgZGlzdGFuY2UgPSAnbGluZWFyLmxvZ2l0JykKfQpzYXZlLmltYWdlKHJlc3VsdHNfZmlsZV9wYXRoKQpwcmludChyZXNfZnMxX25vcmVwbGFjZSkKYGBgCgojIEZTIDIKClBlcmZvcm1hbmNlIG1ldHJpY3MgYW5kIHRoZSBoaWdoZXN0IGZvdW5kIGJ5IEJvcnV0YSB3aXRoIG9yaWdpbmFsIGRhdGFzZXQsIGJ1dCBpbmNsdWRpbmcgaW50ZXJhY3Rpb24gdGVybXMKCmBgYHtyIGZzMl9pbnQsIGVycm9yPVRSVUV9CiMgcmVzX2ZzMiA8LSBsaXN0KCkKIyBmb3IgKGJ0IGluIG5hbWVzKGJ0cykpewojICAgcmVzX2ZzMltbYnRdXSA8LSBwZXJmb3JtX21hdGNoaXRfZnMoZGZfdHJhaW5fZiwgYnRzW1tidF1dLCBmczIsIHNpemU9TlVMTCwgYWRkX2ludGVyYWN0aW9ucz1UUlVFLAojICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcmVwbGFjZT1UUlVFLCB3b3JrZXJzID0gMTAsIGRpc3RhbmNlID0gJ2xpbmVhci5sb2dpdCcpCiMgfQojIHNhdmUuaW1hZ2UocmVzdWx0c19maWxlX3BhdGgpCiMgcHJpbnQocmVzX2ZzMikKYGBgCgpOZXZlciBjb21wbGV0ZWQgYWZ0ZXIgMi41IGRheXMuIEtpbGxlZCBpdC4uLgoKIyBTZXJpYWxpemUgYW5kIFB1c2ggdG8gR0NQClNhdmUgdGhlIHJlc3VsdGFudCBkYXRhc2V0IGFuZCBib290c3RyYXAgc2FtcGxlcyB0byBhbiBSIGltYWdlLiAKCmBgYHtyIHNlcmlhbGl6ZV9kYXRhc2V0fQpzYXZlKGxpc3QgPSBscyhwYXR0ZXJuID0gJ3Jlc19mcycpLCBmaWxlID0gcmVzdWx0c19maWxlX3BhdGgpCmBgYAoKYGBge3IgZ2NwX3N0b3JhZ2VfcHVzaCwgd2FybmluZz1GQUxTRX0KZ2NzX2ZpbGVfcGF0aCA8LSBmaWxlLnBhdGgoJ2RhdGEnLCAnbWlsZXN0b25lMicsIHJlc3VsdHNfZmlsZV9uYW1lKQoKU3lzLnNldGVudigiR0NTX0RFRkFVTFRfQlVDS0VUIiA9ICJtb3otZngtZGV2LXN1YmJldGEiLAogICAgICAgICAgICJHQ1NfQVVUSF9GSUxFIiA9ICJtb3otZngtZGV2LWNkb3doeWdsdW5kLXN1YkJldGEtNzg4ZjhmMGQ0NjI3Lmpzb24iKQoKbGlicmFyeShnb29nbGVDbG91ZFN0b3JhZ2VSKQoKdXBsb2FkX3RyeSA8LSBnY3NfdXBsb2FkKHJlc3VsdHNfZmlsZV9wYXRoLCBuYW1lID0gZ2NzX2ZpbGVfcGF0aCkKdXBsb2FkX3RyeQpgYGAKCgo=</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiTWlsZXN0b25lIDI6IEh5cGVycGFyYW1ldGVyIFR1bmluZyAtIE5lYXJlc3QgTmVpZ2hib3JzLCBMb2dpdCB3L0xpbmVhciBQcm9wZW5zaXR5IFNjb3JlIgphdXRob3I6ICJDb3JleSBEb3ctSHlnZWx1bmQsIE1vemlsbGEgRGF0YSBTY2llbmNlIgpkYXRlOiAnTGFzdCBVcGRhdGVkOiBgciBmb3JtYXQoU3lzLnRpbWUoKSwgIiVCICVkLCAlWSIpYCcKb3V0cHV0OiAKICBodG1sX25vdGVib29rOgogICAgdGhlbWU6IGNvc21vCiAgICB0b2M6IHRydWUKICAgIHRvY19mbG9hdDogdHJ1ZQotLS0KCiMgdGw7ZHIKClRoaXMgYW5hbHlzaXMgZGV0ZXJtaW5lcyB0aGUgb3B0aW1hbCBbaHlwZXJwYXJhbWV0ZXJzXShodHRwczovL2RvY3MuZ29vZ2xlLmNvbS9kb2N1bWVudC9kLzFTZnVhbnZtWW12bUVGQWRRN1o1ZGpEZUxlemROQjFURVNxVm1qOTNPOHRvL2VkaXQjaGVhZGluZz1oLnlxdWtreWI4cTR4dykgdG8gdXRpbGl6ZSBmb3IgY29tcHV0YXRpb25hbGx5IGludGVuc2l2ZSBzdGF0aXN0aWNhbCBtYXRjaGluZyBhbGdvcml0aG1zIHByb3Bvc2VkIGluIHRoZSBtb2RlbGluZyBhcHByb2FjaCBmb3IgdGhpcyBbUFJEXShodHRwczovL2RvY3MuZ29vZ2xlLmNvbS9kb2N1bWVudC9kLzFZZ3o2TWt1ZFlIWmpuRG5EOVo5N2tVeUZydlYzS0dXc2pYeVBqZGRoSHEwL2VkaXQjaGVhZGluZz1oLmx2YjlsOGd3Mm5lZSkuIAoKKipNYXRjaGluZyBBbGdvcml0aG0gVGVzdGVkKio6IE5lYXJlc3QtbmVpZ2hib3JzIHdpdGggbG9naXQgZGlzdGFuY2UgbWV0cmljIHRyYW5zZm9ybWVkIGJhY2sgdG8gbGluZWFyIHNjYWxlLgoKYGBge3Igc2V0dXAsIGluY2x1ZGU9RkFMU0UsIGVjaG89RkFMU0V9CnJlcXVpcmUoImtuaXRyIikKa25pdHI6Om9wdHNfa25pdCRzZXQocm9vdC5kaXIgPSBkaXJuYW1lKGdldHdkKCkpKQpgYGAKCmBgYHtyLCBlY2hvPUZBTFNFLCB3YXJuaW5nPUZBTFNFLCBtZXNzYWdlPUZBTFNFfQpzb3VyY2UoJy4uL2xpYi9zdXBwb3J0aW5nX2Z1bmNzLlInKQpzb3VyY2UoJy4uL2xpYi9zY29yaW5nLlInKQpsaWJyYXJ5KE1hdGNoSXQpCmBgYAoKYGBge3IgZGF0YV9sb2FkLCBlY2hvPUZBTFNFfQpmaWxlX25hbWUgPSAnZGZfdHJhaW5fdmFsaWRhdGVfMjAxOTEwMjUuUkRhdGEnCmltYWdlX2ZpbGVfcGF0aCA9IGZpbGUucGF0aCgnZGF0YScsIGZpbGVfbmFtZSkKCiMgUHVsbCBmcm9tIEdDUCBpZiBuZWNlc3NhcnkKaWYgKCFmaWxlLmV4aXN0cyhpbWFnZV9maWxlX3BhdGgpKXsKICBTeXMuc2V0ZW52KCJHQ1NfREVGQVVMVF9CVUNLRVQiID0gIm1vei1meC1kZXYtc3ViYmV0YSIsCiAgICAgICAgICAgIkdDU19BVVRIX0ZJTEUiID0gIm1vei1meC1kZXYtY2Rvd2h5Z2x1bmQtc3ViQmV0YS03ODhmOGYwZDQ2MjcuanNvbiIpCiAgbGlicmFyeShnb29nbGVDbG91ZFN0b3JhZ2VSKQogIGdjc19nZXRfb2JqZWN0KGZpbGUucGF0aCgnZGF0YScsICdtaWxlc3RvbmUyJywgZmlsZV9uYW1lKSwgc2F2ZVRvRGlzayA9IGltYWdlX2ZpbGVfcGF0aCwgb3ZlcndyaXRlID0gVFJVRSkKCn0KbG9hZChpbWFnZV9maWxlX3BhdGgpCmBgYAoKYGBge3IgYnRzLCBlY2hvPUZBTFNFfQpidHMgPSBsaXN0KAogIGJ0c18xeCA9IGJ0cy4xeCwKICBidHNfNHggPSBidHMuNHgsCiAgYnRzXzh4ID0gYnRzLjh4LAogIGJ0c18xNnggPSBidHMuMTZ4CikKCnBlcmZfbWV0cmljcyA8LSBuYW1lcyhnZXRfbTJfbWV0cmljX21hcCgpKQoKY292cyA8LSBkZl90cmFpbl9mICU+JQogIHNlbGVjdCgtcGVyZl9tZXRyaWNzKSAlPiUKICBzZWxlY3QoLWNvbnRlbnRfY3Jhc2hlcykgJT4lCiAgc2VsZWN0KC1jbGllbnRfaWQpICU+JQogIHNlbGVjdCgtbGFiZWwpICU+JQogIHNlbGVjdCgtaXNfcmVsZWFzZSkgJT4lCiAgc2VsZWN0KC1hcHBfdmVyc2lvbikgJT4lCiAgbmFtZXMoKQogIAoKcmVzdWx0c19maWxlX25hbWUgPC0gJ2h5cGVycGFyYW1ldGVyX3R1bmluZ19ubl9sb2dpdF9saW5lYXIuUkRhdGEnIApyZXN1bHRzX2ZpbGVfcGF0aCA8LSBmaWxlLnBhdGgoJ2RhdGEnLCByZXN1bHRzX2ZpbGVfbmFtZSkKYGBgCgojIEZlYXR1cmVzClRoZSBvcHRpbWFsIGZlYXR1cmUgc2V0IHdhcyBmb3VuZCBpbiBgZmVhdHVyZV9zZWxlY3Rpb25fbm5fbG9naXRfbGluZWFyLlJtZGAuIEF0IHRoZSB0aW1lIG9mIHRoaXMgcnVuIHRoZXkgd2VyZToKCiogQmV0YSBvdmVyc2FtcGxpbmcgYnkgNHgKKiBGUyAxIEludGVyYWN0aW9uczogT25seSBwZXJmb3JtYW5jZSBtZXRyaWNzLCB3aXRoIGludGVyYWN0aW9uIHRlcm1zCgpUbyBpbnZlc3RpZ2F0ZSwgYW5kIHBvc3NpYmxlIHV0aWxpemUsIGEgbW9yZSBnZW5lcmFsIG1vZGVsLCB0aGUgc2Vjb25kIGhpZ2hlc3Qgc3VpdGUgb2YgZmVhdHVyZXMgd2lsbCBhbHNvIGJlIHRlc3RlZDoKCiogQmV0YSBvdmVyc2FwbWxpbmcgYnkgOHgKKiBGUyA1OiBPbmx5IHRoZSBoaWdoZXN0IGNvdmFyaWF0ZXMgZm91bmQgYnkgQm9ydXRhIChleGNsdWRpbmcgcGVyZm9ybWFuY2UpCgoKYGBge3IgYm9ydXRhX2ltcG9ydCwgZWNobz1GQUxTRSwgd2FybmluZz1GQUxTRSwgbWVzc2FnZT1GQUxTRX0KZmlsZV9uYW1lID0gJ2ZlYXR1cmVfc2VsZWN0aW9uX2JvcnV0YV9pbml0aWFsXzIwMTkxMDIzLlJEYXRhJwppbWFnZV9maWxlX3BhdGggPSBmaWxlLnBhdGgoJ2RhdGEnLCBmaWxlX25hbWUpCgojIFN5cy5zZXRlbnYoIkdDU19ERUZBVUxUX0JVQ0tFVCIgPSAibW96LWZ4LWRldi1zdWJiZXRhIiwKIyAgICAgICAgICAgICJHQ1NfQVVUSF9GSUxFIiA9ICJtb3otZngtZGV2LWNkb3doeWdsdW5kLXN1YkJldGEtNzg4ZjhmMGQ0NjI3Lmpzb24iKQojIGxpYnJhcnkoZ29vZ2xlQ2xvdWRTdG9yYWdlUikKIyBnY3NfZ2V0X29iamVjdChmaWxlLnBhdGgoJ2RhdGEnLCAnbWlsZXN0b25lMicsIGZpbGVfbmFtZSksIHNhdmVUb0Rpc2sgPSBpbWFnZV9maWxlX3BhdGgsIG92ZXJ3cml0ZSA9IFRSVUUpCgpsb2FkKGltYWdlX2ZpbGVfcGF0aCkKYGBgCgpgYGB7ciBib3J1dGFfZnMsIGVjaG89RkFMU0UsIHdhcm5pbmc9RkFMU0UsIG1lc3NhZ2U9RkFMU0V9CmV4dHJhY3RfYm9ydXRhX2ZzIDwtIGZ1bmN0aW9uKGJvcnV0YV9yZXMsIG51bT01KXsKICBmZWF0dXJlcyA8LSBOVUxMCiAgZm9yKG1ldHJpYyBpbiBuYW1lcyhib3J1dGFfcmVzdWx0cykpewogICAgZmVhdHVyZXMgPC0gYyhuYW1lcyhzb3J0KGFwcGx5KGJvcnV0YV9yZXNbW21ldHJpY11dJEltcEhpc3RvcnksIDIsIG1lZGlhbiksIGRlY3JlYXNpbmcgPSBUUlVFKVsxOm51bV0pLCBmZWF0dXJlcykKICB9CiAgcmV0dXJuKHNvcnQodW5pcXVlKGZlYXR1cmVzKSkpCn0KCmZlYXR1cmVzX3RvcDEwIDwtIGV4dHJhY3RfYm9ydXRhX2ZzKGJvcnV0YV9yZXN1bHRzLCBudW09MTApCmZlYXR1cmVzX3RvcDEwX2VxIDwtIGV4dHJhY3RfYm9ydXRhX2ZzKGJvcnV0YV9yZXN1bHRzX2VxLCBudW09MTApCgojIGZpbHRlciBvdXQgY2F0ZWdvcmljYWwKZmVhdHVyZXNfdG9wMTAgPC0gZGZfdHJhaW5fZiAlPiUgc2VsZWN0KGZlYXR1cmVzX3RvcDEwKSAlPiUgc2VsZWN0X2lmKGlzLm51bWVyaWMpICU+JSBuYW1lcygpCmZlYXR1cmVzX3RvcDEwX2VxIDwtIGRmX3RyYWluX2YgJT4lIHNlbGVjdChmZWF0dXJlc190b3AxMF9lcSkgJT4lIHNlbGVjdF9pZihpcy5udW1lcmljKSAlPiUgbmFtZXMoKQpgYGAKCmBgYHtyIGZlYXR1cmVfc2V0c30KZnMxIDwtIHBlcmZfbWV0cmljcwpmczIgPC0gYyhuYW1lcyhmczEpLCBmZWF0dXJlc190b3AxMCkKZnMzIDwtIGMobmFtZXMoZnMxKSwgZmVhdHVyZXNfdG9wMTBfZXEpCmZzNCA8LSBjKG5hbWVzKGZzMSksIGNvdnMpCmZzNSA8LSBmZWF0dXJlc190b3AxMApmczYgPC0gZmVhdHVyZXNfdG9wMTBfZXEKZnM3IDwtIGNvdnMKYGBgCgoKIyBIeXBlcnBhcmFtZXRlcnMKSHlwZXJwYXJhbWV0ZXJzIHRlc3RlZCBmb3IgbmVhcmVzdC1uZWlnaGJvcnMgYXJlIHRoZSBmb2xsb3dpbmc6CgoqIE1hdGNoaW5nIG9yZGVyIChtLm9yZGVyKQoqIENhbGlwZXIKKiBvZiBjb250cm9sIHRvIHRyZWF0bWVudHMKCmBgYHtyIGhwfQpocHMgPC0gbGlzdCgKICByZXBsYWNlID0gYyhUUlVFLCBGQUxTRSksCiAgY2FsaXBlciA9IGMoMCwgMC4yNSwgMC41LCAxLCAzKSwKICBjYWxjbG9zZXN0ID0gYyhUUlVFLCBGQUxTRSksCiAgcmF0aW8gPSBjKDEsIDIsIDQpCikKCmhwc19ncmlkID0gZXhwYW5kLmdyaWQoaHBzKQpgYGAKCiMgRlMgMQojIyBDb2Fyc2UgR3JpZApIeXBlcnBhcmFtZXRlciB0dW5pbmcgb24gb3B0aW1hbCBmZWF0dXJlcy4gCgpgYGB7ciBmczEsIGVycm9yPVRSVUV9CmZzMV9yZXN1bHRzIDwtIHBlcmZvcm1fbWF0Y2hpdF9ocF90dW5lKGRmX3RyYWluX2YsIGJ0c1tbJ2J0c180eCddXSwgZnMxLCBzaXplPU5VTEwsIHdvcmtlcnMgPSA2NCwgaHBzX2dyaWQgPSBocHNfZ3JpZCwgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGRpc3RhbmNlID0gJ2xpbmVhci5sb2dpdCcsIGFkZF9pbnRlcmFjdGlvbnM9VFJVRSkKCmZzMV9yZXN1bHRzX2RmIDwtIGZzMV9yZXN1bHRzICU+JSBiaW5kX3Jvd3MoKQpmczFfcmVzdWx0c19kZiAlPiUgZ3JvdXBfYnlfYXQoc2V0ZGlmZihuYW1lcyhmczFfcmVzdWx0c19kZiksICJzY29yZXMiKSkgJT4lIAogIHN1bW1hcmlzZShtZWFuID0gbWVhbihzY29yZXMpLCBzZCA9IHNkKHNjb3JlcyksIG1lZGlhbiA9IG1lZGlhbihzY29yZXMpKSAtPiBmczFfcmVzdWx0c19kZgprbml0cjo6a2FibGUoZnMxX3Jlc3VsdHNfZGZbb3JkZXIoZnMxX3Jlc3VsdHNfZGYkbWVhbiksIF0gJT4lIGhlYWQoMjApKQpgYGAKCiMjIEZpbmUgR3JpZAoKYGBge3IgaHBfZmluZX0KaHBzX2ZpbmUgPC0gbGlzdCgKICByZXBsYWNlID0gYyhUUlVFLCBGQUxTRSksCiAgY2FsaXBlciA9IHNlcSgwLjIsIDAuOCwgYnk9MC4yKSwKICBjYWxjbG9zZXN0ID0gYyhUUlVFLCBGQUxTRSksCiAgcmF0aW8gPSBjKDEsIDIsIDMpCikKCmhwc19maW5lX2dyaWQgPSBleHBhbmQuZ3JpZChocHNfZmluZSkKYGBgCgpgYGB7ciBmczFfZmluZSwgZXJyb3I9VFJVRX0KaHBzX2ZpbmVfZ3JpZCA9IGV4cGFuZC5ncmlkKGhwc19maW5lKQoKZnMxX3Jlc3VsdHNfZmluYWwgPC0gcGVyZm9ybV9tYXRjaGl0X2hwX3R1bmUoZGZfdHJhaW5fZiwgYnRzW1snYnRzXzR4J11dLCBmczEsIHNpemU9TlVMTCwgd29ya2VycyA9IDY0LCBocHNfZ3JpZCA9IGhwc19maW5lX2dyaWQsIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBkaXN0YW5jZSA9ICdsaW5lYXIubG9naXQnLCBhZGRfaW50ZXJhY3Rpb25zPVRSVUUpCnNhdmUobGlzdD1scyhwYXR0ZXJuID0gJ2ZzWzAtOV1fcmVzdWx0cycpLCAgZmlsZSA9IHJlc3VsdHNfZmlsZV9wYXRoKQoKZnMxX3Jlc3VsdHNfZGYgPC0gZnMxX3Jlc3VsdHNfZmluYWwgJT4lIGJpbmRfcm93cygpCmZzMV9yZXN1bHRzX2RmICU+JSBncm91cF9ieV9hdChzZXRkaWZmKG5hbWVzKGZzMV9yZXN1bHRzX2RmKSwgInNjb3JlcyIpKSAlPiUgCiAgc3VtbWFyaXNlKG1lYW4gPSBtZWFuKHNjb3JlcyksIHNkID0gc2Qoc2NvcmVzKSwgbWVkaWFuID0gbWVkaWFuKHNjb3JlcykpIC0+IGZzMV9yZXN1bHRzX2RmCmtuaXRyOjprYWJsZShmczFfcmVzdWx0c19kZltvcmRlcihmczFfcmVzdWx0c19kZiRtZWFuKSwgXSAlPiUgaGVhZCgyMCkpCmBgYAoKCiMgRlMgNQoKYGBge3IgZnM1LCBlcnJvcj1UUlVFfQpmczNfcmVzdWx0cyA8LSBwZXJmb3JtX21hdGNoaXRfaHBfdHVuZShkZl90cmFpbl9mLCBidHNbWydidHNfOHgnXV0sIGZzNSwgc2l6ZT1OVUxMLCB3b3JrZXJzID0gNjQsIGhwc19ncmlkID0gaHBzX2dyaWQsIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBkaXN0YW5jZSA9ICdsaW5lYXIubG9naXQnLCBhZGRfaW50ZXJhY3Rpb25zPUZBTFNFKQpzYXZlKGxpc3Q9bHMocGF0dGVybiA9ICdmc1swLTldX3Jlc3VsdHMnKSwgIGZpbGUgPSByZXN1bHRzX2ZpbGVfcGF0aCkKCmZzM19yZXN1bHRzX2RmIDwtIGZzM19yZXN1bHRzICU+JSBiaW5kX3Jvd3MoKQpmczNfcmVzdWx0c19kZiAlPiUgZ3JvdXBfYnlfYXQoc2V0ZGlmZihuYW1lcyhmczNfcmVzdWx0c19kZiksICJzY29yZXMiKSkgJT4lIAogIHN1bW1hcmlzZShtZWFuID0gbWVhbihzY29yZXMpLCBzZCA9IHNkKHNjb3JlcyksIG1lZGlhbiA9IG1lZGlhbihzY29yZXMpKSAtPiBmczNfcmVzdWx0c19kZgprbml0cjo6a2FibGUoZnMzX3Jlc3VsdHNfZGZbb3JkZXIoZnMzX3Jlc3VsdHNfZGYkbWVhbiksIF0gJT4lIGhlYWQoMjApKQpgYGAKCiMgU2VyaWFsaXplIGFuZCBQdXNoIHRvIEdDUApTYXZlIHRoZSByZXN1bHRhbnQgZGF0YXNldCBhbmQgYm9vdHN0cmFwIHNhbXBsZXMgdG8gYW4gUiBpbWFnZS4gCgpgYGB7ciBnY3Bfc3RvcmFnZV9wdXNoLCB3YXJuaW5nPUZBTFNFfQpnY3NfZmlsZV9wYXRoIDwtIGZpbGUucGF0aCgnZGF0YScsICdtaWxlc3RvbmUyJywgcmVzdWx0c19maWxlX25hbWUpCgpTeXMuc2V0ZW52KCJHQ1NfREVGQVVMVF9CVUNLRVQiID0gIm1vei1meC1kZXYtc3ViYmV0YSIsCiAgICAgICAgICAgIkdDU19BVVRIX0ZJTEUiID0gIm1vei1meC1kZXYtY2Rvd2h5Z2x1bmQtc3ViQmV0YS03ODhmOGYwZDQ2MjcuanNvbiIpCgpsaWJyYXJ5KGdvb2dsZUNsb3VkU3RvcmFnZVIpCgp1cGxvYWRfdHJ5IDwtIGdjc191cGxvYWQocmVzdWx0c19maWxlX3BhdGgsIG5hbWUgPSBnY3NfZmlsZV9wYXRoKQp1cGxvYWRfdHJ5CmBgYA==</div>
 
 
 </div>
@@ -3557,7 +3729,7 @@ $(document).ready(function () {
 <!-- code folding -->
 <script>
 $(document).ready(function () {
-  window.initializeSourceEmbed("feature_selection_nn_logit_linear.Rmd");
+  window.initializeSourceEmbed("hyperparameter_tuning_nn_logit_linear.Rmd");
   window.initializeCodeFolding("show" === "show");
 });
 </script>

@@ -15,21 +15,28 @@ This analysis determines the relevant [covariates (features)](https://docs.googl
 
 **Matching Algorithm Tested**: Nearest-neighbors with logit distance metric transformed back to linear scale.
 
+```{r setup, include=FALSE, echo=FALSE}
+require("knitr")
+knitr::opts_knit$set(root.dir = dirname(getwd()))
+```
+
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 source('../lib/supporting_funcs.R')
 source('../lib/scoring.R')
 library(MatchIt)
 ```
 
-```{r data_load, echo=FALSE}
-file_name = 'df_train_validate_20191021.RData'
+```{r data_load, echo=FALSE, message=FALSE}
+file_name = 'df_train_validate_20191025.RData'
 image_file_path = file.path('data', file_name)
 
 # Pull from GCP if necessary
-# library(googleCloudStorageR)
-# Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
-#            "GCS_AUTH_FILE" = "moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json")
-# gcs_get_object(file.path('data', 'milestone2', file_name), saveToDisk = image_file_path, overwrite = TRUE)
+if (!file.exists(image_file_path)){
+  Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
+           "GCS_AUTH_FILE" = "moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json")
+  library(googleCloudStorageR)
+  gcs_get_object(file.path('data', 'milestone2', file_name), saveToDisk = image_file_path, overwrite = TRUE)
+}
 
 load(image_file_path)
 ```
@@ -298,13 +305,13 @@ print(res_fs1_noreplace)
 Performance metrics and the highest found by Boruta with original dataset, but including interaction terms
 
 ```{r fs2_int, error=TRUE}
-res_fs2 <- list()
-for (bt in names(bts)){
-  res_fs2[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs2, size=NULL, add_interactions=TRUE,
-                                      replace=TRUE, workers = 10, distance = 'linear.logit')
-}
-save.image(results_file_path)
-print(res_fs2)
+# res_fs2 <- list()
+# for (bt in names(bts)){
+#   res_fs2[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs2, size=NULL, add_interactions=TRUE,
+#                                       replace=TRUE, workers = 10, distance = 'linear.logit')
+# }
+# save.image(results_file_path)
+# print(res_fs2)
 ```
 
 Never completed after 2.5 days. Killed it...
