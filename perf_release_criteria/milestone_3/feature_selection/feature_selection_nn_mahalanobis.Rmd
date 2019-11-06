@@ -15,6 +15,11 @@ This analysis determines the relevant [covariates (features)](https://docs.googl
 
 **Matching Algorithm Tested**: Nearest-neighbors with Mahalanobis distance metric
 
+```{r setup, include=FALSE, echo=FALSE}
+require("knitr")
+knitr::opts_knit$set(root.dir = dirname(getwd()))
+```
+
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 source('../lib/supporting_funcs.R')
 source('../lib/scoring.R')
@@ -22,7 +27,7 @@ library(MatchIt)
 ```
 
 ```{r data_load, echo=FALSE}
-file_name = 'df_train_validate_20191021.RData'
+file_name = 'df_train_validate_20191025.RData'
 image_file_path = file.path('data', file_name)
 
 # Pull from GCP if necessary
@@ -74,7 +79,7 @@ Feature sets:
 
 Retrieve Boruta features:
 
-```{r boruta_import}
+```{r boruta_import, echo=FALSE}
 file_name = 'feature_selection_boruta_initial_20191023.RData'
 image_file_path = file.path('data', file_name)
 

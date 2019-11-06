@@ -1,5 +1,5 @@
 ---
-title: "Milestone 2: Hyperparameter Tuning - Nearest Neighbors, Mahalanobis"
+title: "Milestone 2: Hyperparameter Tuning - Nearest Neighbors, GAM Logit"
 author: "Corey Dow-Hygelund, Mozilla Data Science"
 date: 'Last Updated: `r format(Sys.time(), "%B %d, %Y")`'
 output: 
@@ -13,7 +13,7 @@ output:
 
 This analysis determines the optimal [hyperparameters] (https://docs.google.com/document/d/1SfuanvmYmvmEFAdQ7Z5djDeLezdNB1TESqVmj93O8to/edit#heading=h.yqukkyb8q4xw) to utilize for computationally intensive statistical matching algorithms proposed in the modeling approach for this [PRD](https://docs.google.com/document/d/1Ygz6MkudYHZjnDnD9Z97kUyFrvV3KGWsjXyPjddhHq0/edit#heading=h.lvb9l8gw2nee). 
 
-**Matching Algorithm Tested**: Nearest-neighbors with Mahalanobis distance metric
+**Matching Algorithm Tested**: Nearest-neighbors with GAM logit distance metric.
 
 ```{r setup, include=FALSE, echo=FALSE}
 require("knitr")
@@ -58,29 +58,24 @@ covs <- df_train_f %>%
   select(-label) %>%
   select(-is_release) %>%
   select(-app_version) %>%
-  select_if(is.numeric) %>% # Mahalanobis constraint
   names()
   
 
-results_file_name <- 'hyperparameter_tuning_nn_mahalanobis.RData' 
+results_file_name <- 'hyperparameter_tuning_nn_gam_logit.RData' 
 results_file_path <- file.path('data', results_file_name)
 ```
 
 # Features
-The optimal feature set was found in `feature_selection_nn_mahalanobis.Rmd`. At the time of this run they were:
+The optimal feature set was found in `feature_selection_nn_gam_logit.Rmd`. At the time of this run they were:
 
 * Beta oversampling by 4x
-* FS 1: Only performance metrics
+* FS 1 Interactions: Only performance metrics, with interaction terms
 
-To investigate, and possible utilize, a more general model, two other suite of high scoring features will also be tested:
+To investigate, and possible utilize, a more general model, the second highest suite of features will also be tested:
 
+* Beta oversapmling by 8x
+* FS 5: Only the highest covariates found by Boruta (excluding performance)
 
-1. Contains performance metrics
-    * Beta oversapmling by 16x
-    * FS 3: Performance metrics and highest found by Boruta with equal labels dataset
-2. No performance metrics: 
-    * Beta oversapmling by 8x
-    * FS 5: Highest found by Boruta
 
 ```{r boruta_import, echo=FALSE, warning=FALSE, message=FALSE}
 file_name = 'feature_selection_boruta_initial_20191023.RData'
@@ -125,12 +120,11 @@ fs7 <- covs
 # Hyperparameters
 Hyperparameters tested for nearest-neighbors are the following:
 
-* `replace`: Can each control unit be matched to more than one treated unit?
-* `caliper`:  The number of standard deviations of the distance measure within which to draw control units.
-* `calclosest`: Whether to take the nearest available match if no matches are available within the `caliper`.
-* `ratio`: #  of control units to match to each test.
+* Matching order (m.order)
+* Caliper
+* of control to treatments
 
-```{r hyperparameters}
+```{r hp}
 hps <- list(
   replace = c(TRUE, FALSE),
   caliper = c(0, 0.25, 0.5, 1, 3),
@@ -146,26 +140,23 @@ hps_grid = expand.grid(hps)
 Hyperparameter tuning on optimal features. 
 
 ```{r fs1, error=TRUE}
-bt <- bts[['bts_4x']]
-
-fs1_results <- perform_matchit_hp_tune(df_train_f, bt, fs1, size=NULL, workers = 64, hps_grid = hps_grid, distance = "mahalanobis")
-save(list=ls(pattern = 'fs[0-9]_results'),  file = results_file_path)
+fs1_results <- perform_matchit_hp_tune(df_train_f, bts[['bts_4x']], fs1, size=NULL, workers = 64, hps_grid = hps_grid, 
+                                       distance = 'GAMlogit', add_interactions=TRUE)
 
 fs1_results_df <- fs1_results %>% bind_rows()
 fs1_results_df %>% group_by_at(setdiff(names(fs1_results_df), "scores")) %>% 
   summarise(mean = mean(scores), sd = sd(scores), median = median(scores)) -> fs1_results_df
-knitr::kable(fs1_results_df[order(fs1_results_df$mean), ] %>% head(n=20))
-
+knitr::kable(fs1_results_df[order(fs1_results_df$mean), ] %>% head(20))
 ```
 
 ## Fine Grid
 
 ```{r hp_fine}
 hps_fine <- list(
-  replace = c(FALSE),
-  caliper = seq(0, 3, by=0.2),
+  replace = c(TRUE, FALSE),
+  caliper = seq(0.5, 1.3, by=0.2),
   calclosest = c(TRUE, FALSE),
-  ratio = c(1, 2)
+  ratio = c(1, 2, 3)
 )
 
 hps_fine_grid = expand.grid(hps_fine)
@@ -175,38 +166,26 @@ hps_fine_grid = expand.grid(hps_fine)
 hps_fine_grid = expand.grid(hps_fine)
 
 fs1_results_final <- perform_matchit_hp_tune(df_train_f, bts[['bts_4x']], fs1, size=NULL, workers = 64, hps_grid = hps_fine_grid, 
-                                       distance = "mahalanobis", add_interactions=FALSE)
+                                       distance = 'GAMlogit', add_interactions=TRUE)
 save(list=ls(pattern = 'fs[0-9]_results'),  file = results_file_path)
 
 fs1_results_df <- fs1_results_final %>% bind_rows()
 fs1_results_df %>% group_by_at(setdiff(names(fs1_results_df), "scores")) %>% 
   summarise(mean = mean(scores), sd = sd(scores), median = median(scores)) -> fs1_results_df
-knitr::kable(fs1_results_df[order(fs1_results_df$median), ] %>% head(20))
+knitr::kable(fs1_results_df[order(fs1_results_df$mean), ] %>% head(20))
 ```
 
-
-# FS 3
-
-```{r fs3, error=TRUE}
-fs3_results <- perform_matchit_hp_tune(df_train_f, bts[['bts_16x']], fs3, size=NULL, workers = 64, hps_grid = hps_grid, distance = "mahalanobis")
-save(list=ls(pattern = 'fs[0-9]_results'),  file = results_file_path)
-
-fs3_results_df <- fs3_results %>% bind_rows()
-fs3_results_df %>% group_by_at(setdiff(names(fs3_results_df), "scores")) %>% 
-  summarise(mean = mean(scores), sd = sd(scores), median = median(scores)) -> fs3_results_df
-knitr::kable(fs3_results_df[order(fs3_results_df$median), ] %>% head(n=20))
-```
 
 # FS 5
 
 ```{r fs5, error=TRUE}
-fs5_results <- perform_matchit_hp_tune(df_train_f, bts[['bts_8x']], fs5, size=NULL, workers = 64, hps_grid = hps_grid, distance = "mahalanobis")
-save(list=ls(pattern = 'fs[0-9]_results'),  file = results_file_path)
+fs5_results <- perform_matchit_hp_tune(df_train_f, bts[['bts_4x']], fs5, size=NULL, workers = 64, hps_grid = hps_grid, 
+                                       distance = 'GAMlogit', add_interactions=FALSE)
 
 fs5_results_df <- fs5_results %>% bind_rows()
 fs5_results_df %>% group_by_at(setdiff(names(fs5_results_df), "scores")) %>% 
   summarise(mean = mean(scores), sd = sd(scores), median = median(scores)) -> fs5_results_df
-knitr::kable(fs5_results_df[order(fs5_results_df$median), ])
+knitr::kable(fs5_results_df[order(fs5_results_df$mean), ])
 ```
 
 # Push to GCP

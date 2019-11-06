@@ -189,7 +189,7 @@ perform_matchit_fs <- function(df_train, bts, model_covs, workers, seed, add_int
   return(final)
 }
 
-perform_matchit_hp_tune <- function(df_train, bt, model_covs, workers, hps_grid, seed, add_interactions=FALSE, 
+run_matchit_hp_tune <- function(df_train, bt, model_covs, workers, hps_grid, seed, add_interactions=FALSE, 
                                size=NULL, ...){
   if (missing(workers)) workers = detectCores()
   if (missing(seed)) seed <- 1984
@@ -227,3 +227,16 @@ perform_matchit_hp_tune <- function(df_train, bt, model_covs, workers, hps_grid,
   )
   return(final)
 }
+
+perform_matchit_hp_tune <- function(df_train, bts, model_covs, workers, hps_grid, seed, add_interactions=FALSE, 
+                                    size=NULL, ...){
+  results <- list()
+  for(i in 1:length(bts)){
+    bt <- bts[[i]]
+    results[[i]] <- run_matchit_hp_tune(df_train, bt, model_covs, workers, hps_grid, seed, add_interactions=FALSE,
+                                        size=NULL, ...)
+  }
+  return(results)
+  #return(list(full = results, mean = res_mean, median = res_median))
+}
+
