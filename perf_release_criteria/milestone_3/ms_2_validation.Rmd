@@ -84,11 +84,11 @@ features_top10_eq <- extract_boruta_fs(boruta_results_eq, num=10)
 # filter out categorical
 features_top10 <- df_train_f %>% 
   select(features_top10) %>% 
-  # select_if(is.numeric) %>% 
+  select_if(is.numeric) %>% 
   names()
 features_top10_eq <- df_train_f %>% 
   select(features_top10_eq) %>% 
-  # select_if(is.numeric) %>% 
+  select_if(is.numeric) %>% 
   names()
 ```
 
@@ -102,7 +102,7 @@ covs <- df_train_f %>%
   select(-label) %>%
   select(-is_release) %>%
   select(-app_version) %>%
-  # select_if(is.numeric) %>% # Mahalanobis constraint
+  select_if(is.numeric) %>% # Mahalanobis constraint
   names()
 
 fs1 <- perf_metrics
@@ -127,6 +127,40 @@ for(i in 1:30){
 }
 ```
 
+```{r scorer}
+score_model <- function(bts, df_match, df_val, workers){
+  if (missing(workers)) workers = detectCores()
+  cl <- makePSOCKcluster(workers) 
+  registerDoParallel(cl)
+  final <- tryCatch({
+    scores <- foreach(i=1:length(bts), 
+                      .packages = c('dplyr', 'transport'), 
+                      .export=c('calc_score', 'calc_cms', 'get_m2_metric_map')) %dopar% {
+                        bt <- bts[[i]]
+                        test <- df_val %>% 
+                          right_join(data.frame(client_id = bt, stringsAsFactors=FALSE), by='client_id', 'right')
+                        
+                        df_scores <- test %>%
+                          bind_rows(df_match)
+                        
+                        score <- calc_score(df_scores, get_m2_metric_map())
+                        score
+                        }
+    scores <- unlist(scores)
+    c(mean = mean(scores), median = median(scores))
+  }, 
+  error = function(cond){
+    message(paste("Bootstrap validation failed: ", cond))
+    return(NA)
+  },
+  finally = {
+    stopCluster(cl)
+  }
+  )
+  return(final)
+}
+```
+
 # Oversampling
 
 The entire v67 dataset will be utilized for training. However, most of the matching algorithms are more performant with higher ratios of Beta to Release. There are `r n_beta` profiles utilized for this purpose.
@@ -146,6 +180,13 @@ names(dfs) <- as.character(oversamples)
 
 # Model Training
 
+Two matching methods were ultimately tested, as CEM and subclassing were producing extremely poor results. 
+
+* nearest-neighbors
+* genetic matching
+
+Feature selection and hyperparameter tuning for the nearest-neighbors models were all trained using the `MatchIt` library.  The following method trains these models using the full training dataset.  
+
 ```{r trainer}
 train_matchit <- function(train, model_covs, add_interactions, ...){
   # train model
@@ -164,15 +205,48 @@ train_matchit <- function(train, model_covs, add_interactions, ...){
 
 ## Nearest-Neighbors, Malahanobis 
 
-Hyperparameters:
+Hyperparameters: `hyperparameter_tuning_nn_malahanobis.Rmd`
 
-* Determined in `hyperparameter_tuning_nn_malahanobis.Rmd`
-*
+* `caliper` = 0.25
+* `calcloset` = TRUE
+* `ratio` = 2
+* `replace` = FALSE
 
-```{r nn_mal}
-nn.mal <- train_matchit(dfs[['4']], fs1, add_interactions = FALSE, replace = FALSE, distance = "mahalanobis")
+```{r nn_mal_fs1}
+nn.mal.fs1 <- train_matchit(dfs[['4']], fs1, add_interactions = FALSE, replace = FALSE, 
+                        caliper = 0.25, calclosest = TRUE, ratio = 2, distance = "mahalanobis")
+score_model(bts, nn.mal.fs1$matched, df_rel_val)
 ```
+
+```{r nn_mal_fs3}
+nn.mal.fs3 <- train_matchit(dfs[['16']], fs3, add_interactions = FALSE, replace = TRUE, 
+                        caliper = 0.25, calclosest = TRUE, ratio = 1, distance = "mahalanobis")
+score_model(bts, nn.mal.fs3$matched, df_rel_val)
+```
+
+```{r nn_mal_fs5}
+nn.mal.fs5 <- train_matchit(dfs[['8']], fs5, add_interactions = FALSE, replace = TRUE, 
+                        caliper = 0.25, calclosest = TRUE, ratio = 1, 
+                        distance = "mahalanobis")
+score_model(bts, nn.mal.fs3$matched, df_rel_val)
+```
+
+## GAM
+
+
+# TODO
+
+* Build validation methods
+    - Plots
+    - Scoring
+    - Everything I would use for dashboard
 
 # Serialize
 
-* The bootsraps and training datasets!
+* The bootstraps and training datasets!
+
+```{r}
+save(nn.mal, 
+     file = '')
+```
+
