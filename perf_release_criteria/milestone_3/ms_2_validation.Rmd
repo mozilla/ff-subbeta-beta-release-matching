@@ -11,12 +11,15 @@ date: 'Last Updated: `r format(Sys.time(), "%B %d, %Y")`'
 ---
 
 # tl;dr 
-This notebook determines the model framework utilized for this [PRD](https://docs.google.com/document/d/1Ygz6MkudYHZjnDnD9Z97kUyFrvV3KGWsjXyPjddhHq0/edit#heading=h.lvb9l8gw2nee). It utilizes the results from the hyperparameter tuning step, and trains the optimal model for each algorithm on the v67 dataset. The resultant predictions of these optimal models are compared to a v68 validation dataset. The framework used to generate the highest performant model (e.g., features, hyperparameters) will be used in online model training for the subsetting of Beta in production use.
+This notebook determines the [model framework](https://docs.google.com/document/d/1SfuanvmYmvmEFAdQ7Z5djDeLezdNB1TESqVmj93O8to/edit#heading=h.ex3kk7zd5a1y) utilized for this [PRD](https://docs.google.com/document/d/1Ygz6MkudYHZjnDnD9Z97kUyFrvV3KGWsjXyPjddhHq0/edit#heading=h.lvb9l8gw2nee). It utilizes the results from the hyperparameter tuning step, and trains the optimal model for each algorithm on the v67 dataset. The resultant predictions of these optimal models are compared to a v68 validation dataset. The framework used to generate the highest performant model (e.g., features, hyperparameters) will be used in online model training for the subsetting of Beta in production use.
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 source('../lib/supporting_funcs.R')
 source('../lib/scoring.R')
 library(MatchIt)
+library(cowplot)
+library(ggridges)
+library(viridis)
 ```
 
 ```{r data_load, echo=FALSE}
@@ -54,7 +57,6 @@ Feature sets:
 6. Only the highest covariates found by Boruta (equal labels, excluding performance).
 7. Utilize all covariates (excluding performance). 
 
-Retrieve Boruta features:
 
 ```{r boruta_import, echo=FALSE, warning=FALSE, message=FALSE}
 file_name = 'feature_selection_boruta_initial_20191023.RData'
@@ -118,16 +120,27 @@ fs7 <- covs
 
 30 bootstrap replicates of v68 Release will be utilized to validate the models. There are `r nrow(df_rel_val)` profiles utilized for this purpose. 
 
-```{r bts_validate}
-bts = list()
-for(i in 1:30){
-  bts[[i]] <- df_rel_val %>% 
-    sample_frac(size = 1, replace = TRUE) %>%
-    pull(client_id) 
+```{r bts_validate, echo=FALSE}
+# create once
+file_name = 'validation_bts_20191106.RData'
+bts_file_path = file.path('data', file_name)
+
+if (!file.exists(bts_file_path)){
+  print('Creating validation bootstraps and saving')
+  bts = list()
+  for(i in 1:30){
+    bts[[i]] <- df_rel_val %>% 
+      sample_frac(size = 1, replace = TRUE) %>%
+      pull(client_id) 
+  }
+  save(bts, file = bts_file_path)
+} else {
+  print('Loading previously created bootstraps from file')
+  load(bts_file_path)
 }
 ```
 
-```{r scorer}
+```{r scorer, echo=FALSE}
 score_model <- function(bts, df_match, df_val, workers){
   if (missing(workers)) workers = detectCores()
   cl <- makePSOCKcluster(workers) 
@@ -159,23 +172,92 @@ score_model <- function(bts, df_match, df_val, workers){
   )
   return(final)
 }
+
+build_quantile_df <- function(validation, matched, original){
+  qqs <- list()
+  for (perf_metric in perf_metrics){
+    qq <- qqplot(validation[[perf_metric]], matched[[perf_metric]], plot.it = FALSE) %>% 
+      bind_rows() %>%
+      mutate(type = 'matched')
+    qq_full <- qqplot(validation[[perf_metric]], original[[perf_metric]], plot.it = FALSE) %>% 
+      bind_rows() %>%
+      mutate(type = 'original') %>%
+      bind_rows(qq) %>%
+      mutate(metric = perf_metric)
+    # qq_full$metric <- perf_metric
+    qqs[[perf_metric]] <- qq_full
+  }
+  qq_df <- qqs %>% bind_rows() %>% rename(release = x, beta = y)
+  return(qq_df)
+}
+
+plot_validation_results <- function(validation, matched, original, qq_df){
+  if (missing(qq_df)) qq_df <- build_quantile_df(validation, matched, original)
+  
+  df <- matched %>%
+      mutate(label = 'beta - matched') %>%
+      bind_rows(validation) %>%
+      bind_rows(original) %>%
+      select(perf_metrics, label) # %>%
+      # gather(key = 'metric', value = 'measurement', -label)
+  
+  plots <- list()
+  for (pmet in perf_metrics){
+    p_qq <- ggplot(qq_df %>% filter(metric == pmet), aes(x = release, y = beta)) +
+      geom_point(aes(color = type, shape = type)) + 
+      geom_abline(slope = 1, intercept = 0) + 
+      theme_bw() + 
+      theme(axis.text.x = element_text(angle = 45, hjust = 1),
+            plot.title = element_text(size=10),
+            legend.position = c(0.8, 0.2)) + 
+      ggtitle(pmet) 
+    
+    p_ridge <- ggplot(df, aes(x=!!sym(pmet), y=label, fill=factor(..quantile..))) +
+    stat_density_ridges(
+      geom = "density_ridges_gradient", calc_ecdf = TRUE,
+      quantiles = 10, quantile_lines = TRUE
+    ) +
+    scale_fill_viridis(discrete = TRUE, name = "Quartiles") + 
+      theme_bw() +
+      xlab(pmet) + 
+      xlim(c(0, 10000)) + 
+      guides(fill = FALSE)
+    
+    plots[[paste(pmet, 'qq', sep="_")]] <- p_qq
+    plots[[paste(pmet, 'ridge', sep="_")]] <- p_ridge
+  }
+  
+  print(plot_grid(plotlist = plots, ncol = 2))
+}
 ```
 
 # Oversampling
 
-The entire v67 dataset will be utilized for training. However, most of the matching algorithms are more performant with higher ratios of Beta to Release. There are `r n_beta` profiles utilized for this purpose.
+The entire v67 dataset will be utilized for training. However, most of the matching algorithms are more performant with higher ratios of Beta to Release. Therefore, various levels of oversampled datasets are created for training. There are `r n_beta` profiles utilized for this purpose.
 
-```{r oversampling}
-oversample <- function(oversampling, df_beta, df_rel) {
-  df_x <- df_rel %>%
-    sample_n(size = round(n_beta / oversampling)) %>%
-    rbind(df_beta)
-  return(df_x)
-  }
+```{r oversampling, echo=FALSE}
+# create once
 
-oversamples <- c(1, 2, 4, 8, 16)
-dfs <- lapply(oversamples, oversample, df_beta = df_beta_train, df_rel = df_rel_train)
-names(dfs) <- as.character(oversamples)
+file_name = 'training_final_oversamples_20191106.RData'
+oversamples_file_path = file.path('data', file_name)
+
+if (!file.exists(oversamples_file_path)){
+  print('Creating oversampling training sets and saving')
+  oversample <- function(oversampling, df_beta, df_rel) {
+    df_x <- df_rel %>%
+      sample_n(size = round(n_beta / oversampling)) %>%
+      rbind(df_beta)
+    return(df_x)
+    }
+  
+  oversamples <- c(1, 2, 4, 8, 16)
+  dfs <- lapply(oversamples, oversample, df_beta = df_beta_train, df_rel = df_rel_train)
+  names(dfs) <- as.character(oversamples)
+  save(dfs, file = oversamples_file_path)
+} else {
+  print('Loading previously created oversampling training sets from file')
+  load(oversamples_file_path)
+}
 ```
 
 # Model Training
@@ -185,9 +267,19 @@ Two matching methods were ultimately tested, as CEM and subclassing were produci
 * nearest-neighbors
 * genetic matching
 
-Feature selection and hyperparameter tuning for the nearest-neighbors models were all trained using the `MatchIt` library.  The following method trains these models using the full training dataset.  
+For all models the following diagnostics are reported:
 
-```{r trainer}
+* mean, median score against the 30 validation replicates
+* Number of matched Beta samples
+* QQ and ridge plots of original and matched Beta samples
+
+## Nearest-Neighbors, Malahanobis 
+
+Hyperparameters: `hyperparameter_tuning_nn_malahanobis.Rmd`
+
+Feature selection and hyperparameter tuning for the nearest-neighbors models were all trained using the `MatchIt` library.  These models are trained using the full, relevantly oversampled, training dataset.  
+
+```{r trainer, echo=FALSE}
 train_matchit <- function(train, model_covs, add_interactions, ...){
   # train model
   formula <- generate_formula(model_covs, label = 'is_release', add_interactions)
@@ -203,50 +295,372 @@ train_matchit <- function(train, model_covs, add_interactions, ...){
 
 ```
 
-## Nearest-Neighbors, Malahanobis 
+### FS 1
 
-Hyperparameters: `hyperparameter_tuning_nn_malahanobis.Rmd`
-
-* `caliper` = 0.25
+* `caliper` = 0.20
 * `calcloset` = TRUE
 * `ratio` = 2
 * `replace` = FALSE
+* 4x oversampling
 
-```{r nn_mal_fs1}
+```{r nn_mal_fs1, echo=FALSE}
 nn.mal.fs1 <- train_matchit(dfs[['4']], fs1, add_interactions = FALSE, replace = FALSE, 
                         caliper = 0.25, calclosest = TRUE, ratio = 2, distance = "mahalanobis")
-score_model(bts, nn.mal.fs1$matched, df_rel_val)
+nn.mal.fs1.qq <- build_quantile_df(df_rel_val, nn.mal.fs1$matched, df_beta_train)
+nn.mal.fs1.score <- score_model(bts, nn.mal.fs1$matched, df_rel_val)
+nn.mal.fs1.score
 ```
 
-```{r nn_mal_fs3}
+Number of Beta samples: `r nrow(nn.mal.fs1$matched)`
+
+```{r nn_mal_fs1_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
+plot_validation_results(df_rel_val, nn.mal.fs1$matched, df_beta_train, nn.mal.fs1.qq)
+```
+
+### FS 3 
+
+* `caliper` = 3.00
+* `calcloset` = TRUE
+* `ratio` = 1
+* `replace` = TRUE
+* 16x oversampling
+
+```{r nn_mal_fs3, echo=FALSE}
 nn.mal.fs3 <- train_matchit(dfs[['16']], fs3, add_interactions = FALSE, replace = TRUE, 
-                        caliper = 0.25, calclosest = TRUE, ratio = 1, distance = "mahalanobis")
-score_model(bts, nn.mal.fs3$matched, df_rel_val)
+                        caliper = 3.00, calclosest = TRUE, ratio = 1, distance = "mahalanobis")
+nn.mal.fs3.qq <- build_quantile_df(df_rel_val, nn.mal.fs3$matched, df_beta_train)
+nn.mal.fs3.score <- score_model(bts, nn.mal.fs3$matched, df_rel_val)
+nn.mal.fs3.score
+```
+Number of Beta samples: `r nrow(nn.mal.fs3$matched)`
+
+```{r nn_mal_fs3_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
+plot_validation_results(df_rel_val, nn.mal.fs3$matched, df_beta_train)
 ```
 
-```{r nn_mal_fs5}
+
+
+### FS 5
+
+* `caliper` = 0
+* `calcloset` = TRUE
+* `ratio` = 1
+* `replace` = FALSE
+* 8x oversampling
+
+```{r nn_mal_fs5, echo=FALSE}
 nn.mal.fs5 <- train_matchit(dfs[['8']], fs5, add_interactions = FALSE, replace = TRUE, 
-                        caliper = 0.25, calclosest = TRUE, ratio = 1, 
+                        caliper = 0, calclosest = TRUE, ratio = 1, 
                         distance = "mahalanobis")
-score_model(bts, nn.mal.fs3$matched, df_rel_val)
+nn.mal.fs5.qq <- build_quantile_df(df_rel_val, nn.mal.fs5$matched, df_beta_train)
+nn.mal.fs5.score <- score_model(bts, nn.mal.fs5$matched, df_rel_val)
+nn.mal.fs5.score
 ```
 
-## GAM
+Number of Beta samples: `r nrow(nn.mal.fs5$matched)`
 
-
-# TODO
-
-* Build validation methods
-    - Plots
-    - Scoring
-    - Everything I would use for dashboard
-
-# Serialize
-
-* The bootstraps and training datasets!
-
-```{r}
-save(nn.mal, 
-     file = '')
+```{r nn_mal_fs5_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
+plot_validation_results(df_rel_val, nn.mal.fs5$matched, df_beta_train)
 ```
+
+## Nearest-Neighbors Logit, Linear
+
+Hyperparameters: `hyperparameter_tuning_nn_logit_linear.Rmd`
+
+```{r feature_sets_nn, echo=FALSE}
+# Reload to add additional categorical covariates
+
+perf_metrics <- names(get_m2_metric_map())
+
+covs <- df_train_f %>%
+  select(-perf_metrics) %>%
+  select(-content_crashes) %>%
+  select(-client_id) %>%
+  select(-label) %>%
+  select(-is_release) %>%
+  select(-app_version) %>%
+  names()
+
+fs1 <- perf_metrics
+fs2 <- c(names(fs1), features_top10)
+fs3 <- c(names(fs1), features_top10_eq)
+fs4 <- c(names(fs1), covs)
+fs5 <- features_top10
+fs6 <- features_top10_eq
+fs7 <- covs
+```
+
+### FS 1
+
+* `caliper` = 0.4
+* `calcloset` = TRUE
+* `ratio` = 3
+* `replace` = FALSE
+* 4x oversampling
+* Interactions across covariates
+
+```{r nn_logit_fs1, warning=FALSE, error=FALSE, echo=FALSE}
+nn.linear.logit.fs1 <- train_matchit(dfs[['4']], fs1, add_interactions = TRUE, replace = FALSE, 
+                        caliper = 0.4, calclosest = TRUE, ratio = 3, distance = "linear.logit")
+nn.linear.logit.fs1.qq <- build_quantile_df(df_rel_val, nn.linear.logit.fs1$matched, df_beta_train)
+nn.linear.logit.fs1.score <- score_model(bts, nn.linear.logit.fs1$matched, df_rel_val)
+nn.linear.logit.fs1.score
+```
+
+Number of Beta samples: `r nrow(nn.linear.logit.fs1$matched)`
+
+```{r nn_logit_fs1_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
+plot_validation_results(df_rel_val, nn.linear.logit.fs1$matched, df_beta_train)
+```
+
+### FS 5
+
+* `caliper` = 0
+* `calcloset` = FALSE
+* `ratio` = 1
+* `replace` = FALSE
+* 8x oversampling
+
+```{r nn_logit_fs3, warning=FALSE, error=FALSE, echo=FALSE}
+nn.linear.logit.fs5 <- train_matchit(dfs[['8']], fs5, add_interactions = FALSE, replace = FALSE, 
+                        caliper = 0, calclosest = FALSE, ratio = 1, distance = "linear.logit")
+nn.linear.logit.fs5.qq <- build_quantile_df(df_rel_val, nn.linear.logit.fs5$matched, df_beta_train)
+nn.linear.logit.fs5.score <- score_model(bts, nn.linear.logit.fs5$matched, df_rel_val)
+nn.linear.logit.fs5.score
+```
+
+```{r nn_logit_fs5_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
+plot_validation_results(df_rel_val, nn.linear.logit.fs5$matched, df_beta_train)
+```
+
+## Nearest-Neighbors GAM, Logit
+
+Hyperparameters: `hyperparameter_tuning_nn_gam_logit.Rmd`
+
+### FS 1
+
+* `caliper` = 0.5
+* `calcloset` = FALSE
+* `ratio` = 3
+* `replace` = FALSE
+* 4x oversampling
+* Interactions across covariates
+
+```{r nn_gam_fs1, warning=FALSE, error=FALSE, echo=FALSE, message=FALSE}
+nn.gam.fs1 <- train_matchit(dfs[['4']], fs1, add_interactions = TRUE, replace = FALSE, 
+                        caliper = 0.5, calclosest = TRUE, ratio = 3, distance = "GAMlogit")
+nn.gam.fs1.qq <- build_quantile_df(df_rel_val, nn.gam.fs1$matched, df_beta_train)
+nn.gam.fs1.score <- score_model(bts, nn.gam.fs1$matched, df_rel_val)
+nn.gam.fs1.score
+```
+
+Number of Beta samples: `r nrow(nn.gam.fs1$matched)`
+
+```{r nn_gam_fs1_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
+plot_validation_results(df_rel_val, nn.gam.fs1$matched, df_beta_train)
+```
+
+
+### FS 5
+
+* `caliper` = 0
+* `calcloset` = FALSE
+* `ratio` = 1
+* `replace` = FALSE
+* 4x oversampling
+
+```{r nn_gam_fs5, warning=FALSE, error=FALSE, echo=FALSE}
+nn.gam.fs5 <- train_matchit(dfs[['4']], fs5, add_interactions = FALSE, replace = FALSE, 
+                        caliper = 0, calclosest = FALSE, ratio = 1, distance = "GAMlogit")
+nn.gam.fs5.qq <- build_quantile_df(df_rel_val, nn.gam.fs5$matched, df_beta_train)
+nn.gam.fs5.score <- score_model(bts, nn.gam.fs5$matched, df_rel_val)
+nn.gam.fs5.score
+```
+
+Number of Beta samples: `r nrow(nn.gam.fs1$matched)`
+
+```{r nn_gam_fs5_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
+plot_validation_results(df_rel_val, nn.gam.fs5$matched, df_beta_train)
+```
+
+## Nearest-Neighbors Probit, Linear
+
+Hyperparameters: `hyperparameter_tuning_nn_probit_linear.Rmd`
+
+### FS 1
+
+* `caliper` = 0.4
+* `calcloset` = FALSE
+* `ratio` = 3
+* `replace` = FALSE
+* 4x oversampling
+* Interactions across covariates
+
+```{r nn_probit_fs1, warning=FALSE, error=FALSE, echo=FALSE}
+nn.linear.probit.fs1 <- train_matchit(dfs[['4']], fs1, add_interactions = TRUE, replace = FALSE, 
+                        caliper = 0.4, calclosest = TRUE, ratio = 3, distance = "linear.probit")
+nn.linear.probit.fs1.qq <- build_quantile_df(df_rel_val, nn.linear.probit.fs1$matched, df_beta_train)
+nn.linear.probit.fs1.score <- score_model(bts, nn.linear.probit.fs1$matched, df_rel_val)
+nn.linear.probit.fs1.score
+```
+
+Number of Beta samples: `r nrow(nn.linear.probit.fs1$matched)`
+
+```{r nn_probit_fs1_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
+plot_validation_results(df_rel_val, nn.linear.probit.fs1$matched, df_beta_train)
+```
+
+### FS 5
+
+* `caliper` = 0
+* `calcloset` = FALSE
+* `ratio` = 1
+* `replace` = FALSE
+* 8x oversampling
+
+```{r nn_probit_fs5, warning=FALSE, error=FALSE, echo=FALSE}
+nn.linear.probit.fs5 <- train_matchit(dfs[['8']], fs5, add_interactions = FALSE, replace = FALSE, 
+                        caliper = 0, calclosest = FALSE, ratio = 1, distance = "linear.probit")
+nn.linear.probit.fs5.qq <- build_quantile_df(df_rel_val, nn.linear.probit.fs5$matched, df_beta_train)
+nn.linear.probit.fs5.score <- score_model(bts, nn.linear.probit.fs5$matched, df_rel_val)
+nn.linear.probit.fs5.score
+```
+
+Number of Beta samples: `r nrow(nn.linear.probit.fs5$matched)`
+
+```{r nn_probit_fs5_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
+plot_validation_results(df_rel_val, nn.linear.probit.fs5$matched, df_beta_train)
+```
+
+## Genetic Matching
+
+Due to the very long training times of genetic matching, feature selection and hyperparameter tuning were not performed using bootstrap sampes. The models were previously trained using the full training sample. The resultant match beta subsets were serialized and uploaded to GCP.
+
+Trained: `feature_selection_genmatch_linear.Rmd`
+
+```{r genmatch, echo=FALSE, error=FALSE, warning=FALSE}
+file_name = 'feature_selection_genmatch_.RData'
+image_file_path = file.path('data', file_name)
+
+# Pull from GCP if necessary
+if (!file.exists(image_file_path)){
+  Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
+           "GCS_AUTH_FILE" = "moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json")
+  library(googleCloudStorageR)
+  gcs_get_object(file.path('data', 'milestone2', file_name), saveToDisk = image_file_path, overwrite = TRUE)
+
+}
+load(image_file_path)
+```
+
+### FS 1
+
+```{r genmatch_fs1, echo=FALSE}
+genmatch.fs1.matched <- df_train_gen[fs1_results$matches$index.control,]
+genmatch.fs1.qq <- build_quantile_df(df_rel_val, genmatch.fs1.matched, df_beta_train)
+genmatch.fs1.score <- score_model(bts, genmatch.fs1.matched, df_rel_val)
+genmatch.fs1.score
+```
+
+Number of Beta samples: `r nrow(genmatch.fs1.matched)`
+
+```{r genmatch_fs1_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
+plot_validation_results(df_rel_val, genmatch.fs1.matched, df_beta_train)
+```
+
+#### Pop.Size 500
+
+```{r genmatch_fs1_500, echo=FALSE}
+genmatch.fs1.500.matched <- df_train_gen[fs1_500_results$matches$index.control,]
+genmatch.fs1.500.qq <- build_quantile_df(df_rel_val, genmatch.fs1.500.matched, df_beta_train)
+genmatch.fs1.500.score <- score_model(bts, genmatch.fs1.500.matched, df_rel_val)
+genmatch.fs1.500.score
+```
+
+Number of Beta samples: `r nrow(genmatch.fs1.500.matched)`
+
+```{r genmatch_fs1_500_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
+plot_validation_results(df_rel_val, genmatch.fs1.500.matched, df_beta_train)
+```
+
+
+### FS 3
+
+```{r genmatch_fs3, echo=FALSE}
+genmatch.fs3.matched <- df_train_gen[fs3_results$matches$index.control,]
+genmatch.fs3.qq <- build_quantile_df(df_rel_val, genmatch.fs3.matched, df_beta_train)
+genmatch.fs3.score <- score_model(bts, genmatch.fs3.matched, df_rel_val)
+genmatch.fs3.score
+```
+
+Number of Beta samples: `r nrow(genmatch.fs3.matched)`
+
+```{r genmatch_fs3_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
+plot_validation_results(df_rel_val, genmatch.fs3.matched, df_beta_train)
+```
+
+### FS 5
+
+```{r genmatch_fs5, echo=FALSE}
+genmatch.fs5.matched <- df_train_gen[fs5_results$matches$index.control,]
+genmatch.fs5.qq <- build_quantile_df(df_rel_val, genmatch.fs5.matched, df_beta_train)
+genmatch.fs5.score <- score_model(bts, genmatch.fs5.matched, df_rel_val)
+genmatch.fs5.score
+```
+
+Number of Beta samples: `r nrow(genmatch.fs3.matched)`
+
+```{r genmatch_fs5_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
+plot_validation_results(df_rel_val, genmatch.fs5.matched, df_beta_train)
+```
+
+# Results
+
+Genetic matching produces the optimal matching results. It yields the lowest scores, without dropping large sample of the Beta profiles. Unsurprisingly, matching directly, and only, on the performance metrics yields the best results. Increasing the population size hyperparameter slightly decreased model performance, which is surprising. Considering this substantially increases training times, the lower value will be used. 
+
+**Conclusion**: Optimal model framework
+
+* matching algorithm: Genetic Matching
+* features: Only performance metrics
+* hyperparameters: Default for `Matching` library
+
+# Push to GCP
+
+The boostrap replicates for validation, oversampled traininig datasets, resultant quantile calculations, and matched datasets are saved to an R image. Then uploaded to the project GCP bucket.
+
+```{r serialize_gcp, echo=FALSE}
+results_file_name = 'validation_results_20191106.RData'
+results_file_path = file.path('data', results_file_name)
+
+objects <- c(
+  ls(pattern = 'genmatch'),
+  ls(pattern = 'nn'),
+  ls(pattern = '^bts$'),
+  ls(pattern = '^dfs$')
+)
+
+save(list = objects, file = results_file_path)
+```
+
+
+```{r push_to_gcp, echo=FALSE}
+gcs_file_path <- file.path('data', 'milestone2', results_file_name)
+
+Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
+           "GCS_AUTH_FILE" = "moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json")
+
+library(googleCloudStorageR)
+
+proj_files = gcs_list_objects()
+
+if (gcs_file_path %in% proj_files$name) {
+  print(paste('Previously trained results already exist:', gcs_file_path))
+} else {
+  print(paste('Uploading validation results to GCP:', gcs_file_path))
+  upload_try <- gcs_upload(results_file_path, name = gcs_file_path)
+  upload_try
+}
+```
+
+
 
