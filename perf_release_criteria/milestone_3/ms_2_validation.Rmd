@@ -294,6 +294,12 @@ train_matchit <- function(train, model_covs, add_interactions, ...){
   return(list(model = model, matched = df_matched))
 }
 
+extract_predictions <- function(matched, validation){
+  prediction <- validation %>%
+    filter(client_id %in% matched$client_id)
+  
+  return(prediction)
+}
 ```
 
 ### FS 1
@@ -305,17 +311,22 @@ train_matchit <- function(train, model_covs, add_interactions, ...){
 * 4x oversampling
 
 ```{r nn_mal_fs1, echo=FALSE}
-nn.mal.fs1 <- train_matchit(dfs[['4']], fs1, add_interactions = FALSE, replace = FALSE, 
-                        caliper = 0.25, calclosest = TRUE, ratio = 2, distance = "mahalanobis")
-nn.mal.fs1.qq <- build_quantile_df(df_rel_val, nn.mal.fs1$matched, df_beta_val)
-nn.mal.fs1.score <- score_model(bts, nn.mal.fs1$matched, df_rel_val)
-nn.mal.fs1.score
+# nn.mal.fs1 <- train_matchit(dfs[['4']], fs1, add_interactions = FALSE, replace = FALSE, 
+#                         caliper = 0.25, calclosest = TRUE, ratio = 2, distance = "mahalanobis")
+nn.mal.fs1.predictions <- extract_predictions(nn.mal.fs1$matched, df_beta_val)
+nn.mal.fs1.qq <- build_quantile_df(df_rel_val, nn.mal.fs1.predictions, df_beta_val)
+nn.mal.fs1.score <- score_model(bts, nn.mal.fs1.predictions, df_rel_val)
+# nn.mal.fs1.score
 ```
 
-Number of Beta samples: `r nrow(nn.mal.fs1$matched)`
+Resultant scores: `r nn.mal.fs1.score`
+
+
+* Number of matched Beta training samples: `r nrow(nn.mal.fs1$matched)`
+* Number of matched Beta validation samples: `r nrow(nn.mal.fs1.predictions)`
 
 ```{r nn_mal_fs1_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
-plot_validation_results(df_rel_val, nn.mal.fs1$matched, df_beta_val, nn.mal.fs1.qq)
+plot_validation_results(df_rel_val, nn.mal.fs1.predictions, df_beta_val, nn.mal.fs1.qq)
 ```
 
 ### FS 3 
@@ -327,16 +338,22 @@ plot_validation_results(df_rel_val, nn.mal.fs1$matched, df_beta_val, nn.mal.fs1.
 * 16x oversampling
 
 ```{r nn_mal_fs3, echo=FALSE}
-nn.mal.fs3 <- train_matchit(dfs[['16']], fs3, add_interactions = FALSE, replace = TRUE, 
-                        caliper = 3.00, calclosest = TRUE, ratio = 1, distance = "mahalanobis")
-nn.mal.fs3.qq <- build_quantile_df(df_rel_val, nn.mal.fs3$matched, df_beta_val)
-nn.mal.fs3.score <- score_model(bts, nn.mal.fs3$matched, df_rel_val)
-nn.mal.fs3.score
+# nn.mal.fs3 <- train_matchit(dfs[['16']], fs3, add_interactions = FALSE, replace = TRUE, 
+#                         caliper = 3.00, calclosest = TRUE, ratio = 1, distance = "mahalanobis")
+nn.mal.fs3.predictions <- extract_predictions(nn.mal.fs3$matched, df_beta_val)
+nn.mal.fs3.qq <- build_quantile_df(df_rel_val, nn.mal.fs3.predictions, df_beta_val)
+nn.mal.fs3.score <- score_model(bts, nn.mal.fs3.predictions, df_rel_val)
+# nn.mal.fs3.score
 ```
-Number of Beta samples: `r nrow(nn.mal.fs3$matched)`
+
+Resultant scores: `r nn.mal.fs3.score`
+
+
+* Number of matched Beta training samples: `r nrow(nn.mal.fs3$matched)`
+* Number of matched Beta validation samples: `r nrow(nn.mal.fs3.predictions)`
 
 ```{r nn_mal_fs3_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
-plot_validation_results(df_rel_val, nn.mal.fs3$matched, df_beta_val)
+plot_validation_results(df_rel_val, nn.mal.fs3.predictions, df_beta_val)
 ```
 
 
@@ -350,18 +367,23 @@ plot_validation_results(df_rel_val, nn.mal.fs3$matched, df_beta_val)
 * 8x oversampling
 
 ```{r nn_mal_fs5, echo=FALSE}
-nn.mal.fs5 <- train_matchit(dfs[['8']], fs5, add_interactions = FALSE, replace = TRUE, 
-                        caliper = 0, calclosest = TRUE, ratio = 1, 
-                        distance = "mahalanobis")
-nn.mal.fs5.qq <- build_quantile_df(df_rel_val, nn.mal.fs5$matched, df_beta_val)
-nn.mal.fs5.score <- score_model(bts, nn.mal.fs5$matched, df_rel_val)
-nn.mal.fs5.score
+# nn.mal.fs5 <- train_matchit(dfs[['8']], fs5, add_interactions = FALSE, replace = TRUE, 
+#                         caliper = 0, calclosest = TRUE, ratio = 1, 
+#                         distance = "mahalanobis")
+nn.mal.fs5.predictions <- extract_predictions(nn.mal.fs5$matched, df_beta_val)
+nn.mal.fs5.qq <- build_quantile_df(df_rel_val, nn.mal.fs5.predictions, df_beta_val)
+nn.mal.fs5.score <- score_model(bts, nn.mal.fs5.predictions, df_rel_val)
+# nn.mal.fs5.score
 ```
 
-Number of Beta samples: `r nrow(nn.mal.fs5$matched)`
+Resultant scores: `r nn.mal.fs5.score`
+
+
+* Number of matched Beta training samples: `r nrow(nn.mal.fs5$matched)`
+* Number of matched Beta validation samples: `r nrow(nn.mal.fs5.predictions)`
 
 ```{r nn_mal_fs5_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
-plot_validation_results(df_rel_val, nn.mal.fs5$matched, df_beta_val)
+plot_validation_results(df_rel_val, nn.mal.fs5.predictions, df_beta_val)
 ```
 
 ## Nearest-Neighbors Logit, Linear
@@ -401,17 +423,22 @@ fs7 <- covs
 * Interactions across covariates
 
 ```{r nn_logit_fs1, warning=FALSE, error=FALSE, echo=FALSE}
-nn.linear.logit.fs1 <- train_matchit(dfs[['4']], fs1, add_interactions = TRUE, replace = FALSE, 
-                        caliper = 0.4, calclosest = TRUE, ratio = 3, distance = "linear.logit")
-nn.linear.logit.fs1.qq <- build_quantile_df(df_rel_val, nn.linear.logit.fs1$matched, df_beta_val)
-nn.linear.logit.fs1.score <- score_model(bts, nn.linear.logit.fs1$matched, df_rel_val)
-nn.linear.logit.fs1.score
+# nn.linear.logit.fs1 <- train_matchit(dfs[['4']], fs1, add_interactions = TRUE, replace = FALSE, 
+#                         caliper = 0.4, calclosest = TRUE, ratio = 3, distance = "linear.logit")
+nn.linear.logit.fs1.predictions <- extract_predictions(nn.linear.logit.fs1$matched, df_beta_val)
+nn.linear.logit.fs1.qq <- build_quantile_df(df_rel_val, nn.linear.logit.fs1.predictions, df_beta_val)
+nn.linear.logit.fs1.score <- score_model(bts, nn.linear.logit.fs1.predictions, df_rel_val)
+# nn.linear.logit.fs1.score
 ```
 
-Number of Beta samples: `r nrow(nn.linear.logit.fs1$matched)`
+Resultant scores: `r nn.linear.logit.fs1.score`
+
+
+* Number of matched Beta training samples: `r nrow(nn.linear.logit.fs1$matched)`
+* Number of matched Beta validation samples: `r nrow(nn.linear.logit.fs1.predictions)`
 
 ```{r nn_logit_fs1_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
-plot_validation_results(df_rel_val, nn.linear.logit.fs1$matched, df_beta_val)
+plot_validation_results(df_rel_val, nn.linear.logit.fs1.predictions, df_beta_val)
 ```
 
 ### FS 5
@@ -423,15 +450,22 @@ plot_validation_results(df_rel_val, nn.linear.logit.fs1$matched, df_beta_val)
 * 8x oversampling
 
 ```{r nn_logit_fs3, warning=FALSE, error=FALSE, echo=FALSE}
-nn.linear.logit.fs5 <- train_matchit(dfs[['8']], fs5, add_interactions = FALSE, replace = FALSE, 
-                        caliper = 0, calclosest = FALSE, ratio = 1, distance = "linear.logit")
-nn.linear.logit.fs5.qq <- build_quantile_df(df_rel_val, nn.linear.logit.fs5$matched, df_beta_val)
-nn.linear.logit.fs5.score <- score_model(bts, nn.linear.logit.fs5$matched, df_rel_val)
-nn.linear.logit.fs5.score
+# nn.linear.logit.fs5 <- train_matchit(dfs[['8']], fs5, add_interactions = FALSE, replace = FALSE, 
+#                         caliper = 0, calclosest = FALSE, ratio = 1, distance = "linear.logit")
+nn.linear.logit.fs5.predictions <- extract_predictions(nn.linear.logit.fs5$matched, df_beta_val)
+nn.linear.logit.fs5.qq <- build_quantile_df(df_rel_val, nn.linear.logit.fs5.predictions, df_beta_val)
+nn.linear.logit.fs5.score <- score_model(bts, nn.linear.logit.fs5.predictions, df_rel_val)
+# nn.linear.logit.fs5.score
 ```
 
+Resultant scores: `r nn.linear.logit.fs5.score`
+
+
+* Number of matched Beta training samples: `r nrow(nn.linear.logit.fs5$matched)`
+* Number of matched Beta validation samples: `r nrow(nn.linear.logit.fs5.predictions)`
+
 ```{r nn_logit_fs5_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
-plot_validation_results(df_rel_val, nn.linear.logit.fs5$matched, df_beta_val)
+plot_validation_results(df_rel_val, nn.linear.logit.fs5.predictions, df_beta_val)
 ```
 
 ## Nearest-Neighbors GAM, Logit
@@ -448,17 +482,22 @@ Hyperparameters: `hyperparameter_tuning_nn_gam_logit.Rmd`
 * Interactions across covariates
 
 ```{r nn_gam_fs1, warning=FALSE, error=FALSE, echo=FALSE, message=FALSE}
-nn.gam.fs1 <- train_matchit(dfs[['4']], fs1, add_interactions = TRUE, replace = FALSE, 
-                        caliper = 0.5, calclosest = TRUE, ratio = 3, distance = "GAMlogit")
-nn.gam.fs1.qq <- build_quantile_df(df_rel_val, nn.gam.fs1$matched, df_beta_val)
-nn.gam.fs1.score <- score_model(bts, nn.gam.fs1$matched, df_rel_val)
-nn.gam.fs1.score
+# nn.gam.fs1 <- train_matchit(dfs[['4']], fs1, add_interactions = TRUE, replace = FALSE, 
+#                         caliper = 0.5, calclosest = TRUE, ratio = 3, distance = "GAMlogit")
+nn.gam.fs1.predictions <- extract_predictions(nn.gam.fs1$matched, df_beta_val)
+nn.gam.fs1.qq <- build_quantile_df(df_rel_val, nn.gam.fs1.predictions, df_beta_val)
+nn.gam.fs1.score <- score_model(bts, nn.gam.fs1.predictions, df_rel_val)
+# nn.gam.fs1.score
 ```
 
-Number of Beta samples: `r nrow(nn.gam.fs1$matched)`
+Resultant scores: `r nn.gam.fs1.score`
+
+
+* Number of matched Beta training samples: `r nrow(nn.gam.fs1$matched)`
+* Number of matched Beta validation samples: `r nrow(nn.gam.fs1.predictions)`
 
 ```{r nn_gam_fs1_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
-plot_validation_results(df_rel_val, nn.gam.fs1$matched, df_beta_val)
+plot_validation_results(df_rel_val, nn.gam.fs1.predictions, df_beta_val)
 ```
 
 
@@ -471,17 +510,22 @@ plot_validation_results(df_rel_val, nn.gam.fs1$matched, df_beta_val)
 * 4x oversampling
 
 ```{r nn_gam_fs5, warning=FALSE, error=FALSE, echo=FALSE}
-nn.gam.fs5 <- train_matchit(dfs[['4']], fs5, add_interactions = FALSE, replace = FALSE, 
-                        caliper = 0, calclosest = FALSE, ratio = 1, distance = "GAMlogit")
-nn.gam.fs5.qq <- build_quantile_df(df_rel_val, nn.gam.fs5$matched, df_beta_val)
-nn.gam.fs5.score <- score_model(bts, nn.gam.fs5$matched, df_rel_val)
-nn.gam.fs5.score
+# nn.gam.fs5 <- train_matchit(dfs[['4']], fs5, add_interactions = FALSE, replace = FALSE, 
+#                         caliper = 0, calclosest = FALSE, ratio = 1, distance = "GAMlogit")
+nn.gam.fs5.predictions <- extract_predictions(nn.gam.fs5$matched, df_beta_val)
+nn.gam.fs5.qq <- build_quantile_df(df_rel_val, nn.gam.fs5.predictions, df_beta_val)
+nn.gam.fs5.score <- score_model(bts, nn.gam.fs5.predictions, df_rel_val)
+# nn.gam.fs5.score
 ```
 
-Number of Beta samples: `r nrow(nn.gam.fs1$matched)`
+Resultant scores: `r nn.gam.fs5.score`
+
+
+* Number of matched Beta training samples: `r nrow(nn.gam.fs5$matched)`
+* Number of matched Beta validation samples: `r nrow(nn.gam.fs5.predictions)`
 
 ```{r nn_gam_fs5_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
-plot_validation_results(df_rel_val, nn.gam.fs5$matched, df_beta_val)
+plot_validation_results(df_rel_val, nn.gam.fs5.predictions, df_beta_val)
 ```
 
 ## Nearest-Neighbors Probit, Linear
@@ -498,17 +542,23 @@ Hyperparameters: `hyperparameter_tuning_nn_probit_linear.Rmd`
 * Interactions across covariates
 
 ```{r nn_probit_fs1, warning=FALSE, error=FALSE, echo=FALSE}
-nn.linear.probit.fs1 <- train_matchit(dfs[['4']], fs1, add_interactions = TRUE, replace = FALSE, 
-                        caliper = 0.4, calclosest = TRUE, ratio = 3, distance = "linear.probit")
-nn.linear.probit.fs1.qq <- build_quantile_df(df_rel_val, nn.linear.probit.fs1$matched, df_beta_val)
-nn.linear.probit.fs1.score <- score_model(bts, nn.linear.probit.fs1$matched, df_rel_val)
-nn.linear.probit.fs1.score
+# nn.linear.probit.fs1 <- train_matchit(dfs[['4']], fs1, add_interactions = TRUE, replace = FALSE, 
+#                         caliper = 0.4, calclosest = TRUE, ratio = 3, distance = "linear.probit")
+nn.linear.probit.fs1.predictions <- extract_predictions(nn.linear.probit.fs1$matched, df_beta_val)
+nn.linear.probit.fs1.qq <- build_quantile_df(df_rel_val, nn.linear.probit.fs1.predictions, df_beta_val)
+nn.linear.probit.fs1.score <- score_model(bts, nn.linear.probit.fs1.predictions, df_rel_val)
+# nn.linear.probit.fs1.score
 ```
 
-Number of Beta samples: `r nrow(nn.linear.probit.fs1$matched)`
+
+Resultant scores: `r nn.linear.probit.fs1.score`
+
+
+* Number of matched Beta training samples: `r nrow(nn.linear.probit.fs1$matched)`
+* Number of matched Beta validation samples: `r nrow(nn.linear.probit.fs1.predictions)`
 
 ```{r nn_probit_fs1_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
-plot_validation_results(df_rel_val, nn.linear.probit.fs1$matched, df_beta_val)
+plot_validation_results(df_rel_val, nn.linear.probit.fs1.predictions, df_beta_val)
 ```
 
 ### FS 5
@@ -520,17 +570,22 @@ plot_validation_results(df_rel_val, nn.linear.probit.fs1$matched, df_beta_val)
 * 8x oversampling
 
 ```{r nn_probit_fs5, warning=FALSE, error=FALSE, echo=FALSE}
-nn.linear.probit.fs5 <- train_matchit(dfs[['8']], fs5, add_interactions = FALSE, replace = FALSE, 
-                        caliper = 0, calclosest = FALSE, ratio = 1, distance = "linear.probit")
-nn.linear.probit.fs5.qq <- build_quantile_df(df_rel_val, nn.linear.probit.fs5$matched, df_beta_val)
-nn.linear.probit.fs5.score <- score_model(bts, nn.linear.probit.fs5$matched, df_rel_val)
-nn.linear.probit.fs5.score
+# nn.linear.probit.fs5 <- train_matchit(dfs[['8']], fs5, add_interactions = FALSE, replace = FALSE, 
+#                         caliper = 0, calclosest = FALSE, ratio = 1, distance = "linear.probit")
+nn.linear.probit.fs5.predictions <- extract_predictions(nn.linear.probit.fs5$matched, df_beta_val)
+nn.linear.probit.fs5.qq <- build_quantile_df(df_rel_val, nn.linear.probit.fs5.predictions, df_beta_val)
+nn.linear.probit.fs5.score <- score_model(bts, nn.linear.probit.fs5.predictions, df_rel_val)
+# nn.linear.probit.fs5.score
 ```
 
-Number of Beta samples: `r nrow(nn.linear.probit.fs5$matched)`
+Resultant scores: `r nn.linear.probit.fs5.score`
+
+
+* Number of matched Beta training samples: `r nrow(nn.linear.probit.fs5$matched)`
+* Number of matched Beta validation samples: `r nrow(nn.linear.probit.fs5.predictions)`
 
 ```{r nn_probit_fs5_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
-plot_validation_results(df_rel_val, nn.linear.probit.fs5$matched, df_beta_val)
+plot_validation_results(df_rel_val, nn.linear.probit.fs5.predictions, df_beta_val)
 ```
 
 ## Genetic Matching
@@ -558,30 +613,40 @@ load(image_file_path)
 
 ```{r genmatch_fs1, echo=FALSE}
 genmatch.fs1.matched <- df_train_gen[fs1_results$matches$index.control,]
-genmatch.fs1.qq <- build_quantile_df(df_rel_val, genmatch.fs1.matched, df_beta_val)
-genmatch.fs1.score <- score_model(bts, genmatch.fs1.matched, df_rel_val)
-genmatch.fs1.score
+genmatch.fs1.predictions <- extract_predictions(genmatch.fs1.matched, df_beta_val)
+genmatch.fs1.qq <- build_quantile_df(df_rel_val, genmatch.fs1.predictions, df_beta_val)
+genmatch.fs1.score <- score_model(bts, genmatch.fs1.predictions, df_rel_val)
+# genmatch.fs1.score
 ```
 
-Number of Beta samples: `r nrow(genmatch.fs1.matched)`
+Resultant scores: `r genmatch.fs1.score`
+
+
+* Number of matched Beta training samples: `r length(unique(genmatch.fs1.matched$client_id))`
+* Number of matched Beta validation samples: `r nrow(genmatch.fs1.predictions)`
 
 ```{r genmatch_fs1_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
-plot_validation_results(df_rel_val, genmatch.fs1.matched, df_beta_val)
+plot_validation_results(df_rel_val, genmatch.fs1.predictions, df_beta_val)
 ```
 
 #### Pop.Size 500
 
 ```{r genmatch_fs1_500, echo=FALSE}
 genmatch.fs1.500.matched <- df_train_gen[fs1_500_results$matches$index.control,]
-genmatch.fs1.500.qq <- build_quantile_df(df_rel_val, genmatch.fs1.500.matched, df_beta_val)
-genmatch.fs1.500.score <- score_model(bts, genmatch.fs1.500.matched, df_rel_val)
-genmatch.fs1.500.score
+genmatch.fs1.500.predictions <- extract_predictions(genmatch.fs1.500.matched, df_beta_val)
+genmatch.fs1.500.qq <- build_quantile_df(df_rel_val, genmatch.fs1.500.predictions, df_beta_val)
+genmatch.fs1.500.score <- score_model(bts, genmatch.fs1.500.predictions, df_rel_val)
+# genmatch.fs1.500.score
 ```
 
-Number of Beta samples: `r nrow(genmatch.fs1.500.matched)`
+Resultant scores: `r genmatch.fs1.500.score`
 
-```{r genmatch_fs1_500_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
-plot_validation_results(df_rel_val, genmatch.fs1.500.matched, df_beta_val)
+
+* Number of matched Beta training samples: `r length(unique(genmatch.fs1.500.matched$client_id))`
+* Number of matched Beta validation samples: `r nrow(genmatch.fs1.500.predictions)`
+
+```{r genmatch_fs1.500_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
+plot_validation_results(df_rel_val, genmatch.fs1.500.predictions, df_beta_val)
 ```
 
 
@@ -589,48 +654,67 @@ plot_validation_results(df_rel_val, genmatch.fs1.500.matched, df_beta_val)
 
 ```{r genmatch_fs3, echo=FALSE}
 genmatch.fs3.matched <- df_train_gen[fs3_results$matches$index.control,]
-genmatch.fs3.qq <- build_quantile_df(df_rel_val, genmatch.fs3.matched, df_beta_val)
-genmatch.fs3.score <- score_model(bts, genmatch.fs3.matched, df_rel_val)
-genmatch.fs3.score
+genmatch.fs3.predictions <- extract_predictions(genmatch.fs3.matched, df_beta_val)
+genmatch.fs3.qq <- build_quantile_df(df_rel_val, genmatch.fs3.predictions, df_beta_val)
+genmatch.fs3.score <- score_model(bts, genmatch.fs3.predictions, df_rel_val)
+# genmatch.fs3.score
 ```
 
-Number of Beta samples: `r nrow(genmatch.fs3.matched)`
+Resultant scores: `r genmatch.fs3.score`
+
+
+* Number of matched Beta training samples: `r length(unique(genmatch.fs3.matched$client_id))`
+* Number of matched Beta validation samples: `r nrow(genmatch.fs3.predictions)`
 
 ```{r genmatch_fs3_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
-plot_validation_results(df_rel_val, genmatch.fs3.matched, df_beta_val)
+plot_validation_results(df_rel_val, genmatch.fs3.predictions, df_beta_val)
 ```
 
 ### FS 5
 
 ```{r genmatch_fs5, echo=FALSE}
 genmatch.fs5.matched <- df_train_gen[fs5_results$matches$index.control,]
-genmatch.fs5.qq <- build_quantile_df(df_rel_val, genmatch.fs5.matched, df_beta_val)
-genmatch.fs5.score <- score_model(bts, genmatch.fs5.matched, df_rel_val)
-genmatch.fs5.score
+genmatch.fs5.predictions <- extract_predictions(genmatch.fs5.matched, df_beta_val)
+genmatch.fs5.qq <- build_quantile_df(df_rel_val, genmatch.fs5.predictions, df_beta_val)
+genmatch.fs5.score <- score_model(bts, genmatch.fs5.predictions, df_rel_val)
+#genmatch.fs5.score
 ```
 
-Number of Beta samples: `r nrow(genmatch.fs3.matched)`
+Resultant scores: `r genmatch.fs5.score`
+
+
+* Number of matched Beta training samples: `r length(unique(genmatch.fs5.matched$client_id))`
+* Number of matched Beta validation samples: `r nrow(genmatch.fs5.predictions)`
 
 ```{r genmatch_fs5_val_plt, fig.width=15,fig.height=25, warning=FALSE, message=FALSE, echo=FALSE}
-plot_validation_results(df_rel_val, genmatch.fs5.matched, df_beta_val)
+plot_validation_results(df_rel_val, genmatch.fs5.predictions, df_beta_val)
 ```
 
 # Results
 
-Genetic matching produces the optimal matching results. It yields the lowest scores, without dropping large sample of the Beta profiles. Unsurprisingly, matching directly, and only, on the performance metrics yields the best results. Increasing the population size hyperparameter slightly decreased model performance, which is surprising. Considering this substantially increases training times, the lower value will be used. 
+Nearest-Neighbors Probit, Linear produces the optimal matching results. It yields the lowest scores, without dropping large sample of the Beta profiles. Unsurprisingly, matching directly, and only, on the performance metrics yields the best results. Interestingly, it appears that interactions across covariates greatly help. Fortunately, this model architecture is relatively cheap from a computational perspective. 
+
+Balancing on additional covariates (e.g, FS3 or FS5), outside of the performance metrics, yields sub-optimal results. Nearest-Neighbors Probit, Linear again yields the lowest score (`r nn.linear.probit.fs5.score`); however, this is at the expense of a greatly reduced Beta samples size (`r nrow(nn.linear.probit.fs5.predictions)`). Genetic matching is able to retain a much larger sample size (`r nrow(genmatch.fs3.predictions)`), at the expense of greater error (`r genmatch.fs3.score`). 
 
 **Conclusion**: Optimal model framework
 
-* matching algorithm: Genetic Matching
+* matching algorithm: Nearest-Neighbors Probit, Linear
 * features: Only performance metrics
-* hyperparameters: Default for `Matching` library
+* hyperparameters: 
+    * `caliper` = 0.4
+    * `calcloset` = FALSE
+    * `ratio` = 3
+    * `replace` = FALSE
+    * 4x oversampling
+    * Interactions across covariates
+
 
 # Push to GCP
 
 The boostrap replicates for validation, oversampled traininig datasets, resultant quantile calculations, and matched datasets are saved to an R image. Then uploaded to the project GCP bucket.
 
 ```{r serialize_gcp, echo=FALSE}
-results_file_name = 'validation_results_20191106.RData'
+results_file_name = 'validation_results_20191121.RData'
 results_file_path = file.path('data', results_file_name)
 
 objects <- c(
