@@ -1,0 +1,43 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(bigrquery)
+```
+
+```{r}
+project <- "moz-fx-dev-cdowhyglund-subbeta"
+```
+
+```{r}
+# This doesn't work yields error: "Error: Don't know how to convert type numeric"
+
+# sql <- "
+# SELECT *
+# from `moz-fx-data-shared-prod.analysis.cdowhygelund_subBeta_training` 
+# "
+#  
+# train_df <- query_exec(sql, project = project, use_legacy_sql = FALSE)
+```
+
+
+
+```{r}
+library(DBI)
+library(dplyr)
+
+con <- dbConnect(
+  bigrquery::bigquery(),
+  project = 'moz-fx-data-shared-prod',
+  dataset = 'analysis',
+  billing = project
+)
+
+training_tbl <- tbl(con, "cdowhygelund_subBeta_training")
+
+df <- training_tbl %>%
+  collect()
+```
+
