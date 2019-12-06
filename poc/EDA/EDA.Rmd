@@ -6,7 +6,8 @@ output:
   html_document:
     toc: true
     theme: united
-    highlight: textmate
+    highlight: tango
+    df_print: kable
 ---
 
 # Exploratory Data Analysis (EDA) {.tabset}
@@ -14,7 +15,6 @@ output:
 This R markdown covers the Exploratory Data Analysis (EDA) on the training dataset of the PRD. 
 
 ## Setting-up
-
 ```{r message=FALSE, warning=FALSE}
 ## Loading the needed libraries
 
@@ -29,6 +29,11 @@ library(scales)          # to determining breaks and labels for axes and legends
 library(skimr)
 library(funModeling) 
 library(Hmisc)
+library(grid)
+library(hrbrthemes)
+library(tidyr)
+library(viridis)
+library(ggthemes)
 ```
 
 ```{r message=FALSE, warning=FALSE}
@@ -47,31 +52,35 @@ scroll_box(width = "100%")
 
 ## Step 1 : Data Inspection
 
-To get introduced to our dataset:
+To get introduced to our dataset, et's have a look on the basic information of the dataset.
 
-```{r}
+```{r echo=FALSE}
 kable(introduce(df_train_f)) %>%
 kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
 scroll_box(width = "100%")
 ```
 
-
-Let's have a look on the basic information of the dataset.
-
-```{r, fig.width = 10, fig.height = 5}
+```{r echo=FALSE, fig.height=10, fig.width=10}
 plot_intro(df_train_f, ggtheme = theme_minimal())
 ```
 
-Sanity check on the structure and show sample data for each variable.
+### Observations
+
+* Most of the dataset is composed of continuous variables
+* No NAs values (were handled in preprocessing)
+
+### Structure
+
+Let's use `glimpse` function to display a vertical preview of the dataset. So we can easily preview data type and sample data.
 
 ```{r}
-str(df_train_f)
+glimpse(df_train_f)
 ```
 
-When we get a new dataset to analyze, is important to know if there are missing values and the data type. The `df_status` function can help us by showing these numbers in relative and percentage values.
+If we want to get some metrics about data types, zeros, infinite numbers, and missing values, we can use the `df_status` function.
 
 ```{r}
-kable(df_status(df_train_f)) %>%
+kable(df_status(df_train_f, FALSE)) %>%
 kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
 scroll_box(width = "100%")
 ```
@@ -82,15 +91,15 @@ scroll_box(width = "100%")
 * `type`: factor, ordered-factor, numeric, integer or character
 * `unique`: quantity of unique values
 
+#### Observations
+
 > Are all the variables in the correct data type?
 
-`to-do`
-
-<!-- Some variables are encoded as numbers, but they are codes or categories and the models don't handle them in the same way. -->
+None. It seems that this has already been dealt with in preprocessing. 
 
 > Any variables with lots of zeros? 
 
-Yes. Variables with lots of zeros may not be useful for modeling and, in some cases, they may dramatically bias the model.
+Yes. Variables with lots of zeros may not be useful for modeling and, in some cases, they may dramatically bias the model. For example, the `content_crashes` is 100% equal to zero.  
 
 > Any variables with lots of NAs? 
 
@@ -98,47 +107,147 @@ None. Good news.
 
 > Any high cardinality variable?
 
-`to-do`
-<!-- Factor/categorical variables with a high number of different values (~30) tend to do overfitting if the categories have low cardinality. -->
+Factor/categorical variables with a high number of different values (~30) tend to do overfitting if the categories have low cardinality. Besides `client_id`, it doesn't seem like there are other high cardinality variables.
 
-## Step 2 : Analyzing Categorical Variables
+## Step 2 : Beta vs Release
 
-```{r}
+```{r, fig.width = 7.5}
 df_release <- df_train_f[which(df_train_f$label == 'release'), ]
 df_beta <- df_train_f[which(df_train_f$label == 'beta'), ]
 
-freq(df_train_f$label)
+f <- freq(df_train_f$label)
 ```
 
 
-```{r, fig.width = 15, fig.height = 15}
-## Frequency distribution of all discrete variables
-plot_bar(df_train_f)
+```{r}
+summary(df_release)
 ```
 
+
+```{r}
+summary(df_beta)
+```
+
+## Step 3 - Analyzing Discrete Variables
+
 ```{r, fig.width = 15, fig.height = 15}
-## Frequency distribution for release dataframe
-plot_bar(df_release)
+## Frequency distribution release dataframe
+plot_bar(df_release, ggtheme = theme_minimal(base_size = 15))
 ```
 
 ```{r, fig.width = 15, fig.height = 15}
 ## Frequency distribution beta dataframe
-plot_bar(df_beta)
+plot_bar(df_beta, ggtheme = theme_minimal(base_size = 15))
 ```
 
-### EDA on Coninuous Variables
+## Step 4 - Analyzing Continuos Variables
 
 ```{r, fig.width = 15, fig.height = 15}
-## View histogram of all continuous variables
-plot_histogram(df_train_f)
-```
-
-```{r, fig.width = 15, fig.height = 15}
-## View histogram of all continuous variables
-plot_histogram(df_release)
+## View histogram of release dataset
+plot_histogram(df_release, ggtheme = theme_minimal(base_size = 15))
 ```
 
 ```{r, fig.width = 15, fig.height = 15}
-## View histogram of all continuous variables
-plot_histogram(df_beta)
+## View histogram of beta dataset
+plot_histogram(df_beta, ggtheme = theme_minimal(base_size = 15))
 ```
+
+
+```{r message=FALSE, warning=FALSE}
+ggplot(data=df_train_f, aes(x=daily_max_tabs, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6, main="Daily Max Tabs") + xlim(0, 20) +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    theme_ipsum()
+```
+
+```{r message=FALSE, warning=FALSE}
+ggplot(data=df_train_f, aes(x=startup_ms, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6, main="Startup (ms)") + xlim(0, 5) +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    theme_ipsum()
+```
+
+```{r message=FALSE, warning=FALSE}
+ggplot(data=df_train_f, aes(x=num_active_days, group=label, fill=label)) +
+    geom_histogram(stat = "bin", position = "identity", alpha=0.5, main="Num Active Days") +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    theme_ipsum()
+```
+
+
+```{r message=FALSE, warning=FALSE}
+ggplot(data=df_train_f, aes(x=active_hours, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6, main="Active Hours") +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    theme_ipsum()
+```
+
+```{r message=FALSE, warning=FALSE}
+ggplot(data=df_train_f, aes(x=num_pages, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6, main="Num Pages") + xlim(0, 50000) +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    theme_ipsum()
+```
+
+```{r message=FALSE, warning=FALSE}
+ggplot(data=df_train_f, aes(x=daily_num_sessions_started, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6, main="Daily Num Sessions Started") + xlim(0, 20) +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    theme_ipsum()
+```
+
+```{r message=FALSE, warning=FALSE}
+ggplot(data=df_train_f, aes(x=TIME_TO_DOM_INTERACTIVE_MS, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6, main="Time to DOM Interactive (ms)") +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    theme_ipsum()
+```
+
+```{r message=FALSE, warning=FALSE}
+ggplot(data=df_train_f, aes(x=FX_PAGE_LOAD_MS_2_PARENT, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6, main="FX Page Load (ms)") +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    theme_ipsum()
+```
+
+```{r message=FALSE, warning=FALSE}
+ggplot(data=df_train_f, aes(x=TIME_TO_DOM_CONTENT_LOADED_END_MS, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6, main="Time to DOM Content Loaded End (ms)") +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    theme_ipsum()
+```
+
+```{r message=FALSE, warning=FALSE}
+ggplot(data=df_train_f, aes(x=TIME_TO_LOAD_EVENT_END_MS, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6, main="Time to Load Event End (ms)") +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    theme_ipsum()
+```
+
+```{r message=FALSE, warning=FALSE}
+ggplot(data=df_train_f, aes(x=TIME_TO_NON_BLANK_PAINT_MS, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6, main="Time to Non Blank Paint (ms)") +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    theme_ipsum()
+```
+
+```{r message=FALSE, warning=FALSE}
+ggplot(data=df_train_f, aes(x=TIME_TO_DOM_COMPLETE_MS, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6, main="Time to DOM Complete (ms)") +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    theme_ipsum()
+```
+
+### Observations
