@@ -1,0 +1,144 @@
+---
+title: "Mozilla Data Science Project - 2019"
+author: "Mariana de Oliveira Santos Silva"
+date: "December 05, 2019"
+output: 
+  html_document:
+    toc: true
+    theme: united
+    highlight: textmate
+---
+
+# Exploratory Data Analysis (EDA) {.tabset}
+
+This R markdown covers the Exploratory Data Analysis (EDA) on the training dataset of the PRD. 
+
+## Setting-up
+
+```{r message=FALSE, warning=FALSE}
+## Loading the needed libraries
+
+library(kableExtra)      # help you build common complex tables and manipulate table styles
+library(tidyverse)       # for general data wrangling (includes readr and dplyr)
+library(ggplot2)         # to draw statistical plots 
+library(plotly)          # to construct interactive 3d plots
+library(DataExplorer)    # automated data exploration
+library(corrplot)        # to plot nice correlation matrix
+library(caret)           # includes several functions to pre-process
+library(scales)          # to determining breaks and labels for axes and legends
+library(skimr)
+library(funModeling) 
+library(Hmisc)
+```
+
+```{r message=FALSE, warning=FALSE}
+## Loading the training dataset
+
+load("~/GitHub/ff-beta-release-matching/poc/EDA/data_milestone2_df_train_validate_20191021.RData")
+```
+
+```{r message=FALSE, warning=FALSE}
+## View train dataframe 
+
+kable(head(df_train_f)) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
+```
+
+## Step 1 : Data Inspection
+
+To get introduced to our dataset:
+
+```{r}
+kable(introduce(df_train_f)) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
+```
+
+
+Let's have a look on the basic information of the dataset.
+
+```{r, fig.width = 10, fig.height = 5}
+plot_intro(df_train_f, ggtheme = theme_minimal())
+```
+
+Sanity check on the structure and show sample data for each variable.
+
+```{r}
+str(df_train_f)
+```
+
+When we get a new dataset to analyze, is important to know if there are missing values and the data type. The `df_status` function can help us by showing these numbers in relative and percentage values.
+
+```{r}
+kable(df_status(df_train_f)) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
+```
+
+* `q_zeros`: quantity of zeros (`p_zeros`: in percent)
+* `q_inf`: quantity of infinite values (`p_inf`: in percent)
+* `q_na`: quantity of NA (`p_na`: in percent)
+* `type`: factor, ordered-factor, numeric, integer or character
+* `unique`: quantity of unique values
+
+> Are all the variables in the correct data type?
+
+`to-do`
+
+<!-- Some variables are encoded as numbers, but they are codes or categories and the models don't handle them in the same way. -->
+
+> Any variables with lots of zeros? 
+
+Yes. Variables with lots of zeros may not be useful for modeling and, in some cases, they may dramatically bias the model.
+
+> Any variables with lots of NAs? 
+
+None. Good news.
+
+> Any high cardinality variable?
+
+`to-do`
+<!-- Factor/categorical variables with a high number of different values (~30) tend to do overfitting if the categories have low cardinality. -->
+
+## Step 2 : Analyzing Categorical Variables
+
+```{r}
+df_release <- df_train_f[which(df_train_f$label == 'release'), ]
+df_beta <- df_train_f[which(df_train_f$label == 'beta'), ]
+
+freq(df_train_f$label)
+```
+
+
+```{r, fig.width = 15, fig.height = 15}
+## Frequency distribution of all discrete variables
+plot_bar(df_train_f)
+```
+
+```{r, fig.width = 15, fig.height = 15}
+## Frequency distribution for release dataframe
+plot_bar(df_release)
+```
+
+```{r, fig.width = 15, fig.height = 15}
+## Frequency distribution beta dataframe
+plot_bar(df_beta)
+```
+
+### EDA on Coninuous Variables
+
+```{r, fig.width = 15, fig.height = 15}
+## View histogram of all continuous variables
+plot_histogram(df_train_f)
+```
+
+```{r, fig.width = 15, fig.height = 15}
+## View histogram of all continuous variables
+plot_histogram(df_release)
+```
+
+```{r, fig.width = 15, fig.height = 15}
+## View histogram of all continuous variables
+plot_histogram(df_beta)
+```
