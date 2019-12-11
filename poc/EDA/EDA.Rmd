@@ -33,13 +33,15 @@ library(grid)
 library(hrbrthemes)
 library(tidyr)
 library(viridis)
+library(ggpubr)
 library(ggthemes)
+library(GGally)
 ```
 
 ```{r message=FALSE, warning=FALSE}
 ## Loading the training dataset
 
-load("~/GitHub/ff-beta-release-matching/poc/EDA/data_milestone2_df_train_validate_20191021.RData")
+load("~/GitHub/ff-beta-release-matching/poc/EDA/data_milestone2_df_train_validate_20191025.RData")
 ```
 
 ```{r message=FALSE, warning=FALSE}
@@ -107,7 +109,7 @@ None. Good news.
 
 > Any high cardinality variable?
 
-Factor/categorical variables with a high number of different values (~30) tend to do overfitting if the categories have low cardinality. Besides `client_id`, it doesn't seem like there are other high cardinality variables.
+Factor/categorical variables with a high number of different values (~30) tend to do overfitting if the categories have low cardinality.
 
 ## Step 2 : Beta vs Release
 
@@ -152,102 +154,129 @@ plot_histogram(df_release, ggtheme = theme_minimal(base_size = 15))
 plot_histogram(df_beta, ggtheme = theme_minimal(base_size = 15))
 ```
 
+### Analysing User Engagement Metrics
 
 ```{r message=FALSE, warning=FALSE}
-ggplot(data=df_train_f, aes(x=daily_max_tabs, group=label, fill=label)) +
-    geom_density(adjust=1.5, alpha=0.6, main="Daily Max Tabs") + xlim(0, 20) +
+ggplot(data=df_train_f, aes(x=uri_count, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6) + xlim(0, 1000) +
     scale_fill_viridis(discrete=TRUE) +
     scale_color_viridis(discrete=TRUE) +
+    labs(title="URI Count Density Curve",x="URI Count", y = "Density") +
     theme_ipsum()
 ```
-
-```{r message=FALSE, warning=FALSE}
-ggplot(data=df_train_f, aes(x=startup_ms, group=label, fill=label)) +
-    geom_density(adjust=1.5, alpha=0.6, main="Startup (ms)") + xlim(0, 5) +
-    scale_fill_viridis(discrete=TRUE) +
-    scale_color_viridis(discrete=TRUE) +
-    theme_ipsum()
-```
-
-```{r message=FALSE, warning=FALSE}
-ggplot(data=df_train_f, aes(x=num_active_days, group=label, fill=label)) +
-    geom_histogram(stat = "bin", position = "identity", alpha=0.5, main="Num Active Days") +
-    scale_fill_viridis(discrete=TRUE) +
-    scale_color_viridis(discrete=TRUE) +
-    theme_ipsum()
-```
-
 
 ```{r message=FALSE, warning=FALSE}
 ggplot(data=df_train_f, aes(x=active_hours, group=label, fill=label)) +
-    geom_density(adjust=1.5, alpha=0.6, main="Active Hours") +
+    geom_density(adjust=1.5, alpha=0.6) +
     scale_fill_viridis(discrete=TRUE) +
     scale_color_viridis(discrete=TRUE) +
+    labs(title="Active Hours Density Curve",x="Active Hours", y = "Density") +
     theme_ipsum()
 ```
 
 ```{r message=FALSE, warning=FALSE}
 ggplot(data=df_train_f, aes(x=num_pages, group=label, fill=label)) +
-    geom_density(adjust=1.5, alpha=0.6, main="Num Pages") + xlim(0, 50000) +
+    geom_density(adjust=1.5, alpha=0.6) + xlim(0, 50000) +
     scale_fill_viridis(discrete=TRUE) +
     scale_color_viridis(discrete=TRUE) +
+    labs(title="Num Pages Density Curve",x="Num Pages", y = "Density") +
     theme_ipsum()
 ```
 
 ```{r message=FALSE, warning=FALSE}
-ggplot(data=df_train_f, aes(x=daily_num_sessions_started, group=label, fill=label)) +
-    geom_density(adjust=1.5, alpha=0.6, main="Daily Num Sessions Started") + xlim(0, 20) +
+ggplot(data=df_train_f, aes(x=session_length, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6, main="Session Length") + xlim(0, 75) +
     scale_fill_viridis(discrete=TRUE) +
     scale_color_viridis(discrete=TRUE) +
+    labs(title="Session Length Density Curve",x="Session Length", y = "Density") +
     theme_ipsum()
 ```
 
-```{r message=FALSE, warning=FALSE}
-ggplot(data=df_train_f, aes(x=TIME_TO_DOM_INTERACTIVE_MS, group=label, fill=label)) +
-    geom_density(adjust=1.5, alpha=0.6, main="Time to DOM Interactive (ms)") +
-    scale_fill_viridis(discrete=TRUE) +
-    scale_color_viridis(discrete=TRUE) +
-    theme_ipsum()
+# User Engagement Metrics {.tabset}
+
+This project will focus on user engagement metrics to ensure the most performant model possible. So, we are going to analyze the following metrics:
+
+* `num_active_days`
+* `active_hours`
+* `active_hours_max`
+* `uri_count`
+* `uri_count_max`
+* `session_length`
+* `session_length_max`
+* `search_count`
+* `search_count_max`
+* `num_bookmarks`
+* `num_pages`
+* `num_pages_max`
+* `daily_unique_domains`
+* `daily_max_tabs`
+* `daily_tabs_opened`
+* `daily_num_sessions_started`
+* `daily_unique_domains_max`
+* `daily_max_tabs_max`
+* `daily_tabs_opened_max`
+* `daily_num_sessions_started_max`
+<!-- * `fxa_configured` -->
+<!-- * `sync_configured` -->
+
+```{r include=FALSE}
+user_eng <- c("num_active_days", "active_hours", "active_hours_max", "uri_count", "uri_count_max", "session_length", "session_length_max", "search_count", "search_count_max", "num_bookmarks", "num_pages", "num_pages_max", "daily_unique_domains", "daily_max_tabs", "daily_tabs_opened", "daily_num_sessions_started", "daily_unique_domains_max", "daily_max_tabs_max", "daily_tabs_opened_max", "daily_num_sessions_started_max")
 ```
 
-```{r message=FALSE, warning=FALSE}
-ggplot(data=df_train_f, aes(x=FX_PAGE_LOAD_MS_2_PARENT, group=label, fill=label)) +
-    geom_density(adjust=1.5, alpha=0.6, main="FX Page Load (ms)") +
-    scale_fill_viridis(discrete=TRUE) +
-    scale_color_viridis(discrete=TRUE) +
-    theme_ipsum()
+```{r include=FALSE}
+df_beta_ue <- df_beta %>% select(user_eng)
+df_release_ue <- df_release %>% select(user_eng)
+df_train_ue <- df_train_f %>% select(c(user_eng, "label"))
 ```
 
-```{r message=FALSE, warning=FALSE}
-ggplot(data=df_train_f, aes(x=TIME_TO_DOM_CONTENT_LOADED_END_MS, group=label, fill=label)) +
-    geom_density(adjust=1.5, alpha=0.6, main="Time to DOM Content Loaded End (ms)") +
-    scale_fill_viridis(discrete=TRUE) +
-    scale_color_viridis(discrete=TRUE) +
-    theme_ipsum()
+## Comparing Two Distributions
+
+The QQ plot can be used to compare two continuous distributions. 
+
+```{r}
+par(mfrow = c(2, 2))  ## Set up a 2 x 2 plotting space
+
+## QQ plot in R to compare two data samples
+for (i in user_eng) {
+  x <- df_beta_ue[,i]
+  y <- df_release_ue[,i]
+  
+  rg <- range(x, y, na.rm=T)
+  
+  qqplot(x, y, main=i, xlim=rg, ylim=rg, xlab = "Beta", ylab = "Release", pch = 1, frame = FALSE)
+}
 ```
 
-```{r message=FALSE, warning=FALSE}
-ggplot(data=df_train_f, aes(x=TIME_TO_LOAD_EVENT_END_MS, group=label, fill=label)) +
-    geom_density(adjust=1.5, alpha=0.6, main="Time to Load Event End (ms)") +
-    scale_fill_viridis(discrete=TRUE) +
-    scale_color_viridis(discrete=TRUE) +
-    theme_ipsum()
+```{r include=FALSE}
+text_tbl <- data.frame(beta_num_active_days = c(summary(df_beta_ue$num_active_days)), release_num_active_days = c(summary(df_release_ue$num_active_days)), 
+beta_active_hours = c(summary(df_beta_ue$active_hours)), release_active_hours = c(summary(df_release_ue$active_hours)), 
+beta_active_hours_max = c(summary(df_beta_ue$active_hours_max)), release_active_hours_max = c(summary(df_release_ue$active_hours_max)), 
+beta_uri_count = c(summary(df_beta_ue$uri_count)), release_uri_count = c(summary(df_release_ue$uri_count)), 
+beta_uri_count_max = c(summary(df_beta_ue$uri_count_max)), release_uri_count_max = c(summary(df_release_ue$uri_count_max)), 
+beta_session_length = c(summary(df_beta_ue$session_length)), release_session_length = c(summary(df_release_ue$session_length)), 
+beta_session_length_max = c(summary(df_beta_ue$session_length_max)), release_session_length_max = c(summary(df_release_ue$session_length_max)), 
+beta_search_count = c(summary(df_beta_ue$search_count)), release_search_count = c(summary(df_release_ue$search_count)), 
+beta_search_count_max = c(summary(df_beta_ue$search_count_max)), release_search_count_max = c(summary(df_release_ue$search_count_max)), 
+beta_num_bookmarks = c(summary(df_beta_ue$num_bookmarks)), release_num_bookmarks = c(summary(df_release_ue$num_bookmarks)), 
+beta_num_pages = c(summary(df_beta_ue$num_pages)), release_num_pages = c(summary(df_release_ue$num_pages)), 
+beta_num_pages_max = c(summary(df_beta_ue$num_pages_max)), release_num_pages_max = c(summary(df_release_ue$num_pages_max)), 
+beta_daily_unique_domains = c(summary(df_beta_ue$daily_unique_domains)), release_daily_unique_domains = c(summary(df_release_ue$daily_unique_domains)), 
+beta_daily_max_tabs = c(summary(df_beta_ue$daily_max_tabs)), release_daily_max_tabs = c(summary(df_release_ue$daily_max_tabs)), 
+beta_daily_tabs_opened = c(summary(df_beta_ue$daily_tabs_opened)), release_daily_tabs_opened = c(summary(df_release_ue$daily_tabs_opened)), 
+beta_daily_num_sessions_started = c(summary(df_beta_ue$daily_num_sessions_started)), release_daily_num_sessions_started = c(summary(df_release_ue$daily_num_sessions_started)), 
+beta_daily_unique_domains_max = c(summary(df_beta_ue$daily_unique_domains_max)), release_daily_unique_domains_max = c(summary(df_release_ue$daily_unique_domains_max)), 
+beta_daily_max_tabs_max = c(summary(df_beta_ue$daily_max_tabs_max)), release_daily_max_tabs_max = c(summary(df_release_ue$daily_max_tabs_max)), 
+beta_daily_tabs_opened_max = c(summary(df_beta_ue$daily_tabs_opened_max)), release_daily_tabs_opened_max = c(summary(df_release_ue$daily_tabs_opened_max)), 
+beta_daily_num_sessions_started_max = c(summary(df_beta_ue$daily_num_sessions_started_max)), release_daily_num_sessions_started_max = c(summary(df_release_ue$daily_num_sessions_started_max)))
 ```
 
-```{r message=FALSE, warning=FALSE}
-ggplot(data=df_train_f, aes(x=TIME_TO_NON_BLANK_PAINT_MS, group=label, fill=label)) +
-    geom_density(adjust=1.5, alpha=0.6, main="Time to Non Blank Paint (ms)") +
-    scale_fill_viridis(discrete=TRUE) +
-    scale_color_viridis(discrete=TRUE) +
-    theme_ipsum()
+```{r}
+kable(text_tbl) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
 ```
 
-```{r message=FALSE, warning=FALSE}
-ggplot(data=df_train_f, aes(x=TIME_TO_DOM_COMPLETE_MS, group=label, fill=label)) +
-    geom_density(adjust=1.5, alpha=0.6, main="Time to DOM Complete (ms)") +
-    scale_fill_viridis(discrete=TRUE) +
-    scale_color_viridis(discrete=TRUE) +
-    theme_ipsum()
-```
 
-### Observations
+
+
+
