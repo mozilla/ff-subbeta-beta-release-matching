@@ -232,10 +232,7 @@ Model framework:
     * 4x oversampling
     * Interactions across covariates
     
-```{r train, message=FALSE}
-# fs1 <- c('TIME_TO_DOM_CONTENT_LOADED_END_MS', 'TIME_TO_LOAD_EVENT_END_MS', 'TIME_TO_DOM_COMPLETE_MS', 'FX_PAGE_LOAD_MS_2_PARENT') 
-# fs1 <- names(get_m2_metric_map()) # FIXME 
-
+```{r train, message=FALSE, error=FALSE}
 model <- train_matchit(df_train_x, outcomes, add_interactions = TRUE, replace = FALSE, 
                          caliper = 0.4, calclosest = TRUE, ratio = 3, distance = "linear.probit")
 ```
@@ -249,8 +246,8 @@ predictions <- extract_predictions(model$matched, df_predict_f)
 
 # Release Health Metrics
 
-Calculate the Release Health Metrics
-
+Calculate the Release Health Metrics:
+**TBD**
 
 # Serialize and push to GCP
 Serialize the following:
@@ -264,36 +261,71 @@ Serialize the following:
 ## Storage
 Save the resultant dataset and bootstrap samples to an R image. 
 
-```{r serialize_dataset}
-image_file_name <- paste('df_train_', format(Sys.time(), "%Y%m%d"), '.RData', sep='')
-image_file_path <- file.path('data', image_file_name)
-save(df_train_f, df_predict_f, df_train_x, file = image_file_path)
+```{r serialize_datasets}
+# training datasets
+train_file_name <- paste('df_train_', format(Sys.time(), "%Y%m%d"), '.RData', sep='')
+train_file_path <- file.path('data', train_file_name)
+save(df_train_f, df_predict_f, df_train_x, model, file = train_file_path)
+gcs_train_file_path <- file.path('data', 'milestone4', train_file_name)
 
-gcs_file_path <- file.path('data', 'milestone4', image_file_name)
+# final prelease subsetted dataset
+prerelease_file_name <- paste('df_prerelease_', format(Sys.time(), "%Y%m%d"), '.RData', sep='')
+prerelease_file_path <- file.path('data', prerelease_file_name)
+save(predictions, file = prerelease_file_path)
+gcs_prerelease_file_path <- file.path('data', 'milestone4', prerelease_file_name)
+
+# Release health metrics
+release_health_file_name <- paste('df_release_health_', format(Sys.time(), "%Y%m%d"), '.RData', sep='')
+release_health_file_path <- file.path('data', release_health_file_name)
+# save(df_release_health_f, df_predict_f, df_release_health_x, file = release_health_file_path)
+gcs_release_health_file_path <- file.path('data', 'milestone4', release_health_file_name)
 ```
 
-Then push the results to GCP in the `moz-fx-dev-subbeta` bucket, under `r gcs_file_path`.
+Then push the results to GCP in the `moz-fx-dev-subbeta` bucket, to the following files:
 
-```{r gcp_storage_push, warning=FALSE}
+* `r gcs_train_file_path`
+* `r gcs_prerelease_file_path`
+* `r gcs_release_health_file_path`
+
+
+```{r gcp_train_storage_push, warning=FALSE}
 Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
            "GCS_AUTH_FILE" = "~/certs/moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json")
 
 library(googleCloudStorageR)
 
-upload_try <- gcs_upload(image_file_path, name = gcs_file_path)
+upload_try <- gcs_upload(train_file_path, name = gcs_train_file_path)
 upload_try
+```
+
+```{r gcp_prelease_storage_push, warning=FALSE}
+upload_try <- gcs_upload(prerelease_file_path, name = gcs_prerelease_file_path)
+upload_try
+```
+
+```{r gcp_health_metrics_storage_push, warning=FALSE}
+# upload_try <- gcs_upload(gcs_release_health_file_path, name = gcs_file_path)
+# upload_try
 ```
 
 ## BigQuery
 
 Training and prerelease datasets
 ```{r big_query_write}
-project <- "moz-fx-dev-cdowhyglund-subbeta"
+project <- "moz-fx-dev-cdowhyglund-subBeta"
 # project <- "moz-fx-data-bq-data-science"
 
 bq_table(project = 'moz-fx-dev-cdowhyglund-subbeta',
          dataset = "training",
          table   = "ccd_subbeta_training_cleaned") %>%
+  bq_table_upload(values = df_train_x,
+                  create_disposition = "CREATE_IF_NEEDED",
+                  write_disposition = "WRITE_APPEND",
+                  fields = as_bq_fields(df_train_x) )
+
+bq_table(project = 'moz-fx-dev-cdowhyglund-subbeta',
+         dataset = "training",
+         table   = "ccd_subbeta_training_final") %>%
   bq_table_upload(values = df_train_x,
                   create_disposition = "CREATE_IF_NEEDED",
                   write_disposition = "WRITE_APPEND",
@@ -323,6 +355,11 @@ bq_table(project = 'moz-fx-dev-cdowhyglund-subbeta',
 
 Release health Metrics
 ```{r bq_release_health_metrics}
-
+# bq_table(project = 'moz-fx-dev-cdowhyglund-subbeta',
+#          dataset = "prerelease",
+#          table   = "ccd_subbeta_prerelease_health_metrics") %>%
+#   bq_table_upload(values = release_health_df,
+#                   create_disposition = "CREATE_IF_NEEDED",
+#                   write_disposition = "WRITE_APPEND",
+#                   fields = as_bq_fields(release_health_df) )
 ```
-
