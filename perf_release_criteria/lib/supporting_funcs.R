@@ -52,6 +52,7 @@ calc_stats <- function(df.match, ho_cov, add_1 = FALSE){
 
 #### Modeling Pipeline
 
+## FIXME: moved to modeling.R
 generate_formula <- function(tr_cov, label, add_interactions=FALSE){
   if (add_interactions){
     formula <- paste(label, '~', paste(tr_cov, collapse="*"))

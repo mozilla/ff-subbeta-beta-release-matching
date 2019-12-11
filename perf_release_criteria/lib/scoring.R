@@ -4,6 +4,7 @@ library(foreach)
 # library(doMC)
 library(doParallel)
 
+# FIXME: move to subBeta_supporting.R
 get_m2_metric_map = function(){
   #' Get milestone 2 map of metrics to scoring weights
   #'
@@ -240,3 +241,52 @@ perform_matchit_hp_tune <- function(df_train, bts, model_covs, workers, hps_grid
   #return(list(full = results, mean = res_mean, median = res_median))
 }
 
+score_model <- function(bts, df_match, df_val, workers){
+  if (missing(workers)) workers = detectCores()
+  cl <- makePSOCKcluster(workers) 
+  registerDoParallel(cl)
+  final <- tryCatch({
+    scores <- foreach(i=1:length(bts), 
+                      .packages = c('dplyr', 'transport'), 
+                      .export=c('calc_score', 'calc_cms', 'get_m2_metric_map')) %dopar% {
+                        bt <- bts[[i]]
+                        test <- df_val %>% 
+                          right_join(data.frame(client_id = bt, stringsAsFactors=FALSE), by='client_id', 'right')
+                        
+                        df_scores <- test %>%
+                          bind_rows(df_match)
+                        
+                        score <- calc_score(df_scores, get_m2_metric_map())
+                        score
+                      }
+    scores <- unlist(scores)
+    c(mean = mean(scores), median = median(scores))
+  }, 
+  error = function(cond){
+    message(paste("Bootstrap validation failed: ", cond))
+    return(NA)
+  },
+  finally = {
+    stopCluster(cl)
+  }
+  )
+  return(final)
+}
+
+build_quantile_df <- function(validation, matched, original, metrics){
+  qqs <- list()
+  for (metric in metrics){
+    qq <- qqplot(validation[[metric]], matched[[metric]], plot.it = FALSE) %>% 
+      bind_rows() %>%
+      mutate(type = 'matched')
+    qq_full <- qqplot(validation[[metric]], original[[metric]], plot.it = FALSE) %>% 
+      bind_rows() %>%
+      mutate(type = 'original') %>%
+      bind_rows(qq) %>%
+      mutate(metric = metric)
+    # qq_full$metric <- metric
+    qqs[[metric]] <- qq_full
+  }
+  qq_df <- qqs %>% bind_rows() %>% rename(release = x, beta = y)
+  return(qq_df)
+}

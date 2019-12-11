@@ -1,3 +1,15 @@
+library(MatchIt)
+
+generate_formula <- function(tr_cov, label, add_interactions=FALSE){
+  if (add_interactions){
+    formula <- paste(label, '~', paste(tr_cov, collapse="*"))
+  }
+  else {
+    formula <- paste(label, '~', paste(tr_cov, collapse="+"))
+  }
+  return(as.formula(formula))
+}
+
 train_matchit <- function(train, model_covs, add_interactions, ...){
   # train model
   formula <- generate_formula(model_covs, label = 'is_release', add_interactions)
