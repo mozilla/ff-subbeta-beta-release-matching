@@ -5,12 +5,14 @@ date: "December 05, 2019"
 output: 
   html_document:
     toc: true
-    theme: united
+    toc_float: true
     highlight: tango
     df_print: kable
+    code_folding: "hide"
+    theme: "flatly"
 ---
 
-# Exploratory Data Analysis (EDA) {.tabset}
+# Exploratory Data Analysis (EDA)
 
 This R markdown covers the Exploratory Data Analysis (EDA) on the training dataset of the PRD. 
 
@@ -36,6 +38,7 @@ library(viridis)
 library(ggpubr)
 library(ggthemes)
 library(GGally)
+library(nortest)
 ```
 
 ```{r message=FALSE, warning=FALSE}
@@ -43,6 +46,8 @@ library(GGally)
 
 load("~/GitHub/ff-beta-release-matching/poc/EDA/data_milestone2_df_train_validate_20191025.RData")
 ```
+
+## Training
 
 ```{r message=FALSE, warning=FALSE}
 ## View train dataframe 
@@ -52,9 +57,22 @@ kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width
 scroll_box(width = "100%")
 ```
 
+## Validation
+
+```{r message=FALSE, warning=FALSE}
+## View train dataframe 
+
+kable(head(df_validate_f)) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
+```
+
+
 ## Step 1 : Data Inspection
 
-To get introduced to our dataset, et's have a look on the basic information of the dataset.
+### Training
+
+To get introduced to our training dataset, let's have a look on the basic information of the dataset.
 
 ```{r echo=FALSE}
 kable(introduce(df_train_f)) %>%
@@ -66,14 +84,30 @@ scroll_box(width = "100%")
 plot_intro(df_train_f, ggtheme = theme_minimal())
 ```
 
+### Validation
+
+To get introduced to our validation dataset, let's have a look on the basic information of the dataset.
+
+```{r echo=FALSE}
+kable(introduce(df_validate_f)) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
+```
+
+```{r echo=FALSE, fig.height=10, fig.width=10}
+plot_intro(df_validate_f, ggtheme = theme_minimal())
+```
+
 ### Observations
 
 * Most of the dataset is composed of continuous variables
 * No NAs values (were handled in preprocessing)
 
-### Structure
+## Data Structure
 
-Let's use `glimpse` function to display a vertical preview of the dataset. So we can easily preview data type and sample data.
+### Training
+
+Let's use `glimpse` function to display a vertical preview of the training dataset. So we can easily preview data type and sample data.
 
 ```{r}
 glimpse(df_train_f)
@@ -93,7 +127,29 @@ scroll_box(width = "100%")
 * `type`: factor, ordered-factor, numeric, integer or character
 * `unique`: quantity of unique values
 
-#### Observations
+### Validation
+
+Let's use `glimpse` function to display a vertical preview of the validation dataset. So we can easily preview data type and sample data.
+
+```{r}
+glimpse(df_validate_f)
+```
+
+If we want to get some metrics about data types, zeros, infinite numbers, and missing values, we can use the `df_status` function.
+
+```{r}
+kable(df_status(df_train_f, FALSE)) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
+```
+
+* `q_zeros`: quantity of zeros (`p_zeros`: in percent)
+* `q_inf`: quantity of infinite values (`p_inf`: in percent)
+* `q_na`: quantity of NA (`p_na`: in percent)
+* `type`: factor, ordered-factor, numeric, integer or character
+* `unique`: quantity of unique values
+
+### Observations
 
 > Are all the variables in the correct data type?
 
@@ -113,6 +169,8 @@ Factor/categorical variables with a high number of different values (~30) tend t
 
 ## Step 2 : Beta vs Release
 
+### Training
+
 ```{r, fig.width = 7.5}
 df_release <- df_train_f[which(df_train_f$label == 'release'), ]
 df_beta <- df_train_f[which(df_train_f$label == 'beta'), ]
@@ -130,19 +188,56 @@ summary(df_release)
 summary(df_beta)
 ```
 
+### Validation
+
+```{r, fig.width = 7.5}
+df_v_release <- df_validate_f[which(df_validate_f$label == 'release'), ]
+df_v_beta <- df_validate_f[which(df_validate_f$label == 'beta'), ]
+
+f <- freq(df_validate_f$label)
+```
+
+
+```{r}
+summary(df_v_release)
+```
+
+
+```{r}
+summary(df_v_beta)
+```
+
 ## Step 3 - Analyzing Discrete Variables
 
-```{r, fig.width = 15, fig.height = 15}
+### Training
+
+```{r, fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
 ## Frequency distribution release dataframe
 plot_bar(df_release, ggtheme = theme_minimal(base_size = 15))
 ```
 
-```{r, fig.width = 15, fig.height = 15}
+```{r, fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
 ## Frequency distribution beta dataframe
 plot_bar(df_beta, ggtheme = theme_minimal(base_size = 15))
 ```
 
+
+### Validation
+
+```{r, fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
+## Frequency distribution release dataframe
+plot_bar(df_v_release, ggtheme = theme_minimal(base_size = 15))
+```
+
+```{r, fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
+## Frequency distribution beta dataframe
+plot_bar(df_v_beta, ggtheme = theme_minimal(base_size = 15))
+```
+
+
 ## Step 4 - Analyzing Continuos Variables
+
+### Training
 
 ```{r, fig.width = 15, fig.height = 15}
 ## View histogram of release dataset
@@ -154,47 +249,112 @@ plot_histogram(df_release, ggtheme = theme_minimal(base_size = 15))
 plot_histogram(df_beta, ggtheme = theme_minimal(base_size = 15))
 ```
 
-### Analysing User Engagement Metrics
+### Validation
 
-```{r message=FALSE, warning=FALSE}
-ggplot(data=df_train_f, aes(x=uri_count, group=label, fill=label)) +
+```{r, fig.width = 15, fig.height = 15}
+## View histogram of release dataset
+plot_histogram(df_release, ggtheme = theme_minimal(base_size = 15))
+```
+
+
+```{r, fig.width = 15, fig.height = 15}
+## View histogram of beta dataset
+plot_histogram(df_beta, ggtheme = theme_minimal(base_size = 15))
+```
+
+### Observations
+
+* My first impression is that **user engagement** metrics might be a good path to follow
+
+### Ploting Density Curves
+
+```{r include=FALSE}
+require(cowplot)
+```
+
+```{r, fig.width = 20, fig.height = 5, message=FALSE, warning=FALSE}
+## Training
+t <- ggplot(data=df_train_f, aes(x=uri_count, group=label, fill=label)) +
     geom_density(adjust=1.5, alpha=0.6) + xlim(0, 1000) +
     scale_fill_viridis(discrete=TRUE) +
     scale_color_viridis(discrete=TRUE) +
-    labs(title="URI Count Density Curve",x="URI Count", y = "Density") +
+    labs(x="URI Count", y = "Density") +
     theme_ipsum()
+
+## Validation
+v <- ggplot(data=df_validate_f, aes(x=uri_count, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6) + xlim(0, 1000) +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    labs(x="URI Count", y = "Density") +
+    theme_ipsum()
+
+plot_grid(t, v, ncol=2, labels = c("Train", "Validate")) ## Set up a 2 x 2 plotting space
 ```
 
-```{r message=FALSE, warning=FALSE}
-ggplot(data=df_train_f, aes(x=active_hours, group=label, fill=label)) +
+```{r, fig.width = 20, fig.height = 5, message=FALSE, warning=FALSE}
+## Training
+t <- ggplot(data=df_train_f, aes(x=active_hours, group=label, fill=label)) +
     geom_density(adjust=1.5, alpha=0.6) +
     scale_fill_viridis(discrete=TRUE) +
     scale_color_viridis(discrete=TRUE) +
-    labs(title="Active Hours Density Curve",x="Active Hours", y = "Density") +
+    labs(x="Active Hours", y = "Density") +
     theme_ipsum()
+
+## Validation
+v <- ggplot(data=df_validate_f, aes(x=active_hours, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6) +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    labs(x="Active Hours", y = "Density") +
+    theme_ipsum()
+
+plot_grid(t, v, ncol=2, labels = c("Train", "Validate")) ## Set up a 2 x 2 plotting space
 ```
 
-```{r message=FALSE, warning=FALSE}
-ggplot(data=df_train_f, aes(x=num_pages, group=label, fill=label)) +
+```{r, fig.width = 20, fig.height = 5, message=FALSE, warning=FALSE}
+## Training
+t <- ggplot(data=df_train_f, aes(x=num_pages, group=label, fill=label)) +
     geom_density(adjust=1.5, alpha=0.6) + xlim(0, 50000) +
     scale_fill_viridis(discrete=TRUE) +
     scale_color_viridis(discrete=TRUE) +
-    labs(title="Num Pages Density Curve",x="Num Pages", y = "Density") +
+    labs(x="Num Pages", y = "Density") +
     theme_ipsum()
-```
 
-```{r message=FALSE, warning=FALSE}
-ggplot(data=df_train_f, aes(x=session_length, group=label, fill=label)) +
-    geom_density(adjust=1.5, alpha=0.6, main="Session Length") + xlim(0, 75) +
+## Validation
+v <- ggplot(data=df_validate_f, aes(x=num_pages, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6) + xlim(0, 50000) +
     scale_fill_viridis(discrete=TRUE) +
     scale_color_viridis(discrete=TRUE) +
-    labs(title="Session Length Density Curve",x="Session Length", y = "Density") +
+    labs(x="Num Pages", y = "Density") +
     theme_ipsum()
+
+plot_grid(t, v, ncol=2, labels = c("Train", "Validate")) ## Set up a 2 x 2 plotting space
 ```
 
-# User Engagement Metrics {.tabset}
+```{r, fig.width = 20, fig.height = 5, message=FALSE, warning=FALSE}
+## Training
+t <- ggplot(data=df_train_f, aes(x=session_length, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6) + xlim(0, 75) +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    labs(x="Session Length", y = "Density") +
+    theme_ipsum()
 
-This project will focus on user engagement metrics to ensure the most performant model possible. So, we are going to analyze the following metrics:
+## Validation
+v <- ggplot(data=df_validate_f, aes(x=session_length, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6) + xlim(0, 75) +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    labs(x="Session Length", y = "Density") +
+    theme_ipsum()
+
+plot_grid(t, v, ncol=2, labels = c("Train", "Validate")) ## Set up a 2 x 2 plotting space
+```
+
+# User Engagement Continuous Metrics
+
+This section will focus only on user engagement continuous metrics. So, we are going to analyze the following metrics:
 
 * `num_active_days`
 * `active_hours`
@@ -208,47 +368,41 @@ This project will focus on user engagement metrics to ensure the most performant
 * `num_bookmarks`
 * `num_pages`
 * `num_pages_max`
+* `num_addons`
 * `daily_unique_domains`
-* `daily_max_tabs`
-* `daily_tabs_opened`
-* `daily_num_sessions_started`
 * `daily_unique_domains_max`
+* `daily_max_tabs`
 * `daily_max_tabs_max`
+* `daily_tabs_opened`
 * `daily_tabs_opened_max`
+* `daily_num_sessions_started`
 * `daily_num_sessions_started_max`
-<!-- * `fxa_configured` -->
-<!-- * `sync_configured` -->
+* `startup_ms`
+* `install_year`
+* `profile_age`
+* `timezone_offset`
+* `memory_mb`
+* `cpu_cores`
+* `cpu_speed_mhz`
+* `cpu_l2_cache_kb`
 
 ```{r include=FALSE}
-user_eng <- c("num_active_days", "active_hours", "active_hours_max", "uri_count", "uri_count_max", "session_length", "session_length_max", "search_count", "search_count_max", "num_bookmarks", "num_pages", "num_pages_max", "daily_unique_domains", "daily_max_tabs", "daily_tabs_opened", "daily_num_sessions_started", "daily_unique_domains_max", "daily_max_tabs_max", "daily_tabs_opened_max", "daily_num_sessions_started_max")
+user_eng <- c("num_active_days","active_hours","active_hours_max","uri_count","uri_count_max","session_length","session_length_max","search_count","search_count_max","num_bookmarks","num_pages","num_pages_max","num_addons","daily_unique_domains","daily_unique_domains_max","daily_max_tabs","daily_max_tabs_max","daily_tabs_opened","daily_tabs_opened_max","daily_num_sessions_started","daily_num_sessions_started_max","startup_ms","install_year","profile_age","timezone_offset","memory_mb","cpu_cores","cpu_speed_mhz","cpu_l2_cache_kb")
 ```
 
 ```{r include=FALSE}
 df_beta_ue <- df_beta %>% select(user_eng)
 df_release_ue <- df_release %>% select(user_eng)
 df_train_ue <- df_train_f %>% select(c(user_eng, "label"))
-```
 
-## Comparing Two Distributions
-
-The QQ plot can be used to compare two continuous distributions. 
-
-```{r}
-par(mfrow = c(2, 2))  ## Set up a 2 x 2 plotting space
-
-## QQ plot in R to compare two data samples
-for (i in user_eng) {
-  x <- df_beta_ue[,i]
-  y <- df_release_ue[,i]
-  
-  rg <- range(x, y, na.rm=T)
-  
-  qqplot(x, y, main=i, xlim=rg, ylim=rg, xlab = "Beta", ylab = "Release", pch = 1, frame = FALSE)
-}
+df_beta_v_ue <- df_v_beta %>% select(user_eng)
+df_release_v_ue <- df_v_release %>% select(user_eng)
+df_validate_ue <- df_validate_f %>% select(c(user_eng, "label"))
 ```
 
 ```{r include=FALSE}
-text_tbl <- data.frame(beta_num_active_days = c(summary(df_beta_ue$num_active_days)), release_num_active_days = c(summary(df_release_ue$num_active_days)), 
+text_tbl <- data.frame(
+beta_num_active_days = c(summary(df_beta_ue$num_active_days)), release_num_active_days = c(summary(df_release_ue$num_active_days)), 
 beta_active_hours = c(summary(df_beta_ue$active_hours)), release_active_hours = c(summary(df_release_ue$active_hours)), 
 beta_active_hours_max = c(summary(df_beta_ue$active_hours_max)), release_active_hours_max = c(summary(df_release_ue$active_hours_max)), 
 beta_uri_count = c(summary(df_beta_ue$uri_count)), release_uri_count = c(summary(df_release_ue$uri_count)), 
@@ -267,8 +421,52 @@ beta_daily_num_sessions_started = c(summary(df_beta_ue$daily_num_sessions_starte
 beta_daily_unique_domains_max = c(summary(df_beta_ue$daily_unique_domains_max)), release_daily_unique_domains_max = c(summary(df_release_ue$daily_unique_domains_max)), 
 beta_daily_max_tabs_max = c(summary(df_beta_ue$daily_max_tabs_max)), release_daily_max_tabs_max = c(summary(df_release_ue$daily_max_tabs_max)), 
 beta_daily_tabs_opened_max = c(summary(df_beta_ue$daily_tabs_opened_max)), release_daily_tabs_opened_max = c(summary(df_release_ue$daily_tabs_opened_max)), 
-beta_daily_num_sessions_started_max = c(summary(df_beta_ue$daily_num_sessions_started_max)), release_daily_num_sessions_started_max = c(summary(df_release_ue$daily_num_sessions_started_max)))
+beta_daily_num_sessions_started_max = c(summary(df_beta_ue$daily_num_sessions_started_max)), release_daily_num_sessions_started_max = c(summary(df_release_ue$daily_num_sessions_started_max)), 
+beta_startup_ms = c(summary(df_beta_ue$startup_ms)), release_startup_ms = c(summary(df_release_ue$startup_ms)), 
+beta_install_year = c(summary(df_beta_ue$install_year)), release_install_year = c(summary(df_release_ue$install_year)), 
+beta_profile_age = c(summary(df_beta_ue$profile_age)), release_profile_age = c(summary(df_release_ue$profile_age)), 
+beta_timezone_offset = c(summary(df_beta_ue$timezone_offset)), release_timezone_offset = c(summary(df_release_ue$timezone_offset)), 
+beta_memory_mb = c(summary(df_beta_ue$memory_mb)), release_memory_mb = c(summary(df_release_ue$memory_mb)), 
+beta_cpu_cores = c(summary(df_beta_ue$cpu_cores)), release_cpu_cores = c(summary(df_release_ue$cpu_cores)), 
+beta_cpu_speed_mhz = c(summary(df_beta_ue$cpu_speed_mhz)), release_cpu_speed_mhz = c(summary(df_release_ue$cpu_speed_mhz)), 
+beta_cpu_l2_cache_kb = c(summary(df_beta_ue$cpu_l2_cache_kb)), release_cpu_l2_cache_kb = c(summary(df_release_ue$cpu_l2_cache_kb))
+)
 ```
+
+```{r include=FALSE}
+text_tbl_v <- data.frame(
+beta_num_active_days = c(summary(df_beta_v_ue$num_active_days)), release_num_active_days = c(summary(df_release_v_ue$num_active_days)), 
+beta_active_hours = c(summary(df_beta_v_ue$active_hours)), release_active_hours = c(summary(df_release_v_ue$active_hours)), 
+beta_active_hours_max = c(summary(df_beta_v_ue$active_hours_max)), release_active_hours_max = c(summary(df_release_v_ue$active_hours_max)), 
+beta_uri_count = c(summary(df_beta_v_ue$uri_count)), release_uri_count = c(summary(df_release_v_ue$uri_count)), 
+beta_uri_count_max = c(summary(df_beta_v_ue$uri_count_max)), release_uri_count_max = c(summary(df_release_v_ue$uri_count_max)), 
+beta_session_length = c(summary(df_beta_v_ue$session_length)), release_session_length = c(summary(df_release_v_ue$session_length)), 
+beta_session_length_max = c(summary(df_beta_v_ue$session_length_max)), release_session_length_max = c(summary(df_release_v_ue$session_length_max)), 
+beta_search_count = c(summary(df_beta_v_ue$search_count)), release_search_count = c(summary(df_release_v_ue$search_count)), 
+beta_search_count_max = c(summary(df_beta_v_ue$search_count_max)), release_search_count_max = c(summary(df_release_v_ue$search_count_max)), 
+beta_num_bookmarks = c(summary(df_beta_v_ue$num_bookmarks)), release_num_bookmarks = c(summary(df_release_v_ue$num_bookmarks)), 
+beta_num_pages = c(summary(df_beta_v_ue$num_pages)), release_num_pages = c(summary(df_release_v_ue$num_pages)), 
+beta_num_pages_max = c(summary(df_beta_v_ue$num_pages_max)), release_num_pages_max = c(summary(df_release_v_ue$num_pages_max)), 
+beta_daily_unique_domains = c(summary(df_beta_v_ue$daily_unique_domains)), release_daily_unique_domains = c(summary(df_release_v_ue$daily_unique_domains)), 
+beta_daily_max_tabs = c(summary(df_beta_v_ue$daily_max_tabs)), release_daily_max_tabs = c(summary(df_release_v_ue$daily_max_tabs)), 
+beta_daily_tabs_opened = c(summary(df_beta_v_ue$daily_tabs_opened)), release_daily_tabs_opened = c(summary(df_release_v_ue$daily_tabs_opened)), 
+beta_daily_num_sessions_started = c(summary(df_beta_v_ue$daily_num_sessions_started)), release_daily_num_sessions_started = c(summary(df_release_v_ue$daily_num_sessions_started)), 
+beta_daily_unique_domains_max = c(summary(df_beta_v_ue$daily_unique_domains_max)), release_daily_unique_domains_max = c(summary(df_release_v_ue$daily_unique_domains_max)), 
+beta_daily_max_tabs_max = c(summary(df_beta_v_ue$daily_max_tabs_max)), release_daily_max_tabs_max = c(summary(df_release_v_ue$daily_max_tabs_max)), 
+beta_daily_tabs_opened_max = c(summary(df_beta_v_ue$daily_tabs_opened_max)), release_daily_tabs_opened_max = c(summary(df_release_v_ue$daily_tabs_opened_max)), 
+beta_daily_num_sessions_started_max = c(summary(df_beta_v_ue$daily_num_sessions_started_max)), release_daily_num_sessions_started_max = c(summary(df_release_v_ue$daily_num_sessions_started_max)), 
+beta_startup_ms = c(summary(df_beta_v_ue$startup_ms)), release_startup_ms = c(summary(df_release_v_ue$startup_ms)), 
+beta_install_year = c(summary(df_beta_v_ue$install_year)), release_install_year = c(summary(df_release_v_ue$install_year)), 
+beta_profile_age = c(summary(df_beta_v_ue$profile_age)), release_profile_age = c(summary(df_release_v_ue$profile_age)), 
+beta_timezone_offset = c(summary(df_beta_v_ue$timezone_offset)), release_timezone_offset = c(summary(df_release_v_ue$timezone_offset)), 
+beta_memory_mb = c(summary(df_beta_v_ue$memory_mb)), release_memory_mb = c(summary(df_release_v_ue$memory_mb)), 
+beta_cpu_cores = c(summary(df_beta_v_ue$cpu_cores)), release_cpu_cores = c(summary(df_release_v_ue$cpu_cores)), 
+beta_cpu_speed_mhz = c(summary(df_beta_v_ue$cpu_speed_mhz)), release_cpu_speed_mhz = c(summary(df_release_v_ue$cpu_speed_mhz)), 
+beta_cpu_l2_cache_kb = c(summary(df_beta_v_ue$cpu_l2_cache_kb)), release_cpu_l2_cache_kb = c(summary(df_release_v_ue$cpu_l2_cache_kb))
+)
+```
+
+## Training
 
 ```{r}
 kable(text_tbl) %>%
@@ -276,7 +474,212 @@ kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width
 scroll_box(width = "100%")
 ```
 
+## Validation
+
+```{r}
+kable(text_tbl_v) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
+```
+
+## Comparing Two Continuous Distributions
+
+### Training
+
+The QQ plot can be used to compare two continuous distributions. 
+
+```{r fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
+par(mfrow = c(2, 2))  ## Set up a 2 x 2 plotting space
+
+## QQ plot in R to compare two data samples
+for (i in user_eng) {
+  x <- df_beta_ue[,i]
+  y <- df_release_ue[,i]
+  
+  rg <- range(x, y, na.rm=T)
+  
+  test <- ks.test(x, y)$statistic
+  pvalue <- ks.test(x, y)$p.value
+  
+  test <- paste("KS Test = ", round(test, 3))
+  pvalue <- paste("P-value = ", round(pvalue, 3))
+  
+  qqplot(x, y, main=i, xlim=rg, ylim=rg, xlab = "Beta", ylab = "Release", pch = 1)
+  # mtext(test, side=3)
+  text(min(x), max(x), paste(pvalue, "\n", test), adj=c(0,1))
+  abline(0,1, col="red")  
+}
+```
 
 
 
+```{r message=FALSE, warning=FALSE, out.width=c('50%', '50%')}
+for (i in user_eng) {
+  x <- df_beta_ue[,i]
+  y <- df_release_ue[,i]
+  
+  print(i)
+  # print(ad.test(x))
+  # print(ad.test(y))
+  print(ks.test(x, y))
+}
+```
 
+### Validation
+
+The QQ plot can be used to compare two continuous distributions. 
+
+```{r fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
+par(mfrow = c(2, 2))  ## Set up a 2 x 2 plotting space
+
+## QQ plot in R to compare two data samples
+for (i in user_eng) {
+  x <- df_beta_v_ue[,i]
+  y <- df_release_v_ue[,i]
+  
+  rg <- range(x, y, na.rm=T)
+  
+  test <- ks.test(x, y)$statistic
+  pvalue <- ks.test(x, y)$p.value
+  
+  test <- paste("KS Test = ", round(test, 3))
+  pvalue <- paste("P-value = ", round(pvalue, 3))
+  
+  qqplot(x, y, main=i, xlim=rg, ylim=rg, xlab = "Beta", ylab = "Release", pch = 1)
+  # mtext(test, side=3)
+  text(min(x), max(x), paste(pvalue, "\n", test), adj=c(0,1))
+  abline(0,1, col="red")  
+}
+```
+
+
+```{r message=FALSE, warning=FALSE, out.width=c('50%', '50%')}
+for (i in user_eng) {
+  x <- df_beta_v_ue[,i]
+  y <- df_release_v_ue[,i]
+  
+  print(i)
+  # print(ad.test(x))
+  # print(ad.test(y))
+  print(ks.test(x, y))
+}
+```
+
+
+### Observations
+
+* Analyzing only the plots, in general, the distributions are very similar to each other
+* Mainly the metrics related to **active hours** and **number of active days**, **search count**, **number of pages**, **daily unique domains** and **daily number of sessions started**
+* Comparing only the training and validation plots, we can notice that the variables that presented a more different behavior were: `num_active_days`, `uri_count_max` and `num_addons`
+* When I performed the KS (kolmogorov-Smirnov) test, the null hypothesis that both samples come from the same distribution was rejected for all the comparisons. *Am I doing something wrong?*
+
+# User Engagement Discrete Metrics
+
+This section will focus only on user engagement continuous metrics. So, we are going to analyze the following metrics:
+
+* `default_search_engine`
+* `is_default_browser`
+* `profile_age_cat`
+* `distro_id_norm`
+* `memory_cat`
+* `cpu_speed_cat`
+* `cpu_cores_cat`
+* `cpu_l2_cache_kb_cat`
+* `cpu_vendor`
+* `os_version`
+* `is_wow64`
+* `fxa_configured`
+* `sync_configured`
+* `locale`
+* `country`
+* `timezone_cat`
+* `label`
+* `normalized_channel`
+* `is_release`
+
+```{r include=FALSE}
+user_eng_dis <- c("default_search_engine","is_default_browser","profile_age_cat","distro_id_norm","memory_cat","cpu_speed_cat","cpu_cores_cat","cpu_l2_cache_kb_cat","cpu_vendor","os_version","is_wow64","fxa_configured","sync_configured","locale","country","timezone_cat","label","normalized_channel","is_release")
+```
+
+```{r include=FALSE}
+df_beta_ue_dis <- df_beta %>% select(user_eng_dis)
+df_release_ue_dis <- df_release %>% select(user_eng_dis)
+df_train_ue_dis <- df_train_f %>% select(c(user_eng_dis, "label"))
+
+df_beta_v_ue_dis <- df_v_beta %>% select(user_eng_dis)
+df_release_v_ue_dis <- df_v_release %>% select(user_eng_dis)
+df_validate_ue_dis <- df_validate_f %>% select(c(user_eng_dis, "label"))
+```
+
+## Comparing Two Discrete Distributions
+
+### Training
+
+```{r fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
+par(mfrow = c(2, 2))  ## Set up a 2 x 2 plotting space
+
+## QQ plot in R to compare two data samples
+for (i in user_eng_dis) {
+  x <- df_beta_ue_dis[,i]
+  y <- df_release_ue_dis[,i]
+  
+  rel_beta <- table(x)/nrow(df_beta_ue_dis) #divide the frequency counts by the total
+  beta_bar <- barplot(rel_beta,
+        main = "Beta", #Give your chart a title
+        ylim=c(0,1), border=F, col = "navy",
+        xlab = i, #Label the x axis
+        ylab = "Relative Frequency" #Label the y axis
+  ) 
+  # Add the text 
+  text(beta_bar, rel_beta+0.025, paste(round(rel_beta*100), "%", sep="") ,cex=1) 
+  
+  rel_release <- table(y)/nrow(df_release_ue_dis) #divide the frequency counts by the total
+  release_bar <- barplot(rel_release,
+        main = "Release", #Give your chart a title
+        ylim=c(0,1), border=F, col = "navy",
+        xlab = i, #Label the x axis
+        ylab = "Relative Frequency" #Label the y axis
+  )
+  
+  # Add the text 
+  text(release_bar, rel_release+0.025, paste(round(rel_release*100), "%", sep="") ,cex=1) 
+}
+```
+
+### Validation
+
+```{r fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
+par(mfrow = c(2, 2))  ## Set up a 2 x 2 plotting space
+
+## QQ plot in R to compare two data samples
+for (i in user_eng_dis) {
+  x <- df_beta_v_ue_dis[,i]
+  y <- df_release_v_ue_dis[,i]
+  
+  rel_beta <- table(x)/nrow(df_beta_v_ue_dis) #divide the frequency counts by the total
+  beta_bar <- barplot(rel_beta,
+        main = "Beta", #Give your chart a title
+        ylim=c(0,1), border=F, col = "navy",
+        xlab = i, #Label the x axis
+        ylab = "Relative Frequency" #Label the y axis
+  ) 
+  # Add the text 
+  text(beta_bar, rel_beta+0.025, paste(round(rel_beta*100), "%", sep="") ,cex=1) 
+  
+  rel_release <- table(y)/nrow(df_release_v_ue_dis) #divide the frequency counts by the total
+  release_bar <- barplot(rel_release,
+        main = "Release", #Give your chart a title
+        ylim=c(0,1), border=F, col = "navy",
+        xlab = i, #Label the x axis
+        ylab = "Relative Frequency" #Label the y axis
+  )
+  
+  # Add the text 
+  text(release_bar, rel_release+0.025, paste(round(rel_release*100), "%", sep="") ,cex=1) 
+}
+```
+
+
+### Observations
+
+* Analyzing only the plots, in general, the distributions are very similar to each other
