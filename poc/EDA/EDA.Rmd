@@ -575,7 +575,7 @@ for (i in user_eng) {
 
 # User Engagement Discrete Metrics
 
-This section will focus only on user engagement continuous metrics. So, we are going to analyze the following metrics:
+This section will focus only on user engagement discrete metrics. So, we are going to analyze the following metrics:
 
 * `default_search_engine`
 * `is_default_browser`
