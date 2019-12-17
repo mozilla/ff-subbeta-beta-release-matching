@@ -12,12 +12,15 @@ output:
     theme: "flatly"
 ---
 
-# Exploratory Data Analysis (EDA)
+# Introduction
 
-This R markdown covers the Exploratory Data Analysis (EDA) on the training dataset of the PRD. 
+The goal of this project is to utilize [statistical matching](https://en.wikipedia.org/wiki/Matching_(statistics)) techniques to search for a subset of the prerelease user population that is most representative of Release.
 
-## Setting-up
-```{r message=FALSE, warning=FALSE}
+In this first report, we will perform an exploratory analysis of the data, focusing on investigating the differences between Beta and Release users.
+
+# Loading the data
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
 ## Loading the needed libraries
 
 library(kableExtra)      # help you build common complex tables and manipulate table styles
@@ -39,15 +42,18 @@ library(ggpubr)
 library(ggthemes)
 library(GGally)
 library(nortest)
+library(emdist)
 ```
 
-```{r message=FALSE, warning=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 ## Loading the training dataset
 
 load("~/GitHub/ff-beta-release-matching/poc/EDA/data_milestone2_df_train_validate_20191025.RData")
 ```
 
 ## Training
+
+* App Version 67
 
 ```{r message=FALSE, warning=FALSE}
 ## View train dataframe 
@@ -59,6 +65,8 @@ scroll_box(width = "100%")
 
 ## Validation
 
+* App Version 68
+
 ```{r message=FALSE, warning=FALSE}
 ## View train dataframe 
 
@@ -67,10 +75,9 @@ kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width
 scroll_box(width = "100%")
 ```
 
+# Data Inspection
 
-## Step 1 : Data Inspection
-
-### Training
+## Training
 
 To get introduced to our training dataset, let's have a look on the basic information of the dataset.
 
@@ -80,11 +87,7 @@ kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width
 scroll_box(width = "100%")
 ```
 
-```{r echo=FALSE, fig.height=10, fig.width=10}
-plot_intro(df_train_f, ggtheme = theme_minimal())
-```
-
-### Validation
+## Validation
 
 To get introduced to our validation dataset, let's have a look on the basic information of the dataset.
 
@@ -94,18 +97,23 @@ kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width
 scroll_box(width = "100%")
 ```
 
+------
+
+## Observations
+
 ```{r echo=FALSE, fig.height=10, fig.width=10}
-plot_intro(df_validate_f, ggtheme = theme_minimal())
+par(mfrow = c(2, 2))  ## Set up a 2 x 2 plotting space
+
+plot_intro(df_train_f, ggtheme = theme_minimal(), title = "Training")
+plot_intro(df_validate_f, ggtheme = theme_minimal(), title = "Validation")
 ```
 
-### Observations
+* In both datasets, most variables are continuous
+* No NAs value (were handled in preprocessing)
 
-* Most of the dataset is composed of continuous variables
-* No NAs values (were handled in preprocessing)
+# Data Structure
 
-## Data Structure
-
-### Training
+## Training
 
 Let's use `glimpse` function to display a vertical preview of the training dataset. So we can easily preview data type and sample data.
 
@@ -127,15 +135,13 @@ scroll_box(width = "100%")
 * `type`: factor, ordered-factor, numeric, integer or character
 * `unique`: quantity of unique values
 
-### Validation
+## Validation
 
-Let's use `glimpse` function to display a vertical preview of the validation dataset. So we can easily preview data type and sample data.
+Let's use `glimpse` function to display a vertical preview of the validation dataset. 
 
 ```{r}
 glimpse(df_validate_f)
 ```
-
-If we want to get some metrics about data types, zeros, infinite numbers, and missing values, we can use the `df_status` function.
 
 ```{r}
 kable(df_status(df_train_f, FALSE)) %>%
@@ -143,13 +149,9 @@ kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width
 scroll_box(width = "100%")
 ```
 
-* `q_zeros`: quantity of zeros (`p_zeros`: in percent)
-* `q_inf`: quantity of infinite values (`p_inf`: in percent)
-* `q_na`: quantity of NA (`p_na`: in percent)
-* `type`: factor, ordered-factor, numeric, integer or character
-* `unique`: quantity of unique values
+------
 
-### Observations
+## Observations
 
 > Are all the variables in the correct data type?
 
@@ -167,108 +169,96 @@ None. Good news.
 
 Factor/categorical variables with a high number of different values (~30) tend to do overfitting if the categories have low cardinality.
 
-## Step 2 : Beta vs Release
+# Beta vs Release
 
-### Training
-
-```{r, fig.width = 7.5}
+```{r}
+## Training
 df_release <- df_train_f[which(df_train_f$label == 'release'), ]
 df_beta <- df_train_f[which(df_train_f$label == 'beta'), ]
 
+## Validation
+df_v_release <- df_validate_f[which(df_validate_f$label == 'release'), ]
+df_v_beta <- df_validate_f[which(df_validate_f$label == 'beta'), ]
+```
+
+## Training
+
+* Composition:
+
+```{r}
 f <- freq(df_train_f$label)
 ```
 
+## Validation
+
+* Composition:
 
 ```{r}
-summary(df_release)
-```
-
-
-```{r}
-summary(df_beta)
-```
-
-### Validation
-
-```{r, fig.width = 7.5}
-df_v_release <- df_validate_f[which(df_validate_f$label == 'release'), ]
-df_v_beta <- df_validate_f[which(df_validate_f$label == 'beta'), ]
-
 f <- freq(df_validate_f$label)
 ```
 
+# Analyzing Discrete Variables
 
-```{r}
-summary(df_v_release)
-```
-
-
-```{r}
-summary(df_v_beta)
-```
-
-## Step 3 - Analyzing Discrete Variables
-
-### Training
+## Training
 
 ```{r, fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
 ## Frequency distribution release dataframe
-plot_bar(df_release, ggtheme = theme_minimal(base_size = 15))
+plot_bar(df_release, ggtheme = theme_minimal(base_size = 15), title = 'Release')
 ```
 
 ```{r, fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
 ## Frequency distribution beta dataframe
-plot_bar(df_beta, ggtheme = theme_minimal(base_size = 15))
+plot_bar(df_beta, ggtheme = theme_minimal(base_size = 15), title = 'Beta')
 ```
 
-
-### Validation
+## Validation
 
 ```{r, fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
 ## Frequency distribution release dataframe
-plot_bar(df_v_release, ggtheme = theme_minimal(base_size = 15))
+plot_bar(df_v_release, ggtheme = theme_minimal(base_size = 15), title = 'Release')
 ```
 
 ```{r, fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
 ## Frequency distribution beta dataframe
-plot_bar(df_v_beta, ggtheme = theme_minimal(base_size = 15))
+plot_bar(df_v_beta, ggtheme = theme_minimal(base_size = 15), title = 'Beta')
 ```
 
+# Analyzing Continuos Variables
 
-## Step 4 - Analyzing Continuos Variables
-
-### Training
+## Training
 
 ```{r, fig.width = 15, fig.height = 15}
 ## View histogram of release dataset
-plot_histogram(df_release, ggtheme = theme_minimal(base_size = 15))
+plot_histogram(df_release, ggtheme = theme_minimal(base_size = 15), title = 'Release')
 ```
 
 ```{r, fig.width = 15, fig.height = 15}
 ## View histogram of beta dataset
-plot_histogram(df_beta, ggtheme = theme_minimal(base_size = 15))
+plot_histogram(df_beta, ggtheme = theme_minimal(base_size = 15), title = 'Beta')
 ```
 
-### Validation
+## Validation
 
 ```{r, fig.width = 15, fig.height = 15}
 ## View histogram of release dataset
-plot_histogram(df_release, ggtheme = theme_minimal(base_size = 15))
+plot_histogram(df_release, ggtheme = theme_minimal(base_size = 15), title = 'Release')
 ```
 
 
 ```{r, fig.width = 15, fig.height = 15}
 ## View histogram of beta dataset
-plot_histogram(df_beta, ggtheme = theme_minimal(base_size = 15))
+plot_histogram(df_beta, ggtheme = theme_minimal(base_size = 15), title = 'Beta')
 ```
 
-### Observations
+------
+
+## Observations
 
 * My first impression is that **user engagement** metrics might be a good path to follow
 
-### Ploting Density Curves
+## Ploting Density Curves
 
-```{r include=FALSE}
+```{r message=FALSE, warning=FALSE, include=FALSE}
 require(cowplot)
 ```
 
@@ -352,7 +342,9 @@ v <- ggplot(data=df_validate_f, aes(x=session_length, group=label, fill=label)) 
 plot_grid(t, v, ncol=2, labels = c("Train", "Validate")) ## Set up a 2 x 2 plotting space
 ```
 
-# User Engagement Continuous Metrics
+# User Engagement Metrics
+
+## Continuous Variables
 
 This section will focus only on user engagement continuous metrics. So, we are going to analyze the following metrics:
 
@@ -466,7 +458,9 @@ beta_cpu_l2_cache_kb = c(summary(df_beta_v_ue$cpu_l2_cache_kb)), release_cpu_l2_
 )
 ```
 
-## Training
+### Training
+
+#### Beta-Release Difference
 
 ```{r}
 kable(text_tbl) %>%
@@ -474,7 +468,9 @@ kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width
 scroll_box(width = "100%")
 ```
 
-## Validation
+### Validation
+
+#### Beta-Release Difference
 
 ```{r}
 kable(text_tbl_v) %>%
@@ -482,11 +478,9 @@ kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width
 scroll_box(width = "100%")
 ```
 
-## Comparing Two Continuous Distributions
+### QQ-Plots
 
-### Training
-
-The QQ plot can be used to compare two continuous distributions. 
+#### Training
 
 ```{r fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
 par(mfrow = c(2, 2))  ## Set up a 2 x 2 plotting space
@@ -499,35 +493,19 @@ for (i in user_eng) {
   rg <- range(x, y, na.rm=T)
   
   test <- ks.test(x, y)$statistic
-  pvalue <- ks.test(x, y)$p.value
+  # pvalue <- ks.test(x, y)$p.value
   
   test <- paste("KS Test = ", round(test, 3))
-  pvalue <- paste("P-value = ", round(pvalue, 3))
+  # pvalue <- paste("P-value = ", round(pvalue, 3))
   
   qqplot(x, y, main=i, xlim=rg, ylim=rg, xlab = "Beta", ylab = "Release", pch = 1)
   # mtext(test, side=3)
-  text(min(x), max(x), paste(pvalue, "\n", test), adj=c(0,1))
-  abline(0,1, col="red")  
+  text(min(x), max(x), test, adj=c(0,1))
+  abline(0,1, col="red", lty=2)  
 }
 ```
 
-
-
-```{r message=FALSE, warning=FALSE, out.width=c('50%', '50%')}
-for (i in user_eng) {
-  x <- df_beta_ue[,i]
-  y <- df_release_ue[,i]
-  
-  print(i)
-  # print(ad.test(x))
-  # print(ad.test(y))
-  print(ks.test(x, y))
-}
-```
-
-### Validation
-
-The QQ plot can be used to compare two continuous distributions. 
+#### Validation
 
 ```{r fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
 par(mfrow = c(2, 2))  ## Set up a 2 x 2 plotting space
@@ -540,40 +518,43 @@ for (i in user_eng) {
   rg <- range(x, y, na.rm=T)
   
   test <- ks.test(x, y)$statistic
-  pvalue <- ks.test(x, y)$p.value
+  # pvalue <- ks.test(x, y)$p.value
   
   test <- paste("KS Test = ", round(test, 3))
-  pvalue <- paste("P-value = ", round(pvalue, 3))
+  # pvalue <- paste("P-value = ", round(pvalue, 3))
   
   qqplot(x, y, main=i, xlim=rg, ylim=rg, xlab = "Beta", ylab = "Release", pch = 1)
   # mtext(test, side=3)
-  text(min(x), max(x), paste(pvalue, "\n", test), adj=c(0,1))
-  abline(0,1, col="red")  
+  text(min(x), max(x), test, adj=c(0,1))
+  abline(0,1, col="red", lty=2)  
 }
 ```
 
-
-```{r message=FALSE, warning=FALSE, out.width=c('50%', '50%')}
-for (i in user_eng) {
-  x <- df_beta_v_ue[,i]
-  y <- df_release_v_ue[,i]
-  
-  print(i)
-  # print(ad.test(x))
-  # print(ad.test(y))
-  print(ks.test(x, y))
-}
-```
-
+------
 
 ### Observations
 
-* Analyzing only the plots, in general, the distributions are very similar to each other
-* Mainly the metrics related to **active hours** and **number of active days**, **search count**, **number of pages**, **daily unique domains** and **daily number of sessions started**
-* Comparing only the training and validation plots, we can notice that the variables that presented a more different behavior were: `num_active_days`, `uri_count_max` and `num_addons`
-* When I performed the KS (kolmogorov-Smirnov) test, the null hypothesis that both samples come from the same distribution was rejected for all the comparisons. *Am I doing something wrong?*
+```{r message=FALSE, warning=FALSE, include=FALSE}
+tbl_ks <- data.frame(
+training = c(0.071,0.045,0.044,0.047,0.054,0.099,0.073,0.014,0.019,0.026,0.055,0.054,0.601,0.029,0.033,0.094,0.080,0.035,0.032,0.119,0.116,0.129,0.018,0.042,0.208,0.075,0.064,0.046,0.025), 
+validation = c(0.166,0.058,0.077,0.071,0.095,0.076,0.040,0.045,0.059,0.042,0.082,0.082,0.292,0.040,0.054,0.075,0.051,0.036,0.053,0.098,0.117,0.130,0.017,0.035,0.235,0.109,0.087,0.062,0.035)
+)
 
-# User Engagement Discrete Metrics
+row.names(tbl_ks) <- c('num_active_days','active_hours','active_hours_max','uri_count','uri_count_max','session_length','session_length_max','search_count','search_count_max','num_bookmarks','num_pages','num_pages_max','num_addons','daily_unique_domains','daily_unique_domains_max','daily_max_tabs','daily_max_tabs_max','daily_tabs_opened','daily_tabs_opened_max','daily_num_sessions_started','daily_num_sessions_started_max','startup_ms','install_year','profile_age','timezone_offset','memory_mb','cpu_cores','cpu_speed_mhz','cpu_l2_cache_kb')
+```
+
+```{r}
+kable(tbl_ks) %>%
+add_header_above(c("KS Distance" = 3)) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+row_spec(c(2,18,21:26), bold = T, color = "white", background = "#c3f584")
+```
+
+* Analyzing at the plots of each dataset separately, in general, Beta-Release distributions are very similar to each other
+* For instance, metrics related to **active hours** and **number of active days**, **search count**, **number of pages**, **daily unique domains** and **daily number of sessions started**
+* Comparing only the training and validation plots, we can observe large differences between the variables. Only a few showed similar distances (marked in green)
+
+## Discrete Variables
 
 This section will focus only on user engagement discrete metrics. So, we are going to analyze the following metrics:
 
@@ -611,8 +592,6 @@ df_release_v_ue_dis <- df_v_release %>% select(user_eng_dis)
 df_validate_ue_dis <- df_validate_f %>% select(c(user_eng_dis, "label"))
 ```
 
-## Comparing Two Discrete Distributions
-
 ### Training
 
 ```{r fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
@@ -626,7 +605,7 @@ for (i in user_eng_dis) {
   rel_beta <- table(x)/nrow(df_beta_ue_dis) #divide the frequency counts by the total
   beta_bar <- barplot(rel_beta,
         main = "Beta", #Give your chart a title
-        ylim=c(0,1), border=F, col = "navy",
+        ylim=c(0,1), border=F, col = "#ffd271",
         xlab = i, #Label the x axis
         ylab = "Relative Frequency" #Label the y axis
   ) 
@@ -636,7 +615,7 @@ for (i in user_eng_dis) {
   rel_release <- table(y)/nrow(df_release_ue_dis) #divide the frequency counts by the total
   release_bar <- barplot(rel_release,
         main = "Release", #Give your chart a title
-        ylim=c(0,1), border=F, col = "navy",
+        ylim=c(0,1), border=F, col = "#f65c78",
         xlab = i, #Label the x axis
         ylab = "Relative Frequency" #Label the y axis
   )
@@ -659,7 +638,7 @@ for (i in user_eng_dis) {
   rel_beta <- table(x)/nrow(df_beta_v_ue_dis) #divide the frequency counts by the total
   beta_bar <- barplot(rel_beta,
         main = "Beta", #Give your chart a title
-        ylim=c(0,1), border=F, col = "navy",
+        ylim=c(0,1), border=F, col = "#ffd271",
         xlab = i, #Label the x axis
         ylab = "Relative Frequency" #Label the y axis
   ) 
@@ -669,7 +648,7 @@ for (i in user_eng_dis) {
   rel_release <- table(y)/nrow(df_release_v_ue_dis) #divide the frequency counts by the total
   release_bar <- barplot(rel_release,
         main = "Release", #Give your chart a title
-        ylim=c(0,1), border=F, col = "navy",
+        ylim=c(0,1), border=F, col = "#f65c78",
         xlab = i, #Label the x axis
         ylab = "Relative Frequency" #Label the y axis
   )
@@ -679,7 +658,8 @@ for (i in user_eng_dis) {
 }
 ```
 
+------
 
 ### Observations
 
-* Analyzing only the plots, in general, the distributions are very similar to each other
+* In general, the distributions are very similar to each other for both versions
