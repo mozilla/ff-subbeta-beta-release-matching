@@ -4,6 +4,8 @@ library(magrittr)
 library(tidyr)
 library(tidyselect)
 
+source('attributes.R')
+
 #### Helpers ####
 calc_means <- function(df.match, ho_cov, add_1 = FALSE){
   ho_mean <- df.match %>% 
@@ -123,7 +125,7 @@ normalize_memory <- function(memory){
 }
 
 normalize_cpu_speed <- function(cpu_speed){
-  levels <- c("< 1GHz", "< 2GHz", "< 3GHz", "< 4GHz", "> 16GHz")
+  levels <- cpu_speed_cat 
   ghz <- cpu_speed / 1000
   factor(
     case_when(
@@ -137,7 +139,7 @@ normalize_cpu_speed <- function(cpu_speed){
 }
 
 normalize_cpu_cores <- function(cpu_cores){
-  levels <- c('1', '2', '< 4', '< 8', '< 16', '> 16')
+  levels <- cpu_cores_cat
   factor(
     case_when(
       cpu_cores <= 1 ~ levels[1],

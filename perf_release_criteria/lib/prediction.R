@@ -1,8 +1,12 @@
-extract_health_metrics <- function(predictions, release){
+library(tidyr)
+library(purrr)
+library(lubridate)
+
+extract_health_metrics <- function(predictions, release, outcomes){
   agg_sets <- function(predictions){
     predictions %>% 
       select(outcomes) %>% 
-      gather("metric", "value", ) %>%
+      gather("metric", "value") %>%
       group_by(metric) %>%
       summarise(
         mean = mean(value),
@@ -23,7 +27,7 @@ extract_health_metrics <- function(predictions, release){
   abs_rel_diff <- abs_rel_diff %>%
     mutate(metric = pred_agg$metric)
   
-  cms_score <- sapply(outcomes, calc_cms, beta=df_predict_f, release=release)
+  cms_score <- sapply(outcomes, calc_cms, beta=predictions, release=release)
   cms_score <- data.frame(cms_score) %>% mutate(metric = rownames(.))
   
   health_metrics <- pred_agg %>% 
