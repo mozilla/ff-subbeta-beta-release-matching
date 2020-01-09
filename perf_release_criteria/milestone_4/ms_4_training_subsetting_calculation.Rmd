@@ -17,6 +17,7 @@ library(DBI)
 library(lubridate)
 library(htmltab)
 library(stringr)
+library(purrr)
 ```
 
 # tl;dr 
@@ -29,8 +30,8 @@ https://storage.cloud.google.com/moz-fx-data-bq-data-science-cdowhygelund/notebo
 
 ```{r version, echo=FALSE}
 sched <- htmltab('https://wiki.mozilla.org/Release_Management/Calendar', which=2) %>%
-  mutate('rel_dates' = ymd(sched$`Release Date`)) %>%
-  mutate('version' = as.numeric(str_match(sched$Beta, 'Firefox ([0-9]+)')[,2])) %>%
+  mutate('rel_dates' = ymd(`Release Date`)) %>%
+  mutate('version' = as.numeric(str_match(Beta, 'Firefox ([0-9]+)')[,2])) %>%
   filter(rel_dates < now())
 
 v_n1 <- sched$version[1]
@@ -90,8 +91,9 @@ load_df <- function(table){
 }
 
 df_train <- load_df(paste("ccd_subBeta_training", v_n, sep='_'))
-df_predict <- load_df(paste('ccd_subBeta_prerelease'), v_n1, sep='_')
-df_validate <- load_df(paste('ccd_subBeta_validation'), v_n, sep='_')
+df_predict <- load_df(paste('ccd_subBeta_prerelease', v_n1, sep='_'))
+# df_validate <- load_df(paste('ccd_subBeta_validation', v_n, sep='_'))
+df_validate <- load_df(paste('ccd_subset_validation', v_n, sep='_'))
 ```
 
 # Review 
@@ -201,6 +203,9 @@ df_train_f <- stage_2_clean(df_train) %>%
 
 df_predict_f <- stage_2_clean(df_predict) %>%
     mutate(date_created = now())
+
+df_validate_f <- stage_2_clean(df_validate) %>%
+    mutate(date_created = now())
 ```
 
 
@@ -259,8 +264,57 @@ predictions <- extract_predictions(model$matched, df_predict_f)
 
 # Release Health Metrics
 
-Calculate the Release Health Metrics:
-**TBD**
+Calculate the Release Health Metrics, by comparing the performance metrics of the subsetted Beta dataset to the current validation (version N) Release dataset: 
+
+* Beta mean 
+* Beta quantiles
+* relative difference in mean
+* relative difference in deciles
+* Cramér-von Mises score
+
+```{r release_health}
+agg_sets <- function(predictions){
+  predictions %>% 
+  select(outcomes) %>% 
+  gather("metric", "value", ) %>%
+  group_by(metric) %>%
+  summarise(
+    mean = mean(value),
+    p5 = partial(quantile, probs = .05)(value),  
+    p25 = partial(quantile, probs = .25)(value),  
+    p50 = median(value),
+    p75 = partial(quantile, probs = .75)(value),  
+    p95 = partial(quantile, probs = .95)(value),
+    p99 = partial(quantile, probs = .99)(value)
+  )
+}
+
+pred_agg <- agg_sets(predictions)
+release_agg <-  agg_sets(df_validate_f)
+
+abs_rel_diff <- (abs(pred_agg[-1]-release_agg[-1])/release_agg[-1])
+names(abs_rel_diff) <- paste('rel_diff_', names(abs_rel_diff), sep='')
+abs_rel_diff <- abs_rel_diff %>%
+  mutate(metric = pred_agg$metric)
+
+# cms_score <- calc_score(
+#   predictions %>% 
+#     select(label, outcomes) %>%
+#     bind_rows(
+#       select(df_validate_f, label, outcomes)
+#   ))
+
+cms_score <- sapply(outcomes, calc_cms, beta=df_predict_f, release=df_validate_f)
+cms_score <- data.frame(cms_score) %>% mutate(metric = rownames(.))
+
+health_metrics <- pred_agg %>% 
+  inner_join(., abs_rel_diff, by='metric') %>%
+  inner_join(., cms_score, by='metric') %>%
+  # mutate(cms_score = cms_score) %>%
+  mutate(date_created = now()) %>%
+  mutate(version = v_n1)
+```
+
 
 # Serialize and push to GCP
 Serialize the following:
@@ -276,29 +330,30 @@ Save the resultant dataset and bootstrap samples to an R image.
 ```{r serialize_datasets}
 # training datasets
 # train_file_name <- paste('df_train_', format(Sys.time(), "%Y%m%d"), '.RData', sep='')
-train_file_name <- paste('df_train_', v_n, sep='_')
+train_file_name <- paste('df_train_', v_n, '.RData', sep='')
 train_file_path <- file.path('data', train_file_name)
 save(df_train_f, df_predict_f, df_train_x, model, file = train_file_path)
 gcs_train_file_path <- file.path('data', 'milestone4', train_file_name)
 
 # final prelease subsetted dataset
 # prerelease_file_name <- paste('df_prerelease_', format(Sys.time(), "%Y%m%d"), '.RData', sep='')
-prerelease_file_name <- paste('df_prerelease_', v_n1, sep='_')
+prerelease_file_name <- paste('df_prerelease_', v_n1, '.RData', sep='')
 prerelease_file_path <- file.path('data', prerelease_file_name)
 save(predictions, file = prerelease_file_path)
 gcs_prerelease_file_path <- file.path('data', 'milestone4', prerelease_file_name)
 
 # validation dataset
 # prerelease_file_name <- paste('df_prerelease_', format(Sys.time(), "%Y%m%d"), '.RData', sep='')
-validation_file_name <- paste('df_validation_', v_n1, sep='_')
+validation_file_name <- paste('df_validation_', v_n1, '.RData', sep='')
 validation_file_path <- file.path('data', validation_file_name)
-save(validation, file = validation_file_path)
+save(df_validate_f, file = validation_file_path)
 gcs_validation_file_path <- file.path('data', 'milestone4', validation_file_name)
 
 # Release health metrics
-release_health_file_name <- paste('df_release_health_', format(Sys.time(), "%Y%m%d"), '.RData', sep='')
+# release_health_file_name <- paste('df_release_health_', format(Sys.time(), "%Y%m%d"), '.RData', sep='')
+release_health_file_name <- paste('df_release_health_', v_n1, '_', format(Sys.time(), "%Y%m%d"), '.RData', sep='')
 release_health_file_path <- file.path('data', release_health_file_name)
-# save(df_release_health_f, df_predict_f, df_release_health_x, file = release_health_file_path)
+save(health_metrics, file = release_health_file_path)
 gcs_release_health_file_path <- file.path('data', 'milestone4', release_health_file_name)
 ```
 
@@ -331,18 +386,18 @@ upload_try
 ```
 
 ```{r gcp_health_metrics_storage_push, warning=FALSE}
-# upload_try <- gcs_upload(gcs_release_health_file_path, name = gcs_file_path)
-# upload_try
+upload_try <- gcs_upload(release_health_file_path, name = gcs_release_health_file_path)
+upload_try
 ```
 
 ## BigQuery
 
 Training and prerelease datasets
 ```{r big_query_write}
-project <- "moz-fx-dev-cdowhyglund-subBeta"
+project <- "moz-fx-dev-cdowhyglund-subbeta"
 # project <- "moz-fx-data-bq-data-science"
 
-bq_table(project = 'moz-fx-dev-cdowhyglund-subbeta',
+bq_table(project = project,
          dataset = "training",
          table   = paste("ccd_subbeta_training_cleaned", v_n, sep = '_')) %>%
   bq_table_upload(values = df_train_x,
@@ -350,15 +405,15 @@ bq_table(project = 'moz-fx-dev-cdowhyglund-subbeta',
                   write_disposition = "WRITE_TRUNCATE",
                   fields = as_bq_fields(df_train_x) )
 
-bq_table(project = 'moz-fx-dev-cdowhyglund-subbeta',
+bq_table(project = project,
          dataset = "training",
          table   = paste("ccd_subbeta_training_final", v_n, sep = '_')) %>%
-  bq_table_upload(values = df_train_x,
+  bq_table_upload(values = df_train_f,
                   create_disposition = "CREATE_IF_NEEDED",
                   write_disposition = "WRITE_TRUNCATE",
-                  fields = as_bq_fields(df_train_x) )
+                  fields = as_bq_fields(df_train_f) )
 
-bq_table(project = 'moz-fx-dev-cdowhyglund-subbeta',
+bq_table(project = project,
          dataset = "prerelease",
          table   = paste("ccd_subbeta_prelease_cleaned", v_n1, sep = '_')) %>%
   bq_table_upload(values = df_predict_f,
@@ -371,35 +426,35 @@ bq_table(project = 'moz-fx-dev-cdowhyglund-subbeta',
 
 Subsetted dataset
 ```{r bq_write_subset}
-bq_table(project = 'moz-fx-dev-cdowhyglund-subbeta',
+bq_table(project = project,
          dataset = "prerelease",
          table   = paste("ccd_subbeta_prelease_subset", v_n1, sep = '_')) %>%
-  bq_table_upload(values = df_predict_f,
+  bq_table_upload(values = predictions,
                   create_disposition = "CREATE_IF_NEEDED",
-                  write_disposition = "WRITE_APPEND",
-                  fields = as_bq_fields(df_predict_f) )
+                  write_disposition = "WRITE_TRUNCATE",
+                  fields = as_bq_fields(predictions) )
 ```
 
 Validation dataset
 ```{r bq_write_validate}
-bq_table(project = 'moz-fx-dev-cdowhyglund-subbeta',
+bq_table(project = project,
          dataset = "validation",
          table   = paste("ccd_subbeta_validation_cleaned", v_n, sep = '_')) %>%
-  bq_table_upload(values = df_predict_f,
+  bq_table_upload(values = df_validate_f,
                   create_disposition = "CREATE_IF_NEEDED",
                   write_disposition = "WRITE_APPEND",
-                  fields = as_bq_fields(df_predict_f) )
+                  fields = as_bq_fields(df_validate_f) )
 ```
 
 
 
 Release health Metrics
 ```{r bq_release_health_metrics}
-# bq_table(project = 'moz-fx-dev-cdowhyglund-subbeta',
-#          dataset = "prerelease",
-#          table   = "ccd_subbeta_prerelease_health_metrics") %>%
-#   bq_table_upload(values = release_health_df,
-#                   create_disposition = "CREATE_IF_NEEDED",
-#                   write_disposition = "WRITE_APPEND",
-#                   fields = as_bq_fields(release_health_df) )
+bq_table(project = project,
+         dataset = "prerelease",
+         table   = "ccd_subbeta_prerelease_health_metrics") %>%
+  bq_table_upload(values = health_metrics,
+                  create_disposition = "CREATE_IF_NEEDED",
+                  write_disposition = "WRITE_APPEND",
+                  fields = as_bq_fields(health_metrics) )
 ```
