@@ -1,0 +1,41 @@
+---
+title: "Beta to Release Matching: Proof-of-Concept"
+author: "Mariana de Oliveira Santos Silva"
+date: 'Last Updated: `r format(Sys.time(), "%B %d, %Y")`'
+output: 
+  html_document:
+    theme: flatly
+    toc: true
+    toc_float: true
+    df_print: kable
+---
+
+## Introduction
+
+The goal of this project is to utilize [statistical matching](https://en.wikipedia.org/wiki/Matching_(statistics)) techniques to search for a subset of the prerelease user population that is most representative of Release.
+
+The specific use-case of this proof-of-concept was to utilize engagement, configuration, and environment client fields (covariates) for matching. Validation of the matching was performed on a hold-out set of **user engagement** covariates, as an illustration of a potential real-world use-case.
+
+## Problem Statement
+
+It is highly desirable to utilize the telemetry from Beta versions of Firefox to determine critical aspects of Release behavior before it is launched to the general user base. However, it is well known that the Beta population has distinctly different characteristics than Release, such as the distribution of country of origin of its users, and have higher incidents of crashes. Therefore, directly utilizing Beta telemetry to inform Release is not statistically valid.
+
+One possible approach to deal with this discrepancy is to use statistical matching techniques to find a subset of Beta that is representative of Release. What connotates "representative" depends upon the desired use-case (outcome), such as user engagement, performance characteristics, or crash rates. In this work, we focus on the application of **user engagement** metrics. 
+
+## Methodology
+### Data Preparation
+
+### Covariates
+
+#### Training
+
+#### Holdout
+
+### Covariate Selection
+
+## Models
+
+## Results
+
+## Discussion
+  
