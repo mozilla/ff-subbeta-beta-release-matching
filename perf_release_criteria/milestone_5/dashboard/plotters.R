@@ -1,0 +1,59 @@
+library(ggplot2)
+library(ggridges)
+library(viridis)
+
+apply_filters <- function(df, input){
+  resp.df <- df %>%
+    filter(case_when(!is.null(input$cpu_cores_cat) ~ cpu_cores_cat %in% input$cpu_cores_cat,
+                     TRUE ~ cpu_cores_cat == cpu_cores_cat)) %>%
+    filter(case_when(!is.null(input$cpu_speed_cat) ~ cpu_speed_cat %in% input$cpu_speed_cat,
+                     TRUE ~ cpu_speed_cat == cpu_speed_cat))
+  return(resp.df)
+}
+
+build_quantile_df <- function(validation, matched, original, metrics){
+  qqs <- list()
+  for (perf_metric in metrics){
+    qq <- qqplot(validation[[perf_metric]], matched[[perf_metric]], plot.it = FALSE) %>% 
+      bind_rows() %>%
+      mutate(type = 'matched')
+    qq_full <- qqplot(validation[[perf_metric]], original[[perf_metric]], plot.it = FALSE) %>% 
+      bind_rows() %>%
+      mutate(type = 'original') %>%
+      bind_rows(qq) %>%
+      mutate(metric = perf_metric)
+    # qq_full$metric <- perf_metric
+    qqs[[perf_metric]] <- qq_full
+  }
+  qq_df <- qqs %>% bind_rows() %>% rename(release = x, beta = y)
+  return(qq_df)
+}
+
+  
+plot.qq <- function(qq.df, response){
+  p_qq <- ggplot(qq.df %>% filter(metric == response), aes(x = release, y = beta)) +
+    geom_point(aes(color = type, shape = type)) + 
+    geom_abline(slope = 1, intercept = 0) + 
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          plot.title = element_text(size=10),
+          legend.position = c(0.8, 0.2)) + 
+    ggtitle(response) 
+  return(p_qq)
+  
+}
+
+plot.ridges <- function(resp.df, response){
+
+  p_ridge <- ggplot(resp.df, aes(x=!!sym(response), y=label, fill=factor(..quantile..))) +
+    stat_density_ridges(
+      geom = "density_ridges_gradient", calc_ecdf = TRUE,
+      quantiles = 10, quantile_lines = TRUE
+    ) +
+    scale_fill_viridis(discrete = TRUE, name = "Quartiles") + 
+    theme_bw() +
+    xlab(response) + 
+    xlim(c(0, 10000)) + 
+    guides(fill = FALSE)
+  return(p_ridge)
+}

@@ -92,7 +92,7 @@ normalize_distro_id <- function(distro_id){
 }
 
 normalize_profile_age <- function(profile_age){
-  levels <- c("< 1 week",  "< 1 month", "< 6 months", "< 2 years", "< 5 years", "> 5 years")
+  levels <- profile_age_cat
   factor(
     case_when(
       profile_age < 7 ~ levels[1],
@@ -110,7 +110,7 @@ normalize_timezone <- function(timezone){
 }
 
 normalize_memory <- function(memory){
-  levels <- c('< 1GB', '< 2GB', '< 4GB', '< 6GB', '< 16GB', '> 16GB')
+  levels <- mem_cat 
   gb <- memory / 1024
   factor(
     case_when(
