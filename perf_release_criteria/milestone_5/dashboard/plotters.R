@@ -7,7 +7,16 @@ apply_filters <- function(df, input){
     filter(case_when(!is.null(input$cpu_cores_cat) ~ cpu_cores_cat %in% input$cpu_cores_cat,
                      TRUE ~ cpu_cores_cat == cpu_cores_cat)) %>%
     filter(case_when(!is.null(input$cpu_speed_cat) ~ cpu_speed_cat %in% input$cpu_speed_cat,
-                     TRUE ~ cpu_speed_cat == cpu_speed_cat))
+                     TRUE ~ cpu_speed_cat == cpu_speed_cat)) %>%
+    filter(case_when(!is.null(input$mem_cat) ~ memory_cat %in% input$mem_cat,
+                     TRUE ~ memory_cat == memory_cat)) %>%
+    filter(case_when(!is.null(input$profile_age_cat) ~ profile_age_cat %in% input$profile_age_cat,
+                     TRUE ~ profile_age_cat == profile_age_cat)) %>%
+    filter(case_when(!is.null(input$country_cat) ~ country %in% input$country_cat,
+                     TRUE ~ country == country)) %>%
+    filter(case_when(!is.null(input$timezone_cat) ~ timezone_cat %in% input$timezone_cat,
+                     TRUE ~ timezone_cat == timezone_cat))
+  
   return(resp.df)
 }
 
