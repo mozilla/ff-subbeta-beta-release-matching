@@ -4,7 +4,7 @@ library(shinycssloaders)
 library(dplyr)
 
 source('plotters.R')
-# source('prepare_dashboard.R')
+source('prepare_dashboard.R')
 
 ui <- dashboardPage(
   dashboardHeader(title = "subBeta"),

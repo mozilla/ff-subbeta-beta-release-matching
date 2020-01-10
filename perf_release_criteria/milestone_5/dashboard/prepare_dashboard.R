@@ -35,7 +35,7 @@ import_data <- function(tbl_prefix, version, dataset) {
 v_n1 <- max(
   as.numeric(
     str_match(list_tables(project, 'prerelease'), 
-              paste(tbl_prefix, '([0-9]+)', sep='' ))[, 2]),
+              paste(pred_tbl_prefix, '([0-9]+)', sep='' ))[, 2]),
   na.rm = TRUE
 )
 
