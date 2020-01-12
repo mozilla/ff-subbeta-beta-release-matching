@@ -37,7 +37,6 @@ build_quantile_df <- function(validation, matched, original, metrics){
   qq_df <- qqs %>% bind_rows() %>% rename(release = x, beta = y)
   return(qq_df)
 }
-
   
 plot.qq <- function(qq.df, response){
   p_qq <- ggplot(qq.df %>% filter(metric == response), aes(x = release, y = beta)) +

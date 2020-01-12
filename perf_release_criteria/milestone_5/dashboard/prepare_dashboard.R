@@ -80,3 +80,7 @@ df <- pred_v_n1 %>%
 #### Step 7 ####
 # Calculate health metrics
 health_metrics <- extract_health_metrics(pred_v_n1, valid_v_n, metrics)
+
+#### Step 8 ####
+# Save image for later loading when dashboard initializes
+save(v_n1, v_n, pred_v_n1, pred_v_n, valid_v_n, beta_v_n, metrics, df, file='data/dashboard_prepped.RData')

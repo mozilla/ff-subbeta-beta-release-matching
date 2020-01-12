@@ -1,8 +1,9 @@
 library(tidyr)
 library(purrr)
 library(lubridate)
+source('../../lib/scoring.R')
 
-extract_health_metrics <- function(predictions, release, outcomes){
+extract_health_metrics <- function(predictions, release, outcomes, v_n1){
   agg_sets <- function(predictions){
     predictions %>% 
       select(outcomes) %>% 
@@ -30,11 +31,13 @@ extract_health_metrics <- function(predictions, release, outcomes){
   cms_score <- sapply(outcomes, calc_cms, beta=predictions, release=release)
   cms_score <- data.frame(cms_score) %>% mutate(metric = rownames(.))
   
+  if (missing(v_n1)) v_n1 <- unique(predictions$app_version)[1]
+  
   health_metrics <- pred_agg %>% 
     inner_join(., abs_rel_diff, by='metric') %>%
     inner_join(., cms_score, by='metric') %>%
     # mutate(cms_score = cms_score) %>%
-    mutate(date_created = now()) %>%
+    mutate(date_created = now())  %>%
     mutate(version = v_n1)
   
   return(health_metrics)

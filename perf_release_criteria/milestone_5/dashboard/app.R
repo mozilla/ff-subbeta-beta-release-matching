@@ -2,9 +2,13 @@ library(shiny)
 library(shinydashboard)
 library(shinycssloaders)
 library(dplyr)
+library(tidyr)
+library(purrr)
 
+# source('prepare_dashboard.R')
+load('data/dashboard_prepped.RData')
 source('plotters.R')
-source('prepare_dashboard.R')
+source('../../lib/prediction.R')
 
 ui <- dashboardPage(
   dashboardHeader(title = "subBeta"),
@@ -59,7 +63,7 @@ ui <- dashboardPage(
                  selectInput(
                    'country_cat',
                    'Country',
-                   sort(unique(predictions$country)),
+                   sort(unique(pred_v_n1$country)),
                    multiple = TRUE,
                    selectize = TRUE
                  )
@@ -68,7 +72,7 @@ ui <- dashboardPage(
                  selectInput(
                    'timezone_cat',
                    'Timezone Offset',
-                   sort(unique(predictions$timezone_cat)),
+                   sort(unique(pred_v_n1$timezone_cat)),
                    multiple = TRUE,
                    selectize = TRUE
                  )
