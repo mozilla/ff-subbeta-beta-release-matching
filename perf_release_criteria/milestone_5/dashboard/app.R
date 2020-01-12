@@ -9,6 +9,7 @@ library(purrr)
 load('data/dashboard_prepped.RData')
 source('plotters.R')
 source('../../lib/prediction.R')
+source('../../lib/attributes.R')
 
 ui <- dashboardPage(
   dashboardHeader(title = "subBeta"),
