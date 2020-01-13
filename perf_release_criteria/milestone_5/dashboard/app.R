@@ -8,8 +8,8 @@ library(purrr)
 # source('prepare_dashboard.R')
 load('data/dashboard_prepped.RData')
 source('plotters.R')
-source('../../lib/prediction.R')
-source('../../lib/attributes.R')
+source('lib/prediction.R')
+source('lib/attributes.R')
 
 ui <- dashboardPage(
   dashboardHeader(title = "subBeta"),
@@ -341,6 +341,10 @@ server <- function(input, output) {
     apply_filters(pred_v_n1, input)
   }) 
     
+  beta_v_n1_f <- eventReactive(input$go, {
+    apply_filters(beta_v_n1, input)
+  }) 
+  
   pred_v_n_f <- eventReactive(input$go, {
     apply_filters(pred_v_n, input)
   })
@@ -378,7 +382,7 @@ server <- function(input, output) {
   df_pred <- eventReactive(input$go, {
     pred_v_n1_f() %>%
       mutate(label = 'beta-forecast') %>%
-      bind_rows(pred_v_n_f()) %>%
+      bind_rows(beta_v_n1_f()) %>%
       bind_rows(valid_v_n_f())
   }
   )
@@ -399,7 +403,7 @@ server <- function(input, output) {
   
   # FX_PAGE_LOAD_MS_2_PARENT
   output$fxpglms_pred_qq <- renderPlot({
-    qq.df = build_quantile_df(valid_v_n_f(), pred_v_n1_f(), pred_v_n_f(), metrics)
+    qq.df = build_quantile_df(valid_v_n_f(), pred_v_n1_f(), beta_v_n1_f(), metrics)
     p_ridge <- plot.qq(qq.df, 'FX_PAGE_LOAD_MS_2_PARENT')
     p_ridge
   })
@@ -422,7 +426,7 @@ server <- function(input, output) {
   
   # TIME_TO_DOM_COMPLETE_MS
   output$ttdims_pred_qq <- renderPlot({
-    qq.df = build_quantile_df(valid_v_n_f(), pred_v_n1_f(), pred_v_n_f(), metrics)
+    qq.df = build_quantile_df(valid_v_n_f(), pred_v_n1_f(), beta_v_n1_f(), metrics)
     p_ridge <- plot.qq(qq.df, 'TIME_TO_DOM_INTERACTIVE_MS')
     p_ridge
   })
@@ -444,7 +448,7 @@ server <- function(input, output) {
 
   # TIME_TO_DOM_COMPLETE_MS
   output$ttdcms_pred_qq <- renderPlot({
-    qq.df = build_quantile_df(valid_v_n_f(), pred_v_n1_f(), pred_v_n_f(), metrics)
+    qq.df = build_quantile_df(valid_v_n_f(), pred_v_n1_f(), beta_v_n1_f(), metrics)
     p_ridge <- plot.qq(qq.df, 'TIME_TO_DOM_COMPLETE_MS')
     p_ridge
   })
@@ -467,7 +471,7 @@ server <- function(input, output) {
 
   # TIME_TO_LOAD_EVENT_END_MS
   output$ttleems_pred_qq <- renderPlot({
-    qq.df = build_quantile_df(valid_v_n_f(), pred_v_n1_f(), pred_v_n_f(), metrics)
+    qq.df = build_quantile_df(valid_v_n_f(), pred_v_n1_f(), beta_v_n1_f(), metrics)
     p_ridge <- plot.qq(qq.df, 'TIME_TO_LOAD_EVENT_END_MS')
     p_ridge
   })
@@ -490,7 +494,7 @@ server <- function(input, output) {
 
   # TIME_TO_DOM_CONTENT_LOADED_END_MS
   output$ttdclems_pred_qq <- renderPlot({
-    qq.df = build_quantile_df(valid_v_n_f(), pred_v_n1_f(), pred_v_n_f(), metrics)
+    qq.df = build_quantile_df(valid_v_n_f(), pred_v_n1_f(), beta_v_n1_f(), metrics)
     p_ridge <- plot.qq(qq.df, 'TIME_TO_DOM_CONTENT_LOADED_END_MS')
     p_ridge
   })
@@ -513,7 +517,7 @@ server <- function(input, output) {
 
   # TIME_TO_NON_BLANK_PAINT_MS
   output$ttnbpms_pred_qq <- renderPlot({
-    qq.df = build_quantile_df(valid_v_n_f(), pred_v_n1_f(), pred_v_n_f(), metrics)
+    qq.df = build_quantile_df(valid_v_n_f(), pred_v_n1_f(), beta_v_n1_f(), metrics)
     p_ridge <- plot.qq(qq.df, 'TIME_TO_NON_BLANK_PAINT_MS')
     p_ridge
   })

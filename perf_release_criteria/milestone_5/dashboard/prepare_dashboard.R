@@ -43,6 +43,8 @@ v_n1 <- max(
 # pull current predictions from DB
 pred_v_n1 <- import_data(pred_tbl_prefix, v_n1, 'prerelease')
 
+beta_v_n1 <- import_data(beta_tbl_prefix, v_n1, 'prerelease')
+
 #### Step 3 ####
 # extract levels for use in dashboard
 source('../../lib/attributes.R')
@@ -83,4 +85,4 @@ health_metrics <- extract_health_metrics(pred_v_n1, valid_v_n, metrics)
 
 #### Step 8 ####
 # Save image for later loading when dashboard initializes
-save(v_n1, v_n, pred_v_n1, pred_v_n, valid_v_n, beta_v_n, metrics, df, file='data/dashboard_prepped.RData')
+save(v_n1, v_n, pred_v_n1, beta_v_n1, pred_v_n, valid_v_n, beta_v_n, metrics, df, file='data/dashboard_prepped.RData')
