@@ -20,38 +20,42 @@ apply_filters <- function(df, input){
   return(resp.df)
 }
 
-build_quantile_df <- function(validation, matched, original, metrics){
-  qqs <- list()
-  for (perf_metric in metrics){
-    qq <- qqplot(validation[[perf_metric]], matched[[perf_metric]], plot.it = FALSE) %>% 
-      bind_rows() %>%
-      mutate(type = 'matched')
-    qq_full <- qqplot(validation[[perf_metric]], original[[perf_metric]], plot.it = FALSE) %>% 
-      bind_rows() %>%
-      mutate(type = 'original') %>%
-      bind_rows(qq) %>%
-      mutate(metric = perf_metric)
-    # qq_full$metric <- perf_metric
-    qqs[[perf_metric]] <- qq_full
-  }
-  qq_df <- qqs %>% bind_rows() %>% rename(release = x, beta = y)
+calc_qq <- function(validation, matched, original, response){
+  qq <- qqplot(validation[[response]], matched[[response]], plot.it = FALSE) %>% 
+    bind_rows() %>%
+    mutate(type = 'matched')
+  qq_full <- qqplot(validation[[response]], original[[response]], plot.it = FALSE) %>% 
+    bind_rows() %>%
+    mutate(type = 'original') %>%
+    bind_rows(qq) %>%
+    mutate(metric = response)
+  # qq_full$metric <- perf_metric
+  # qq_df <- qqs %>% bind_rows() %>% rename(release = x, beta = y)
+  qq_df <- qq_full %>% rename(release = x, beta = y)
   return(qq_df)
 }
   
-plot.qq <- function(qq.df, response){
+plot.qq <- function(qq.df, response, ranges=NULL){
   p_qq <- ggplot(qq.df %>% filter(metric == response), aes(x = release, y = beta)) +
     geom_point(aes(color = type, shape = type)) + 
     geom_abline(slope = 1, intercept = 0) + 
     theme_bw() + 
     theme(axis.text.x = element_text(angle = 45, hjust = 1),
           plot.title = element_text(size=10),
-          legend.position = c(0.8, 0.2)) + 
+          legend.position = c(0.8, 0.2)) +
+    # scale_x_continuous(limits = ranges$x) + 
+    coord_cartesian(xlim = ranges$x)+
     ggtitle(response) 
   return(p_qq)
   
 }
 
-plot.ridges <- function(resp.df, response){
+plot.ridges <- function(df, response, ranges=NULL){
+  resp.df <- df
+  plot_log <- FALSE
+  if (plot_log) {
+    resp.df[response] <- log(df[response])
+  }
 
   p_ridge <- ggplot(resp.df, aes(x=!!sym(response), y=label, fill=factor(..quantile..))) +
     stat_density_ridges(
@@ -61,7 +65,8 @@ plot.ridges <- function(resp.df, response){
     scale_fill_viridis(discrete = TRUE, name = "Quartiles") + 
     theme_bw() +
     xlab(response) + 
-    xlim(c(0, 10000)) + 
+    # scale_x_continuous(limits = ranges$x) + 
+    coord_cartesian(xlim = ranges$x)+
     guides(fill = FALSE)
   return(p_ridge)
 }
