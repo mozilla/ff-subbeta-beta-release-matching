@@ -1,6 +1,7 @@
 library(tidyr)
 library(purrr)
 library(lubridate)
+# library(boot)
 source('lib/scoring.R')
 
 extract_health_metrics <- function(predictions, release, outcomes, v_n1){
@@ -42,3 +43,29 @@ extract_health_metrics <- function(predictions, release, outcomes, v_n1){
   
   return(health_metrics)
 }
+
+# bootstrap_mean <- function(predictions, release, metrics){
+#   agg_sets <- function(predictions){
+#     predictions %>% 
+#       select(metrics) %>% 
+#       gather("metric", "value") %>%
+#       group_by(metric) %>%
+#       summarise(
+#         mean = mean(value)
+#       ) %>%
+#       pull(mean)
+#   }
+#   
+#   bs_stat <- function(df, indices) {
+#     df_trim <- df[indices, ]
+#     predictions <- df_trim %>% filter(label == 'beta')
+#     release <- df_trim %>% filter(label == 'release')
+#     pred_agg <- agg_sets(predictions)
+#     # release_agg <- agg_sets(release[indices,])
+#     release_agg <- agg_sets(release)
+#     rel_diff <- (abs(pred_agg-release_agg)/release_agg)
+#     return(rel_diff)
+#   } 
+#   return(boot(data=predictions %>% bind_rows(release), statistic=bs_stat, 
+#               R=100, parallel = "multicore", ncpus = 2))
+# }

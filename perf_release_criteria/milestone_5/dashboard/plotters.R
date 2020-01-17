@@ -43,8 +43,9 @@ plot.qq <- function(qq.df, response, ranges=NULL){
     theme(axis.text.x = element_text(angle = 45, hjust = 1),
           plot.title = element_text(size=10),
           legend.position = c(0.8, 0.2)) +
-    # scale_x_continuous(limits = ranges$x) + 
-    coord_cartesian(xlim = ranges$x)+
+    scale_x_continuous(limits = ranges$x) + 
+    scale_y_continuous(limits = ranges$x) + 
+    # coord_cartesian(xlim = ranges$x)+
     ggtitle(response) 
   return(p_qq)
   
