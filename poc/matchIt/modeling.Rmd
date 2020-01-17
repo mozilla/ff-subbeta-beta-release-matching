@@ -1,0 +1,566 @@
+---
+title: "Beta to Release Matching: Modeling"
+author: "Mariana de Oliveira Santos Silva"
+date: 'Last Updated: `r format(Sys.time(), "%B %d, %Y")`'
+output: 
+  html_document:
+    theme: "flatly"
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+    highlight: tango
+---
+
+# Introduction
+
+The goal of this project is to utilize [statistical matching](https://en.wikipedia.org/wiki/Matching_(statistics)) methods to search for a subset of Beta clients that are representative of Release. The specific use-case of this proof-of-concept is utilizing performance, configuration, and environment covariates of the clients for matching. Validation of the matching is performed on a hold-out set of Firefox **user engagement** covariates.
+
+# Loading the data
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+## Loading the needed libraries
+
+library(kableExtra)      # help you build common complex tables and manipulate table styles
+library(DataExplorer)    # automated data exploration
+library(tidyverse)       # for general data wrangling (includes readr and dplyr)
+library(ggplot2)         # to draw statistical plots 
+library(ggthemes)
+library(funModeling) 
+library(corrplot)
+library(MatchIt)
+library(optmatch)
+library(RItools)
+library(magrittr)
+library(tidyr)
+library(tidyselect)
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+## Loading the training dataset
+
+load("~/GitHub/ff-beta-release-matching/poc/EDA/data_milestone2_df_train_validate_20191025.RData")
+```
+
+```{r echo=FALSE}
+## Examine data briefly
+
+kable(introduce(df_train_f)) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
+```
+
+
+```{r}
+f <- freq(df_train_f$label)
+
+levels(df_train_f$label) <- c(FALSE,TRUE)
+df_train_f$label <- as.logical(df_train_f$label)
+```
+
+------
+
+## Observations
+
+* 302,819 observations: 59,627 beta ("treated") and 243,192 release ("control")
+* Covariants: 
+  + Environment
+      - cpu_cores
+      - cpu_cores_cat
+      - cpu_speed_mhz
+      - cpu_speed_cat
+      - cpu_vendor
+      - cpu_l2_cache_kb
+      - cpu_l2_cache_kb_cat
+      - memory_mb
+      - memory_cat
+      - os_version
+      - is_wow64
+      - distro_id_norm
+      - install_year
+  + Geo
+      - country
+      - timezone_offset
+      - timezone_cat
+      - locale
+  + Settings
+      - num_bookmarks
+      - num_addons
+      - sync_configured
+      - fxa_configured
+      - is_default_browser
+      - default_search_engine
+  + Page Load
+      - FX_PAGE_LOAD_MS_2_PARENT
+      - TIME_TO_DOM_COMPLETE_MS
+      - TIME_TO_DOM_CONTENT_LOADED_END_MS
+      - TIME_TO_LOAD_EVENT_END_MS
+      - TIME_TO_DOM_INTERACTIVE_MS
+      - TIME_TO_NON_BLANK_PAINT_MS
+  + Startup
+      - startup_ms
+      - startup_ms_max
+  + Stability
+      - content_crashes
+  + Browser engagement
+      - active_hours
+      - active_hours_max
+      - uri_count
+      - uri_count_max
+      - search_count
+      - search_count_max
+      - num_pages
+      - num_pages_max
+      - daily_max_tabs
+      - daily_max_tabs_max
+      - daily_unique_domains
+      - daily_unique_domains_max
+      - daily_tabs_opened
+      - daily_tabs_opened_max
+  + Frequency of Browser Usage
+      - num_active_days
+      - daily_num_sessions_started
+      - daily_num_sessions_started_max
+      - session_length
+      - session_length_max
+      - profile_age
+      - profile_age_cat
+
+```{r}
+df_release <- df_train_f %>% filter(label == TRUE)
+df_beta <- df_train_f %>% filter(label == FALSE)
+```
+
+```{r}
+# sampling for beta overrepresentation
+n_beta <- nrow(df_beta)
+build_df <- function(multiple){
+  df <- df_release %>%
+    sample_n(size = round(n_beta / multiple)) %>%
+    rbind(df_beta)
+}
+
+df_1x <- build_df(1)
+df_2x <- build_df(2)
+df_4x <- build_df(4)
+```
+
+```{r}
+# downsampling
+df_1x_sm <- df_1x %>% sample_n(size = 70000)
+df_2x_sm <- df_2x %>% sample_n(size = 70000)
+df_4x_sm <- df_4x %>% sample_n(size = 70000)
+```
+
+```{r}
+f <- freq(as.factor(df_1x_sm$label)) # ~ 50% - 50%
+f <- freq(as.factor(df_2x_sm$label)) # ~ 70% - 30%
+f <- freq(as.factor(df_4x_sm$label)) # ~ 80% - 20%
+```
+
+# Covariates
+
+```{r}
+engagement <- c('active_hours','active_hours_max','uri_count','uri_count_max','search_count','search_count_max','num_pages','num_pages_max','daily_max_tabs','daily_max_tabs_max','daily_unique_domains','daily_unique_domains_max','daily_tabs_opened','daily_tabs_opened_max')
+
+usage <- c('num_active_days','daily_num_sessions_started','daily_num_sessions_started_max','session_length','session_length_max','profile_age')
+
+environment <- c('cpu_cores','cpu_speed_mhz','cpu_l2_cache_kb','memory_mb','timezone_offset','num_bookmarks','num_addons')
+
+page_load <- c('FX_PAGE_LOAD_MS_2_PARENT','TIME_TO_DOM_COMPLETE_MS','TIME_TO_DOM_CONTENT_LOADED_END_MS','TIME_TO_LOAD_EVENT_END_MS','TIME_TO_DOM_INTERACTIVE_MS','TIME_TO_NON_BLANK_PAINT_MS')
+
+startup <- c('startup_ms','startup_ms_max')
+
+stability <- c('content_crashes')
+```
+
+# Modeling
+
+Before propensity scores are calculated, it is a good practice to determine if the two groups are balanced. 
+
+## 1. Standardized difference
+
+The standardized difference can be used to compare the mean of continuous and binary variables between treatment groups. The standardized difference compares the difference in means in units of the pooled standard deviation and allows for the comparison of the relative balance of variables measured in different units. Although there is no universally agreed-upon criterion as to what threshold of the standardized difference can be used to indicate an important imbalance, a standard difference that is less than $0.1$ has been taken to indicate a negligible difference in the mean or prevalence of a covariate between treatment groups.
+
+### 1x Oversampling
+```{r}
+cov <- df_1x_sm %>% select(c(engagement, usage, environment, page_load, startup, stability))
+treated <- (df_1x_sm$label==FALSE)
+std.diff <- apply(cov,2,function(x) 100*(mean(x[treated])- mean(x[!treated]))/(sqrt(0.5*(var(x[treated]) + var(x[!treated])))))
+sort(abs(std.diff))
+```
+
+### 2x Oversampling
+```{r}
+cov <- df_2x_sm %>% select(c(engagement, usage, environment, page_load, startup, stability))
+treated <- (df_2x_sm$label==FALSE)
+std.diff <- apply(cov,2,function(x) 100*(mean(x[treated])- mean(x[!treated]))/(sqrt(0.5*(var(x[treated]) + var(x[!treated])))))
+sort(abs(std.diff))
+```
+
+### 4x Oversampling
+```{r}
+cov <- df_4x_sm %>% select(c(engagement, usage, environment, page_load, startup, stability))
+treated <- (df_4x_sm$label==FALSE)
+std.diff <- apply(cov,2,function(x) 100*(mean(x[treated])- mean(x[!treated]))/(sqrt(0.5*(var(x[treated]) + var(x[!treated])))))
+sort(abs(std.diff))
+```
+
+------
+
+### Observations
+
+* As we can see, all standardized differences at the individual variable level were greater than *0.1*. These significant imbalances highlight the need for an effective matching strategy to create a release group that more closely resembles the beta group.
+* For the standardized difference, absolute scores higher than *25%* are considered suspect, and may indicate an imbalance for that specific variable.
+  + That is, `TIME_TO_DOM_INTERACTIVE_MS`, `TIME_TO_DOM_COMPLETE_MS`, `TIME_TO_LOAD_EVENT_END_MS`, `timezone_offset`, `num_addons` and `session_length` (only for the 2x Oversampling).
+
+## 2. Check initial balance
+
+The package [RItools](https://cran.r-project.org/web/packages/RItools/index.html) includes the routine `XBalance` that estimates a chi-square test to which checks if there is at least one variable in the selection model for which the two groups are different. 
+
+* *How similar are treatment/control groups on X?*
+
+### 1x Oversampling
+```{r}
+xBalance(label ~ (active_hours + active_hours_max + uri_count + uri_count_max + search_count + search_count_max + num_pages + num_pages_max + daily_max_tabs + daily_max_tabs_max + daily_unique_domains + daily_unique_domains_max + daily_tabs_opened + daily_tabs_opened_max + num_active_days + daily_num_sessions_started + daily_num_sessions_started_max + session_length + session_length_max + profile_age + cpu_cores + cpu_speed_mhz + cpu_l2_cache_kb + memory_mb + num_bookmarks + FX_PAGE_LOAD_MS_2_PARENT + TIME_TO_DOM_CONTENT_LOADED_END_MS + TIME_TO_NON_BLANK_PAINT_MS + startup_ms + startup_ms_max + content_crashes), data=df_1x_sm, report=c("chisquare.test"))
+```
+
+### 2x Oversampling
+```{r}
+xBalance(label ~ (active_hours + active_hours_max + uri_count + uri_count_max + search_count + search_count_max + num_pages + num_pages_max + daily_max_tabs + daily_max_tabs_max + daily_unique_domains + daily_unique_domains_max + daily_tabs_opened + daily_tabs_opened_max + num_active_days + daily_num_sessions_started + daily_num_sessions_started_max + session_length_max + profile_age + cpu_cores + cpu_speed_mhz + cpu_l2_cache_kb + memory_mb + num_bookmarks + FX_PAGE_LOAD_MS_2_PARENT + TIME_TO_DOM_CONTENT_LOADED_END_MS + TIME_TO_NON_BLANK_PAINT_MS + startup_ms + startup_ms_max + content_crashes), data=df_2x_sm, report=c("chisquare.test"))
+```
+
+### 4x Oversampling
+```{r}
+xBalance(label ~ (active_hours + active_hours_max + uri_count + uri_count_max + search_count + search_count_max + num_pages + num_pages_max + daily_max_tabs + daily_max_tabs_max + daily_unique_domains + daily_unique_domains_max + daily_tabs_opened + daily_tabs_opened_max + num_active_days + daily_num_sessions_started + daily_num_sessions_started_max + session_length + session_length_max + profile_age + cpu_cores + cpu_speed_mhz + cpu_l2_cache_kb + memory_mb + num_bookmarks + FX_PAGE_LOAD_MS_2_PARENT + TIME_TO_DOM_CONTENT_LOADED_END_MS + TIME_TO_NON_BLANK_PAINT_MS + startup_ms + startup_ms_max + content_crashes), data=df_4x_sm, report=c("chisquare.test"))
+```
+
+------
+
+### Observations
+
+* A statistically significant chi-square will indicate that at least one of the variables included in the model is creating an imbalance between the two groups. Variables that create imbalance should be included in the selection model. 
+
+## 3. Propensity Score Estimation
+
+Packages such as MatchIt estimates propensity scores using logistic regression as the default option. However, when estimating propensity scores using the default option, the fit of the model cannot be assessed. Therefore, it is recommended that a logistic regression is run to determine the model fit. 
+
+### Calculates the propensity score
+
+#### 1x Oversampling
+
+```{r}
+ps <- glm(label ~ active_hours + active_hours_max + uri_count + uri_count_max + search_count + search_count_max + num_pages + num_pages_max + daily_max_tabs + daily_max_tabs_max + daily_unique_domains + daily_unique_domains_max + daily_tabs_opened + daily_tabs_opened_max + num_active_days + daily_num_sessions_started + daily_num_sessions_started_max + session_length + session_length_max + profile_age + cpu_cores + cpu_speed_mhz + cpu_l2_cache_kb + memory_mb + num_bookmarks + FX_PAGE_LOAD_MS_2_PARENT + TIME_TO_DOM_CONTENT_LOADED_END_MS + TIME_TO_NON_BLANK_PAINT_MS + startup_ms + startup_ms_max + content_crashes, data=df_1x_sm, family=binomial())
+summary(ps)
+```
+
+Statistically significant estimates are identified by low (i.e., $< 0.05$) p-values. There are no clear suggestions as to whether to include in the final model all the variables (even non-significant). Some authors suggest that the final model should include not only statistically significant variables, but also variables known to be associated with selection.
+
+Once the propensity scores have been calculated, a graphical approach can be used to assess the distributional similarity between score distributions. This graphical approach uses back to back histograms such as those created through the package Hmisc. Back to back histograms cannot be used with Mahalanobis distance, because it is a multidimensional technique. 
+
+* Attach the predicted propensity score to the datafile
+
+```{r}
+df_1x_sm$psvalue <- predict(ps, type="response")
+```
+
+## Back to back histogram
+
+```{r fig.height=5, fig.width=10}
+out <- histbackback(split(df_1x_sm$psvalue, df_1x_sm$label), main="Propensity score before matching", xlab=c("release", "beta"))
+#! just adding color
+barplot(-out$left, col="#111d5e" , horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+barplot(out$right, col="#b21f66", horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+```
+
+#### 2x Oversampling
+
+```{r}
+ps <- glm(label ~ active_hours + active_hours_max + uri_count + uri_count_max + search_count + search_count_max + num_pages + num_pages_max + daily_max_tabs + daily_max_tabs_max + daily_unique_domains + daily_unique_domains_max + daily_tabs_opened + daily_tabs_opened_max + num_active_days + daily_num_sessions_started + daily_num_sessions_started_max + session_length_max + profile_age + cpu_cores + cpu_speed_mhz + cpu_l2_cache_kb + memory_mb + num_bookmarks + FX_PAGE_LOAD_MS_2_PARENT + TIME_TO_DOM_CONTENT_LOADED_END_MS + TIME_TO_NON_BLANK_PAINT_MS + startup_ms + startup_ms_max + content_crashes, data=df_2x_sm, family=binomial())
+summary(ps)
+```
+
+* Attach the predicted propensity score to the datafile
+
+```{r}
+df_2x_sm$psvalue <- predict(ps, type="response")
+```
+
+## Back to back histogram
+
+```{r fig.height=5, fig.width=10}
+out <- histbackback(split(df_2x_sm$psvalue, df_2x_sm$label), main="Propensity score before matching", xlab=c("release", "beta"))
+#! just adding color
+barplot(-out$left, col="#111d5e" , horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+barplot(out$right, col="#b21f66", horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+```
+
+#### 4x Oversampling
+
+```{r}
+ps <- glm(label ~ active_hours + active_hours_max + uri_count + uri_count_max + search_count + search_count_max + num_pages + num_pages_max + daily_max_tabs + daily_max_tabs_max + daily_unique_domains + daily_unique_domains_max + daily_tabs_opened + daily_tabs_opened_max + num_active_days + daily_num_sessions_started + daily_num_sessions_started_max + session_length_max + profile_age + cpu_cores + cpu_speed_mhz + cpu_l2_cache_kb + memory_mb + num_bookmarks + FX_PAGE_LOAD_MS_2_PARENT + TIME_TO_DOM_CONTENT_LOADED_END_MS + TIME_TO_NON_BLANK_PAINT_MS + startup_ms + startup_ms_max + content_crashes, data=df_4x_sm, family=binomial())
+summary(ps)
+```
+
+* Attach the predicted propensity score to the datafile
+
+```{r}
+df_4x_sm$psvalue <- predict(ps, type="response")
+```
+
+## Back to back histogram
+
+```{r fig.height=5, fig.width=10}
+out <- histbackback(split(df_4x_sm$psvalue, df_4x_sm$label), main="Propensity score before matching", xlab=c("release", "beta"))
+#! just adding color
+barplot(-out$left, col="#111d5e" , horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+barplot(out$right, col="#b21f66", horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+```
+
+------
+
+#### Observations
+
+* Important parameters to determine the fit are not only the shape, but also degree of overlap between the two distributions (known as the common support region). By definition, matching only utilizes observations in the region of common support where we are able to obtain matched observations.  That is, unmatched observations are excluded from the analysis. 
+* As can be seen from the figures above, an interval of propensity scores exists, containing both release and beta groups, so that further matching analysis is valid.
+
+## 4. Propensity Score Matching
+
+### Match using Coarsened Exact Matching (CEM)
+
+#### 1x Oversampling
+
+```{r}
+m.cem <- matchit(label ~ active_hours + active_hours_max + uri_count + uri_count_max + search_count + search_count_max + num_pages + num_pages_max + daily_max_tabs + daily_max_tabs_max + daily_unique_domains + daily_unique_domains_max + daily_tabs_opened + daily_tabs_opened_max + num_active_days + daily_num_sessions_started + daily_num_sessions_started_max + session_length + session_length_max + profile_age + cpu_cores + cpu_speed_mhz + cpu_l2_cache_kb + memory_mb + num_bookmarks + FX_PAGE_LOAD_MS_2_PARENT + TIME_TO_DOM_CONTENT_LOADED_END_MS + TIME_TO_NON_BLANK_PAINT_MS + startup_ms + startup_ms_max + content_crashes, data=df_1x_sm, method="cem")
+summary(m.cem)
+m.cem.1 = match.data(m.cem)
+```
+
+```{r fig.height=5, fig.width=10}
+plot(m.cem, type = "jitter", col = "#111d5e")
+```
+
+```{r fig.height=5, fig.width=10}
+plot(m.cem, type = "hist", col = "#111d5e")
+```
+
+#### 2x Oversampling
+
+```{r}
+m.cem <- matchit(label ~ active_hours + active_hours_max + uri_count + uri_count_max + search_count + search_count_max + num_pages + num_pages_max + daily_max_tabs + daily_max_tabs_max + daily_unique_domains + daily_unique_domains_max + daily_tabs_opened + daily_tabs_opened_max + num_active_days + daily_num_sessions_started + daily_num_sessions_started_max + session_length_max + profile_age + cpu_cores + cpu_speed_mhz + cpu_l2_cache_kb + memory_mb + num_bookmarks + FX_PAGE_LOAD_MS_2_PARENT + TIME_TO_DOM_CONTENT_LOADED_END_MS + TIME_TO_NON_BLANK_PAINT_MS + startup_ms + startup_ms_max + content_crashes, data=df_2x_sm, method="cem")
+summary(m.cem)
+m.cem.2 = match.data(m.cem)
+```
+
+```{r fig.height=5, fig.width=10}
+plot(m.cem, type = "jitter", col = "#111d5e")
+```
+
+```{r fig.height=5, fig.width=10}
+plot(m.cem, type = "hist", col = "#111d5e")
+```
+
+#### 4x Oversampling
+
+```{r}
+m.cem <- matchit(label ~ active_hours + active_hours_max + uri_count + uri_count_max + search_count + search_count_max + num_pages + num_pages_max + daily_max_tabs + daily_max_tabs_max + daily_unique_domains + daily_unique_domains_max + daily_tabs_opened + daily_tabs_opened_max + num_active_days + daily_num_sessions_started + daily_num_sessions_started_max + session_length + session_length_max + profile_age + cpu_cores + cpu_speed_mhz + cpu_l2_cache_kb + memory_mb + num_bookmarks + FX_PAGE_LOAD_MS_2_PARENT + TIME_TO_DOM_CONTENT_LOADED_END_MS + TIME_TO_NON_BLANK_PAINT_MS + startup_ms + startup_ms_max + content_crashes, data=df_4x_sm, method="cem")
+summary(m.cem)
+m.cem.4 = match.data(m.cem)
+```
+
+```{r fig.height=5, fig.width=10}
+plot(m.cem, type = "jitter", col = "#111d5e")
+```
+
+```{r fig.height=5, fig.width=10}
+plot(m.cem, type = "hist", col = "#111d5e")
+```
+
+### Match using Nearest Neighbor matching
+
+#### 1x Oversampling
+
+```{r}
+m.nn <- matchit(label ~ active_hours + active_hours_max + uri_count + uri_count_max + search_count + search_count_max + num_pages + num_pages_max + daily_max_tabs + daily_max_tabs_max + daily_unique_domains + daily_unique_domains_max + daily_tabs_opened + daily_tabs_opened_max + num_active_days + daily_num_sessions_started + daily_num_sessions_started_max + session_length + session_length_max + profile_age + cpu_cores + cpu_speed_mhz + cpu_l2_cache_kb + memory_mb + num_bookmarks + FX_PAGE_LOAD_MS_2_PARENT + TIME_TO_DOM_CONTENT_LOADED_END_MS + TIME_TO_NON_BLANK_PAINT_MS + startup_ms + startup_ms_max + content_crashes, data=df_1x_sm, method="nearest", replace = TRUE)
+summary(m.nn)
+m.nn.1 = match.data(m.nn)
+```
+
+```{r fig.height=5, fig.width=10}
+plot(m.nn, type = "jitter", col = "#111d5e")
+```
+
+```{r fig.height=5, fig.width=10}
+plot(m.nn, type = "hist", col = "#111d5e")
+```
+
+#### 2x Oversampling
+
+```{r}
+m.nn <- matchit(label ~ active_hours + active_hours_max + uri_count + uri_count_max + search_count + search_count_max + num_pages + num_pages_max + daily_max_tabs + daily_max_tabs_max + daily_unique_domains + daily_unique_domains_max + daily_tabs_opened + daily_tabs_opened_max + num_active_days + daily_num_sessions_started + daily_num_sessions_started_max + session_length_max + profile_age + cpu_cores + cpu_speed_mhz + cpu_l2_cache_kb + memory_mb + num_bookmarks + FX_PAGE_LOAD_MS_2_PARENT + TIME_TO_DOM_CONTENT_LOADED_END_MS + TIME_TO_NON_BLANK_PAINT_MS + startup_ms + startup_ms_max + content_crashes, data=df_2x_sm, method="nearest", replace = TRUE)
+summary(m.nn)
+m.nn.2 = match.data(m.nn)
+```
+
+```{r fig.height=5, fig.width=10}
+plot(m.nn, type = "jitter", col = "#111d5e")
+```
+
+```{r fig.height=5, fig.width=10}
+plot(m.nn, type = "hist", col = "#111d5e")
+```
+
+#### 4x Oversampling
+
+```{r}
+m.nn <- matchit(label ~ active_hours + active_hours_max + uri_count + uri_count_max + search_count + search_count_max + num_pages + num_pages_max + daily_max_tabs + daily_max_tabs_max + daily_unique_domains + daily_unique_domains_max + daily_tabs_opened + daily_tabs_opened_max + num_active_days + daily_num_sessions_started + daily_num_sessions_started_max + session_length + session_length_max + profile_age + cpu_cores + cpu_speed_mhz + cpu_l2_cache_kb + memory_mb + num_bookmarks + FX_PAGE_LOAD_MS_2_PARENT + TIME_TO_DOM_CONTENT_LOADED_END_MS + TIME_TO_NON_BLANK_PAINT_MS + startup_ms + startup_ms_max + content_crashes, data=df_4x_sm, method="nearest", replace = TRUE)
+summary(m.nn)
+m.nn.4 = match.data(m.nn)
+```
+
+```{r fig.height=5, fig.width=10}
+plot(m.nn, type = "jitter", col = "#111d5e")
+```
+
+```{r fig.height=5, fig.width=10}
+plot(m.nn, type = "hist", col = "#111d5e")
+```
+
+---
+
+### Observations
+
+* What we want to see is that the Matched Treated (beta) and Matched Control (release) distributions are roughly similar. So, we can do better.
+
+## 5. Computing indices of covariate imbalance after matching
+
+### 1x Oversampling
+
+#### CEM
+
+```{r}
+### 1. Standardized difference
+cov1 <- m.cem.1 %>% select(c(engagement, usage, environment, page_load, startup, stability))
+treated1 <- (m.cem.1$label==FALSE)
+std.diff1 <- apply(cov1,2,function(x) 100*(mean(x[treated1])- mean(x[!treated1]))/(sqrt(0.5*(var(x[treated1]) + var(x[!treated1])))))
+sort(abs(std.diff1))
+```
+
+```{r}
+### 2. chi-square test
+xBalance(label ~ (active_hours + active_hours_max + uri_count + uri_count_max + search_count + search_count_max + num_pages + num_pages_max + daily_max_tabs + daily_max_tabs_max + daily_unique_domains + daily_unique_domains_max + daily_tabs_opened + daily_tabs_opened_max + num_active_days + daily_num_sessions_started + daily_num_sessions_started_max + session_length + session_length_max + profile_age + cpu_cores + cpu_speed_mhz + cpu_l2_cache_kb + memory_mb + num_bookmarks + FX_PAGE_LOAD_MS_2_PARENT + TIME_TO_DOM_CONTENT_LOADED_END_MS + TIME_TO_NON_BLANK_PAINT_MS + startup_ms + startup_ms_max + content_crashes), data=m.cem.1, report=c("chisquare.test"))
+```
+
+```{r fig.height=5, fig.width=10}
+out <- histbackback(split(m.cem.1$psvalue, m.cem.1$label), main= "Propensity score after matching (CEM)", xlab=c("release", "beta"))
+barplot(-out$left, col="#111d5e" , horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+barplot(out$right, col="#b21f66", horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+```
+
+#### NN
+
+```{r}
+### 1. Standardized difference
+cov1 <- m.nn.1 %>% select(c(engagement, usage, environment, page_load, startup, stability))
+treated1 <- (m.nn.1$label==FALSE)
+std.diff1 <- apply(cov1,2,function(x) 100*(mean(x[treated1])- mean(x[!treated1]))/(sqrt(0.5*(var(x[treated1]) + var(x[!treated1])))))
+sort(abs(std.diff1))
+```
+
+```{r}
+### 2. chi-square test
+xBalance(label ~ (active_hours + active_hours_max + uri_count + uri_count_max + search_count + search_count_max + num_pages + num_pages_max + daily_max_tabs + daily_max_tabs_max + daily_unique_domains + daily_unique_domains_max + daily_tabs_opened + daily_tabs_opened_max + num_active_days + daily_num_sessions_started + daily_num_sessions_started_max + session_length + session_length_max + profile_age + cpu_cores + cpu_speed_mhz + cpu_l2_cache_kb + memory_mb + num_bookmarks + FX_PAGE_LOAD_MS_2_PARENT + TIME_TO_DOM_CONTENT_LOADED_END_MS + TIME_TO_NON_BLANK_PAINT_MS + startup_ms + startup_ms_max + content_crashes), data=m.nn.1, report=c("chisquare.test"))
+```
+
+```{r fig.height=5, fig.width=10}
+out <- histbackback(split(m.nn.1$psvalue, m.nn.1$label), main= "Propensity score after matching (NN)", xlab=c("release", "beta"))
+barplot(-out$left, col="#111d5e" , horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+barplot(out$right, col="#b21f66", horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+```
+
+### 2x Oversampling
+
+#### CEM
+
+```{r}
+### 1. Standardized difference
+cov1 <- m.cem.2 %>% select(c(engagement, usage, environment, page_load, startup, stability))
+treated1 <- (m.cem.2$label==FALSE)
+std.diff1 <- apply(cov1,2,function(x) 100*(mean(x[treated1])- mean(x[!treated1]))/(sqrt(0.5*(var(x[treated1]) + var(x[!treated1])))))
+sort(abs(std.diff1))
+```
+
+```{r}
+### 2. chi-square test
+xBalance(label ~ (active_hours + active_hours_max + uri_count + uri_count_max + search_count + search_count_max + num_pages + num_pages_max + daily_max_tabs + daily_max_tabs_max + daily_unique_domains + daily_unique_domains_max + daily_tabs_opened + daily_tabs_opened_max + num_active_days + daily_num_sessions_started + daily_num_sessions_started_max + session_length_max + profile_age + cpu_cores + cpu_speed_mhz + cpu_l2_cache_kb + memory_mb + num_bookmarks + FX_PAGE_LOAD_MS_2_PARENT + TIME_TO_DOM_CONTENT_LOADED_END_MS + TIME_TO_NON_BLANK_PAINT_MS + startup_ms + startup_ms_max + content_crashes), data=m.cem.2, report=c("chisquare.test"))
+```
+
+```{r fig.height=5, fig.width=10}
+out <- histbackback(split(m.cem.2$psvalue, m.cem.2$label), main= "Propensity score after matching (CEM)", xlab=c("release", "beta"))
+barplot(-out$left, col="#111d5e" , horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+barplot(out$right, col="#b21f66", horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+```
+
+#### NN
+
+```{r}
+### 1. Standardized difference
+cov1 <- m.nn.2 %>% select(c(engagement, usage, environment, page_load, startup, stability))
+treated1 <- (m.nn.2$label==FALSE)
+std.diff1 <- apply(cov1,2,function(x) 100*(mean(x[treated1])- mean(x[!treated1]))/(sqrt(0.5*(var(x[treated1]) + var(x[!treated1])))))
+sort(abs(std.diff1))
+```
+
+```{r}
+### 2. chi-square test
+xBalance(label ~ (active_hours + active_hours_max + uri_count + uri_count_max + search_count + search_count_max + num_pages + num_pages_max + daily_max_tabs + daily_max_tabs_max + daily_unique_domains + daily_unique_domains_max + daily_tabs_opened + daily_tabs_opened_max + num_active_days + daily_num_sessions_started + daily_num_sessions_started_max + session_length_max + profile_age + cpu_cores + cpu_speed_mhz + cpu_l2_cache_kb + memory_mb + num_bookmarks + FX_PAGE_LOAD_MS_2_PARENT + TIME_TO_DOM_CONTENT_LOADED_END_MS + TIME_TO_NON_BLANK_PAINT_MS + startup_ms + startup_ms_max + content_crashes), data=m.nn.2, report=c("chisquare.test"))
+```
+
+```{r fig.height=5, fig.width=10}
+out <- histbackback(split(m.nn.2$psvalue, m.nn.2$label), main= "Propensity score after matching (NN)", xlab=c("release", "beta"))
+barplot(-out$left, col="#111d5e" , horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+barplot(out$right, col="#b21f66", horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+```
+
+### 4x Oversampling
+
+#### CEM
+
+```{r}
+### 1. Standardized difference
+cov1 <- m.cem.4 %>% select(c(engagement, usage, environment, page_load, startup, stability))
+treated1 <- (m.cem.4$label==FALSE)
+std.diff1 <- apply(cov1,2,function(x) 100*(mean(x[treated1])- mean(x[!treated1]))/(sqrt(0.5*(var(x[treated1]) + var(x[!treated1])))))
+sort(abs(std.diff1))
+```
+
+```{r}
+### 2. chi-square test
+xBalance(label ~ (active_hours + active_hours_max + uri_count + uri_count_max + search_count + search_count_max + num_pages + num_pages_max + daily_max_tabs + daily_max_tabs_max + daily_unique_domains + daily_unique_domains_max + daily_tabs_opened + daily_tabs_opened_max + num_active_days + daily_num_sessions_started + daily_num_sessions_started_max + session_length + session_length_max + profile_age + cpu_cores + cpu_speed_mhz + cpu_l2_cache_kb + memory_mb + num_bookmarks + FX_PAGE_LOAD_MS_2_PARENT + TIME_TO_DOM_CONTENT_LOADED_END_MS + TIME_TO_NON_BLANK_PAINT_MS + startup_ms + startup_ms_max + content_crashes), data=m.cem.4, report=c("chisquare.test"))
+```
+
+```{r fig.height=5, fig.width=10}
+out <- histbackback(split(m.cem.4$psvalue, m.cem.4$label), main= "Propensity score after matching (CEM)", xlab=c("release", "beta"))
+barplot(-out$left, col="#111d5e" , horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+barplot(out$right, col="#b21f66", horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+```
+
+#### NN
+
+```{r}
+### 1. Standardized difference
+cov1 <- m.nn.4 %>% select(c(engagement, usage, environment, page_load, startup, stability))
+treated1 <- (m.nn.4$label==FALSE)
+std.diff1 <- apply(cov1,2,function(x) 100*(mean(x[treated1])- mean(x[!treated1]))/(sqrt(0.5*(var(x[treated1]) + var(x[!treated1])))))
+sort(abs(std.diff1))
+```
+
+```{r}
+### 2. chi-square test
+xBalance(label ~ (active_hours + active_hours_max + uri_count + uri_count_max + search_count + search_count_max + num_pages + num_pages_max + daily_max_tabs + daily_max_tabs_max + daily_unique_domains + daily_unique_domains_max + daily_tabs_opened + daily_tabs_opened_max + num_active_days + daily_num_sessions_started + daily_num_sessions_started_max + session_length + session_length_max + profile_age + cpu_cores + cpu_speed_mhz + cpu_l2_cache_kb + memory_mb + num_bookmarks + FX_PAGE_LOAD_MS_2_PARENT + TIME_TO_DOM_CONTENT_LOADED_END_MS + TIME_TO_NON_BLANK_PAINT_MS + startup_ms + startup_ms_max + content_crashes), data=m.nn.4, report=c("chisquare.test"))
+```
+
+```{r fig.height=5, fig.width=10}
+out <- histbackback(split(m.nn.4$psvalue, m.nn.4$label), main= "Propensity score after matching (NN)", xlab=c("release", "beta"))
+barplot(-out$left, col="#111d5e" , horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+barplot(out$right, col="#b21f66", horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+```
