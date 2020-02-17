@@ -1,0 +1,137 @@
+---
+title: "Feature Engineering"
+author: "Mariana de Oliveira Santos Silva"
+date: 'Last Updated: `r format(Sys.time(), "%B %d, %Y")`'
+output: 
+  html_document:
+    theme: "flatly"
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+    highlight: tango
+---
+
+# tl;dr
+
+Often combining variables to generate a new variable, a process known as *feature engineering*, can make a model infinitely better. In this notebook we will try to engineer some features in case some of them turn out to be determinant factors when imputing other variables. 
+
+
+```{r imports, echo=FALSE, warning=FALSE, message=FALSE}
+library(kableExtra)      # help you build common complex tables and manipulate table styles
+library(DataExplorer)    # automated data exploration
+library(tidyverse)       # for general data wrangling (includes readr and dplyr)
+library(ggplot2)         # to draw statistical plots 
+library(ggthemes)
+library(tidyr)
+library(tidyselect)
+library(caret)           # includes several functions to pre-process
+library(scales)          # to determining breaks and labels for axes and legends
+library(vtreat)          # to variable preparation for ML
+library(semTools)        # useful tools for structural equation modeling
+library(onehot)
+library(mltools)
+library(data.table)
+load("~/GitHub/ff-beta-release-matching/poc/EDA/data_milestone2_df_train_validate_20191025.RData")
+```
+
+
+```{r echo=FALSE}
+## Examine data briefly
+glimpse(df_train_f)
+```
+
+```{r, fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
+## Frequency distribution release dataframe
+plot_bar(df_train_f, ggtheme = theme_minimal(base_size = 15), title = 'Categorical Variables')
+```
+
+# Converting Categorical Features
+
+* Most values of `default_search_engine` are equal to **Google**. That is, for better modeling, we could just create a variable that represents *Google* and set the remainder to *Other*. 
+* The same can be done for `distro_id_norm`. We could just create a variable that represents *Mozilla* and set the remainder to *Other*. 
+
+```{r}
+# Training
+df_train_f$google_default <- (df_train_f$default_search_engine == 'Google') * 1
+df_train_f$mozilla_distro <- (df_train_f$distro_id_norm == 'Mozilla') * 1
+
+# Validation
+df_validate_f$google_default <- (df_validate_f$default_search_engine == 'Google') * 1
+df_validate_f$mozilla_distro <- (df_validate_f$distro_id_norm == 'Mozilla') * 1
+```
+
+```{r}
+plot_bar(df_train_f$google_default, ggtheme = theme_minimal(base_size = 15), title = 'Google default seach engine')
+plot_bar(df_train_f$mozilla_distro, ggtheme = theme_minimal(base_size = 15), title = 'Mozilla distro id norm')
+```
+
+* In addition, we could map numerical values to the categorical variables.
+
+```{r message=FALSE, warning=FALSE}
+require(plyr) # to use mapvalues function
+
+# Training
+df_train_f$new_os_version <- mapvalues(df_train_f$os_version,
+          from=c('Other', '10.0', '6.1', '6.3', '6.2'), 
+          to=c(0,1,2,3,4))
+df_train_f$new_os_version <- as.numeric(as.character(df_train_f$new_os_version))
+
+df_train_f$new_cpu_vendor <- mapvalues(df_train_f$cpu_vendor,
+          from=c('Other', 'Intel', 'AMD'), 
+          to=c(0,1,2))
+df_train_f$new_cpu_vendor <- as.numeric(as.character(df_train_f$new_cpu_vendor))
+
+# Validation
+df_validate_f$new_os_version <- mapvalues(df_validate_f$os_version,
+          from=c('Other', '10.0', '6.1', '6.3', '6.2'), 
+          to=c(0,1,2,3,4))
+df_validate_f$new_os_version <- as.numeric(as.character(df_validate_f$new_os_version))
+
+df_validate_f$new_cpu_vendor <- mapvalues(df_validate_f$cpu_vendor,
+          from=c('Other', 'Intel', 'AMD'), 
+          to=c(0,1,2))
+df_validate_f$new_cpu_vendor <- as.numeric(as.character(df_validate_f$new_cpu_vendor))
+```
+
+```{r}
+plot_histogram(df_train_f$new_os_version, ggtheme = theme_minimal(base_size = 15), title = 'OS Version')
+plot_histogram(df_train_f$new_cpu_vendor, ggtheme = theme_minimal(base_size = 15), title = 'CPU Vendor')
+```
+
+# One Hot Encoding
+
+To convert all the nominal or factor variables to numeric, we need to create a dummy variable for each category of the categorical variables. Only one dummy variable is coded with a one for each set of categories. 
+
+## Training
+```{r}
+df_train_encoder <- one_hot(as.data.table(df_train_f))
+```
+
+```{r}
+numericVarNames <- which(sapply(df_train_encoder, is.numeric))
+df_num <- df_train_encoder %>% select(numericVarNames)
+df_cat <- df_train_encoder  %>% select(-numericVarNames)
+
+cat('There are', length(df_num), 'numeric variables, and', length(df_cat), 'factor variables')
+```
+
+## Validation
+```{r}
+df_validate_encoder <- one_hot(as.data.table(df_validate_f))
+```
+
+```{r}
+numericVarNames <- which(sapply(df_validate_encoder, is.numeric))
+df_num <- df_validate_encoder %>% select(numericVarNames)
+df_cat <- df_validate_encoder  %>% select(-numericVarNames)
+
+cat('There are', length(df_num), 'numeric variables, and', length(df_cat), 'factor variables')
+```
+
+# Saving
+
+```{r}
+save.image(file = "feature_engineering.RData")
+```
+
+
