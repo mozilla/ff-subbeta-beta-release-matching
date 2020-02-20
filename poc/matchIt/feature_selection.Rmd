@@ -34,6 +34,20 @@ library(tidyselect)
 load("~/GitHub/ff-beta-release-matching/poc/matchIt/feature_engineering.RData")
 ```
 
+```{r}
+filter_features <- function(df_train_sm){
+  df_fs <- df_train_sm %>%
+   select(-engagement) %>%
+   select(-content_crashes) %>%
+   select(-client_id) %>%
+   select(-label_beta) %>%
+   select(-label_release) %>%
+   select(-is_release) %>%
+   select(-app_version)
+  return(df_fs)
+}
+```
+
 # tl;dr
 
 This analysis is focused on utilizing `Boruta` as a initial pre-filter to the covariates, to narrow the feature selection search space.
@@ -45,61 +59,116 @@ Apply `Boruta` to each performance covariate.
 ```{r var_def}
 engagement <- c('active_hours','active_hours_max','uri_count','uri_count_max','search_count','search_count_max','num_pages','num_pages_max','daily_max_tabs','daily_max_tabs_max','daily_unique_domains','daily_unique_domains_max','daily_tabs_opened','daily_tabs_opened_max')
 
-set.seed(1234)
-df_train_sm <- df_train_encoder %>%
+df_train_sm_1 <- df_train_encoder %>%
    sample_n(1000)
+df_train_sm_2 <- df_train_encoder %>%
+   sample_n(1000)
+df_train_sm_3 <- df_train_encoder %>%
+   sample_n(1000)
+#df_train_sm_4 <- df_train_encoder %>% sample_n(1000)
+#df_train_sm_5 <- df_train_encoder %>% sample_n(1000)
 
-df_fs <- df_train_sm %>%
-   select(-engagement) %>%
-   select(-content_crashes) %>%
-   select(-client_id) %>%
-   select(-label_beta) %>%
-   select(-label_release) %>%
-   select(-is_release) %>%
-   select(-app_version)
+df_fs_1 <- filter_features(df_train_sm_1)
+df_fs_2 <- filter_features(df_train_sm_2)
+df_fs_3 <- filter_features(df_train_sm_3)
+#df_fs_4 <- filter_features(df_train_sm_4)
+#df_fs_5 <- filter_features(df_train_sm_5)
+
 ```
 
 Boruta is a feature selection algorithm based on the random forest algorithm. In the process of deciding if a feature is important or not, some features may be marked as *Tentative*. Sometimes increasing the `maxRuns` can help resolve the *Tentativeness* of the feature.
 
 ```{r apply_boruta}
-boruta_results <- list()
+boruta_results_1 <- list()
+boruta_results_2 <- list()
+boruta_results_3 <- list()
+#boruta_results_4 <- list()
+#boruta_results_5 <- list()
+
 for (metric in engagement){
   print(paste('Applying Boruta to ', metric))
-  boruta.out <- Boruta(y = df_train_sm[[metric]], x=df_fs, doTrace=0)
-  boruta_results[[metric]]  <- boruta.out
-  # plot(boruta.out, cex.axis=.7, las=2, xlab="", main=metric) 
+  boruta.out <- Boruta(y = df_train_sm_1[[metric]], x=df_fs_1, doTrace=0)
+  boruta_results_1[[metric]]  <- boruta.out
+  
+  boruta.out <- Boruta(y = df_train_sm_2[[metric]], x=df_fs_2, doTrace=0)
+  boruta_results_2[[metric]]  <- boruta.out
+  
+  boruta.out <- Boruta(y = df_train_sm_3[[metric]], x=df_fs_3, doTrace=0)
+  boruta_results_3[[metric]]  <- boruta.out
+  #boruta.out <- Boruta(y = df_train_sm_4[[metric]], x=df_fs_4, doTrace=0)
+  #boruta_results_4[[metric]]  <- boruta.out
+  #boruta.out <- Boruta(y = df_train_sm_5[[metric]], x=df_fs_5, doTrace=0)
+  #boruta_results_5[[metric]]  <- boruta.out
 }
 ```
 
-```{r boruta_plots}
-for (metric in names(boruta_results)){
-  plot(boruta_results[[metric]], cex.axis=.7, las=2, xlab="", main=metric) 
+```{r boruta_plots, fig.height=7, fig.width=15}
+for (metric in engagement){
+  plot(boruta_results_1[[metric]], cex.axis=.7, las=2, xlab="", main=metric)
+  plot(boruta_results_2[[metric]], cex.axis=.7, las=2, xlab="", main=metric)
+  plot(boruta_results_3[[metric]], cex.axis=.7, las=2, xlab="", main=metric)
 }
 ```
 
 Find the top 5 ranking features per metric, and add to a list. 
 
 ```{r aggregate_features_5}
-features_top5 <- NULL
-for(metric in names(boruta_results)){
-  features_top5 <- c(names(sort(apply(boruta_results[[metric]]$ImpHistory, 2, median), decreasing = TRUE)[1:5]), features_top5)
+features_top5_1 <- NULL
+features_top5_2 <- NULL
+features_top5_3 <- NULL
+
+for(metric in engagement){
+  features_top5_1 <- c(names(sort(apply(boruta_results_1[[metric]]$ImpHistory, 2, median), decreasing = TRUE)[1:5]), features_top5_1)
+  features_top5_2 <- c(names(sort(apply(boruta_results_2[[metric]]$ImpHistory, 2, median), decreasing = TRUE)[1:5]), features_top5_2)
+  features_top5_3 <- c(names(sort(apply(boruta_results_3[[metric]]$ImpHistory, 2, median), decreasing = TRUE)[1:5]), features_top5_3)
 }
-knitr::kable(data.frame(top5 = sort(c(unique(features_top5)))))
+
+top5_1 <- sort(c(unique(features_top5_1)))
+top5_2 <- sort(c(unique(features_top5_2)))
+top5_3 <- sort(c(unique(features_top5_3)))
+
+n <- max(length(top5_1), length(top5_2), length(top5_3))
+length(top5_1) <- n 
+length(top5_2) <- n 
+length(top5_3) <- n 
+
+x <- data.frame(top5_1, top5_2, top5_3)
+kable(x) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
 ```
 
 Increasing to 10:
 
 ```{r aggregate_features_10}
-features_top10 <- NULL
-for(metric in names(boruta_results)){
-  features_top10 <- c(names(sort(apply(boruta_results[[metric]]$ImpHistory, 2, median), decreasing = TRUE)[1:10]), features_top10)
-}
-knitr::kable(data.frame(top10 = sort(c(unique(features_top10)))))
-```
+features_top10_1 <- NULL
+features_top10_2 <- NULL
+features_top10_3 <- NULL
 
+for(metric in engagement){
+  features_top10_1 <- c(names(sort(apply(boruta_results_1[[metric]]$ImpHistory, 2, median), decreasing = TRUE)[1:10]), features_top10_1)
+  features_top10_2 <- c(names(sort(apply(boruta_results_2[[metric]]$ImpHistory, 2, median), decreasing = TRUE)[1:10]), features_top10_2)
+  features_top10_3 <- c(names(sort(apply(boruta_results_3[[metric]]$ImpHistory, 2, median), decreasing = TRUE)[1:10]), features_top10_3)
+}
+
+top10_1 <- sort(c(unique(features_top10_1)))
+top10_2 <- sort(c(unique(features_top10_2)))
+top10_3 <- sort(c(unique(features_top10_3)))
+
+n <- max(length(top10_1), length(top10_2), length(top10_3))
+length(top10_1) <- n 
+length(top10_2) <- n 
+length(top10_3) <- n 
+
+x <- data.frame(top10_1, top10_2, top10_3)
+kable(x) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
+```
 
 ## Equal Labels
 
+As we can see, using different samples hardly changes the result. Therefore, we can use only one df with 1000 samples.
 Equalize by label, then perform the above. 
 
 ```{r var_def_equal}
@@ -145,7 +214,11 @@ features_top5 <- NULL
 for(metric in names(boruta_results_eq)){
   features_top5 <- c(names(sort(apply(boruta_results_eq[[metric]]$ImpHistory, 2, median), decreasing = TRUE)[1:5]), features_top5)
 }
-knitr::kable(data.frame(top5 = sort(c(unique(features_top5)))))
+
+x <- data.frame(top5 = sort(c(unique(features_top5))))
+kable(x) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
 ```
 
 Increasing to 10:
@@ -155,7 +228,11 @@ features_top10 <- NULL
 for(metric in names(boruta_results_eq)){
   features_top10 <- c(names(sort(apply(boruta_results_eq[[metric]]$ImpHistory, 2, median), decreasing = TRUE)[1:10]), features_top10)
 }
-knitr::kable(data.frame(top10 = sort(c(unique(features_top10)))))
+
+x <- data.frame(top10 = sort(c(unique(features_top10))))
+kable(x) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
 ```
 
 # Saving
