@@ -644,7 +644,7 @@ for (m.cem in cem_full_models_4x){
 
 * From the results above, we can see that the model using *Nearest Neighbor matching* with balanced sampling outperforms the other models.
 
-* Furthermore, experiments $3$ and $4$ (referring to the results of the feature selection, considering the top 10) were the ones that presented the best results, for most of the tested models.
+* Furthermore, experiments $3$ and $4$ (referring to the results of the feature selection with the stratified sampling, considering the top 5 and top 10, respectly) were the ones that presented the best results, for most of the tested models.
 
 ```{r fig.height=7, fig.width=14}
 plot(nn_models_1x$exp_3, type = "QQ", col = "#111d5e")
