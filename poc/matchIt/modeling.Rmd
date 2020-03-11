@@ -223,7 +223,7 @@ df_2x <- build_df(2)
 df_4x <- build_df(4)
 ```
 
-```{r}
+```{r echo=TRUE}
 # downsampling
 df_1x_sm <- df_1x %>% sample_n(size = 70000)
 df_2x_sm <- df_2x %>% sample_n(size = 70000)
@@ -232,13 +232,18 @@ df_4x_sm <- df_4x %>% sample_n(size = 70000)
 
 ```{r}
 f <- freq(as.factor(df_1x_sm$label_beta)) # ~ 50% - 50%
+print(paste('50% - 50%'))
+
 f <- freq(as.factor(df_2x_sm$label_beta)) # ~ 70% - 30%
+print(paste('70% - 30%'))
+
 f <- freq(as.factor(df_4x_sm$label_beta)) # ~ 80% - 20%
+print(paste('80% - 20%'))
 ```
 
 # Covariates
 
-```{r}
+```{r echo=TRUE}
 engagement <- c('active_hours','active_hours_max','uri_count','uri_count_max','search_count','search_count_max','num_pages','num_pages_max','daily_max_tabs','daily_max_tabs_max','daily_unique_domains','daily_unique_domains_max','daily_tabs_opened','daily_tabs_opened_max')
 
 usage <- c('num_active_days','daily_num_sessions_started','daily_num_sessions_started_max','session_length','session_length_max','profile_age')
@@ -262,7 +267,7 @@ The Boruta method was performed.
 ## Experiments
 Groups of models to train. 
 
-```{r}
+```{r echo=TRUE}
 exp_1 <- c('daily_num_sessions_started', 'daily_num_sessions_started_max', 'FX_PAGE_LOAD_MS_2_PARENT', 'fxa_configured_True', 'memory_mb', 'num_active_days', 'num_addons', 'num_bookmarks', 'profile_age','session_length','session_length_max','TIME_TO_DOM_COMPLETE_MS','TIME_TO_DOM_CONTENT_LOADED_END_MS','TIME_TO_DOM_INTERACTIVE_MS','TIME_TO_LOAD_EVENT_END_MS','TIME_TO_NON_BLANK_PAINT_MS','timezone_cat_0_2')
 
 exp_2 <- c('country_US', 'daily_num_sessions_started', 'daily_num_sessions_started_max', 'default_search_engine_other_nonbundled', 'FX_PAGE_LOAD_MS_2_PARENT', 'fxa_configured_True', 'memory_mb', 'num_active_days', 'num_addons', 'num_bookmarks', 'profile_age', 'session_length','session_length_max', 'startup_ms', 'startup_ms_max', 'sync_configured_True', 'TIME_TO_DOM_COMPLETE_MS','TIME_TO_DOM_CONTENT_LOADED_END_MS','TIME_TO_DOM_INTERACTIVE_MS','TIME_TO_LOAD_EVENT_END_MS','TIME_TO_NON_BLANK_PAINT_MS','timezone_cat_0_2')
@@ -313,7 +318,7 @@ cov_df_4x
 
 * As we can see, all standardized differences at the individual variable level were greater than *0.1* (except for the `timezone_cat_10_12`,`timezone_cat_m10_m8`,`cpu_l2_cache_kb_cat_l512` variables). These significant imbalances highlight the need for an effective matching strategy to create a release group that more closely resembles the beta group. Variables that create imbalance *should* be included in the selection model:
 
-```{r}
+```{r echo=TRUE}
 exp_5  <- c(setdiff(names(cov_df_1x[3:73]), engagement))
 exp_6  <- c(setdiff(names(cov_df_2x), engagement)) 
 exps <- list(exp_1 = exp_1, exp_2 = exp_2, exp_3 = exp_3, exp_4 = exp_4, exp_5 = exp_5, exp_6 = exp_6)
@@ -327,11 +332,12 @@ Packages such as MatchIt estimates propensity scores using logistic regression a
 
 #### 1x Oversampling
 
-```{r, collapse=TRUE}
+```{r message=FALSE, warning=FALSE}
 ps_1x <- list()
 for (exp in names(exps)){
   ps <- glm(generate_formula(exps[[exp]], label), data=df_1x_sm, family=binomial())
   ps_1x[[exp]] <- ps
+  print(paste(exp))
   print(summary(ps))
 }
 ```
@@ -355,11 +361,12 @@ for (ps in ps_1x){
 
 #### 2x Oversampling
 
-```{r, collapse=TRUE}
+```{r message=FALSE, warning=FALSE}
 ps_2x <- list()
 for (exp in names(exps)){
   ps <- glm(generate_formula(exps[[exp]], label), data=df_2x_sm, family=binomial())
   ps_2x[[exp]] <- ps
+  print(paste(exp))
   print(summary(ps))
 }
 ```
@@ -379,11 +386,12 @@ for (ps in ps_2x){
 
 #### 4x Oversampling
 
-```{r, collapse=TRUE}
+```{r message=FALSE, warning=FALSE}
 ps_4x <- list()
 for (exp in names(exps)){
   ps <- glm(generate_formula(exps[[exp]], label), data=df_4x_sm, family=binomial())
   ps_4x[[exp]] <- ps
+  print(paste(exp))
   print(summary(ps))
 }
 ```
@@ -414,7 +422,7 @@ for (ps in ps_4x){
 
 #### 1x Oversampling
 
-```{r, collapse=TRUE}
+```{r message=FALSE, warning=FALSE}
 cem_results_1x <- list()
 cem_models_1x <- list()
 for (exp in names(exps)){
@@ -428,7 +436,7 @@ for (exp in names(exps)){
 
 #### 2x Oversampling
 
-```{r, collapse=TRUE}
+```{r message=FALSE, warning=FALSE}
 cem_results_2x <- list()
 cem_models_2x <- list()
 for (exp in names(exps)){
@@ -442,7 +450,7 @@ for (exp in names(exps)){
 
 #### 4x Oversampling
 
-```{r, collapse=TRUE}
+```{r message=FALSE, warning=FALSE}
 cem_results_4x <- list()
 cem_models_4x <- list()
 for (exp in names(exps)){
@@ -458,7 +466,7 @@ for (exp in names(exps)){
 
 #### 1x Oversampling
 
-```{r, collapse=TRUE}
+```{r message=FALSE, warning=FALSE}
 nn_results_1x <- list()
 nn_models_1x <- list()
 for (exp in names(exps)){
@@ -472,7 +480,7 @@ for (exp in names(exps)){
 
 #### 2x Oversampling
 
-```{r, collapse=TRUE}
+```{r message=FALSE, warning=FALSE}
 nn_results_2x <- list()
 nn_models_2x <- list()
 for (exp in names(exps)){
@@ -486,7 +494,7 @@ for (exp in names(exps)){
 
 #### 4x Oversampling
 
-```{r, collapse=TRUE}
+```{r message=FALSE, warning=FALSE}
 nn_results_4x <- list()
 nn_models_4x <- list()
 for (exp in names(exps)){
@@ -494,50 +502,6 @@ for (exp in names(exps)){
   res <- match.data(nn)
   nn_models_4x[[exp]] <- nn
   nn_results_4x[[exp]] <- res
-  #print(summary(nn))
-}
-```
-
-### Match using CEM: Full
-
-#### 1x Oversampling
-
-```{r, collapse=TRUE}
-cem_full_results_1x <- list()
-cem_full_models_1x <- list()
-for (exp in names(exps)){
-  nn <- matchit(formula = generate_formula(exps[[exp]], label), df_1x, 'cem')
-  res <- match.data(nn)
-  cem_full_models_1x[[exp]] <- nn
-  cem_full_results_1x[[exp]] <- res
-  #print(summary(nn))
-}
-```
-
-#### 2x Oversampling
-
-```{r, collapse=TRUE}
-cem_full_results_2x <- list()
-cem_full_models_2x <- list()
-for (exp in names(exps)){
-  nn <- matchit(formula = generate_formula(exps[[exp]], label), df_2x, 'cem')
-  res <- match.data(nn)
-  cem_full_models_2x[[exp]] <- nn
-  cem_full_results_2x[[exp]] <- res
-  #print(summary(nn))
-}
-```
-
-#### 4x Oversampling
-
-```{r, collapse=TRUE}
-cem_full_results_4x <- list()
-cem_full_models_4x <- list()
-for (exp in names(exps)){
-  nn <- matchit(formula = generate_formula(exps[[exp]], label), df_4x, 'cem')
-  res <- match.data(nn)
-  cem_full_models_4x[[exp]] <- nn
-  cem_full_results_4x[[exp]] <- res
   #print(summary(nn))
 }
 ```
@@ -609,35 +573,6 @@ for (m.nn in nn_models_4x){
 }
 ```
 
-##### CEM: Full Dataset
-
-###### 1x Oversampling
-
-```{r fig.height=7, fig.width=14}
-par(mfrow=c(2,3))
-for (m.cem in cem_full_models_1x){
-  plot(m.cem, type = "hist", col = "#111d5e")
-}
-```
-
-###### 2x Oversampling
-
-```{r fig.height=7, fig.width=14}
-par(mfrow=c(2,3))
-for (m.cem in cem_full_models_2x){
-  plot(m.cem, type = "hist", col = "#611e62")
-}
-```
-
-###### 4x Oversampling
-
-```{r fig.height=7, fig.width=14}
-par(mfrow=c(2,3))
-for (m.cem in cem_full_models_4x){
-  plot(m.cem, type = "hist", col = "#b21f66")
-}
-```
-
 ---
 
 ##### Observations
@@ -645,20 +580,6 @@ for (m.cem in cem_full_models_4x){
 * From the results above, we can see that the model using *Nearest Neighbor matching* with balanced sampling outperforms the other models.
 
 * Furthermore, experiments $3$ and $4$ (referring to the results of the feature selection with the stratified sampling, considering the top 5 and top 10, respectly) were the ones that presented the best results, for most of the tested models.
-
-```{r fig.height=7, fig.width=14}
-plot(nn_models_1x$exp_3, type = "QQ", col = "#111d5e")
-```
-
-```{r fig.height=7, fig.width=14}
-plot(nn_models_1x$exp_4, type = "QQ", col = "#111d5e")
-```
-
-* Control unit quantile values are plotted on the x-axis, and treated unit quantile values are plotted on the y-axis. If values fall below the 45 degree line, control units generally take lower values of the covariate.
-
-* Data points that fall exactly on the 45 degree line indicate that the marginal distributions are identical, that is, the empirical distributions are the same in the treated and control groups. 
-
-* Deviations from the 45 degree line indicate differences in the empirical distribution. Therefore, despite the promising results of the previous analysis, we still have some variables with different distributions after matching.
 
 ## 4. Computing indices of covariate imbalance after matching
 
@@ -746,4 +667,10 @@ scroll_box(width = "100%")
 
 ```{r}
 summary(nn_models_1x$exp_3)
+```
+
+# Saving
+
+```{r}
+save(list=c("df_1x","df_1x_sm","exp_3","exp_4"), file="modeling.RData")
 ```
