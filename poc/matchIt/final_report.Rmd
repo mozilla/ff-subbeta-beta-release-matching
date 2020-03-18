@@ -1,0 +1,1089 @@
+---
+title: "Beta to Release Matching: Proof-of-Concept"
+author: "Mariana de Oliveira Santos Silva"
+date: 'Last Updated: `r format(Sys.time(), "%B %d, %Y")`'
+output: 
+  html_document:
+    theme: "flatly"
+    toc: true
+    toc_float: true
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r imports, echo=FALSE, message=FALSE, warning=FALSE}
+library(kableExtra)      # help you build common complex tables and manipulate table styles
+library(DataExplorer)    # automated data exploration
+library(tidyverse)       # for general data wrangling (includes readr and dplyr)
+library(ggplot2)         # to draw statistical plots
+library(cem)
+library(RItools)
+library(magrittr)
+library(tidyr)
+library(tidyselect)
+library(grt)
+library(tableone)
+library(cobalt)
+library(funModeling)
+library(cowplot)
+library(plyr)
+library(pander)
+library(arsenal)
+library(data.table)
+library(dplyr)           # for data frame manipulation
+
+load('~/ff-beta-release-matching/poc/matchIt/final_report.RData')
+
+df_train_encoder$default_search_engine_missing <- 0
+df_validate_1x$label <- mapvalues(df_validate_1x$is_release, from=c(FALSE,TRUE), to=c('beta','release'))
+df_validate_encoder$label <- mapvalues(df_validate_encoder$is_release, from=c(FALSE,TRUE), to=c('beta','release'))
+df_train_1x$label <- mapvalues(df_train_1x$is_release, from=c(FALSE,TRUE), to=c('beta','release'))
+df_train_encoder$label <- mapvalues(df_train_encoder$is_release, from=c(FALSE,TRUE), to=c('beta','release'))
+```
+
+```{r covariates, message=FALSE, warning=FALSE, echo=FALSE}
+model_covs <- c('daily_num_sessions_started', 'daily_num_sessions_started_max', 'FX_PAGE_LOAD_MS_2_PARENT', 'memory_mb', 'num_active_days', 'num_addons', 'num_bookmarks', 'profile_age', 'session_length', 'session_length_max','TIME_TO_DOM_COMPLETE_MS','TIME_TO_DOM_CONTENT_LOADED_END_MS','TIME_TO_DOM_INTERACTIVE_MS','TIME_TO_LOAD_EVENT_END_MS','TIME_TO_NON_BLANK_PAINT_MS') 
+
+holdout_covariates <- c('active_hours','active_hours_max','uri_count','uri_count_max','search_count','search_count_max','num_pages','num_pages_max','daily_max_tabs','daily_max_tabs_max','daily_unique_domains','daily_unique_domains_max','daily_tabs_opened','daily_tabs_opened_max')
+```
+
+# tl;dr
+
+The goal of this project is to utilize [statistical matching](https://en.wikipedia.org/wiki/Matching_(statistics)) methods to search for a subset of Beta clients that are representative of Release. The specific use-case of this proof-of-concept was to utilize *performance*, *configuration*, and *environment* covariates of the clients for matching. Validation of the matching was performed on a hold-out set of Firefox **user engagement** covariates.
+
+The following tables represent the relative difference between the Beta and Release train (v67) and validation (v68) data sets for the mean and median respectively. These initial results are promising and suggest that such techniques could be applied to Mozilla use-cases.
+
+```{r tldr_summary, message=FALSE, warning=FALSE, echo=FALSE}
+stats_pre <- calc_delta(df_validate_1x, holdout_covariates)
+stats_post <- calc_delta(df_validate_matched, holdout_covariates)
+
+stats_pre_v67 <- calc_delta(df_train_1x, holdout_covariates)
+stats_post_v67 <- calc_delta(df_matched, holdout_covariates)
+
+rows <- c('pre-matching: v67', 'post-matching: v67', 'pre-matching: v68', 'post-matching: v68')
+  
+stats_mean <- stats_pre_v67[1, ] %>% 
+  rbind(stats_post_v67[1, ]) %>%
+  rbind(stats_pre[1, ]) %>%
+  rbind(stats_post[1, ]) %>%
+  set_rownames(rows)
+
+stats_median <- stats_pre_v67[2, ] %>% 
+  rbind(stats_post_v67[2, ]) %>%
+  rbind(stats_pre[2, ]) %>%
+  rbind(stats_post[2, ]) %>%
+  set_rownames(rows)
+```
+
+## Beta-Release Difference: Mean
+```{r tldr_summary_mean, message=FALSE, warning=FALSE, echo=FALSE, results = 'asis'}
+knitr::kable(stats_mean) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  scroll_box(width = "100%", height = "200px")
+```
+
+## Beta-Release Difference: Median
+
+```{r tldr_summary_median, message=FALSE, warning=FALSE, echo=FALSE, results = 'asis'}
+knitr::kable(stats_median) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  scroll_box(width = "100%", height = "200px")
+```
+
+# Problem Statement
+
+Each new Release version of Firefox is available as a prerelease before it is launched to the general community. It is highly desirable to utilize the telemetry from Beta versions of Firefox to determine critical aspects of Release behavior before it is launched to the general user base. However, it is well known that the Beta population has distinctly different characteristics than Release, such as the distribution of country of origin of its users, and have higher incidents of crashes. Therefore, directly utilizing Beta telemetry to inform Release is not statistically valid.
+
+One possible approach to deal with this discrepency is to use [statistical matching](https://en.wikipedia.org/wiki/Matching_(statistics)) techniques to find a subset of Beta that is representative of Release. What connotates "representative" depends upon the desired use-case (outcome), such as performance characteristics, or crash rates. In this work, we focus on **user engagement metrics** as the chosen use-case. Here, we follow two different strategies for validate the resultant model:
+
+1. To balance on the other covariates (e.g., environment and performance metrics), then look at the difference in the user engagement metrics between the balanced Beta and Release for that version (N). *This gives us an idea of how clients with similar environments and performance resemble Release in terms of usage*. 
+2. To balance the Beta and Release data sets to resemble each other across the covariates we are concerned with. Balancing, in this case, yields a set of `client_id` for Beta that resembles Release. Our application is then querying the current Beta data (Version N+1) for this `client_id`, and then calculate the metrics we care about from the covariates we care about. *This gives us an idea of how these users do indeed change in time*.
+
+# Methodology
+
+Our methodology aims at defyning which aspect of Release behavior we will address with the Beta subset (e.g., start-up, user engagement, browser responsiveness) and, then, determining and focusing on the statistical matching approaches to address the chosen use-case. The methodology is summarized as follows: 
+
+1. Build and prepare training and validation data sets containing Beta and Release clients ([data preparation](#data_prep))
+2. Perform feature engineering on categorical data into dummy variables ([feature engineering](#feat_eng))
+3. Perform feature selection as an initial pre-filter to the covariates, to narrow the feature selection search space ([feature selection](#feat_sel))
+4. Perform statistical modeling for the chosen use-case, that is, **user engagement metrics** ([modeling](#model))
+
+## Data Preparation {#data_prep}
+
+The following filters are applied:
+
+* Desktop Firefox
+* Two weeks of collection per profile, starting with first observed ping within date window
+* en-US, en-GB locales
+* US, GB countries
+
+```{r introduce, message=FALSE, warning=FALSE, echo=FALSE}
+intro_v67 <- introduce(df_train_encoder)
+intro_v68 <- introduce(df_validate_encoder)
+rows <- c('v67', 'v68')
+  
+intro <- intro_v67 %>% 
+  rbind(intro_v68) %>%
+  set_rownames(rows)
+```
+
+```{r intro_train_validate, message=FALSE, warning=FALSE, echo=FALSE, results = 'asis'}
+kable(intro) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  scroll_box(width = "100%")
+```
+
+### Covariates
+
+The following covariates were collected. These were categorized under training and hold-out. The former were used for training a statistical matching model. The latter are not included in training and are used for determining model performance. The covariates are further subcategorized as to what they measure. 
+
+#### Training
+The follows makes up the training data set, used in statistical matching:
+
+* Version 67
+* $39$ covariates: 
+  + Environment
+      - cpu_cores
+      - cpu_cores_cat
+      - cpu_speed_mhz
+      - cpu_speed_cat
+      - cpu_vendor
+      - cpu_l2_cache_kb
+      - cpu_l2_cache_kb_cat
+      - memory_mb
+      - memory_cat
+      - os_version
+      - is_wow64
+      - distro_id_norm
+      - install_year
+  + Geo
+      - country
+      - timezone_offset
+      - timezone_cat
+      - locale
+  + Settings
+      - num_bookmarks
+      - num_addons
+      - sync_configured
+      - fxa_configured
+      - is_default_browser
+      - default_search_engine
+  + Page Load
+      - FX_PAGE_LOAD_MS_2_PARENT
+      - TIME_TO_DOM_COMPLETE_MS
+      - TIME_TO_DOM_CONTENT_LOADED_END_MS
+      - TIME_TO_LOAD_EVENT_END_MS
+      - TIME_TO_DOM_INTERACTIVE_MS
+      - TIME_TO_NON_BLANK_PAINT_MS
+  + Startup
+      - startup_ms
+      - startup_ms_max
+  + Stability
+      - content_crashes
+  + Frequency of Browser Usage
+      - num_active_days
+      - daily_num_sessions_started
+      - daily_num_sessions_started_max
+      - session_length
+      - session_length_max
+      - profile_age
+      - profile_age_cat
+* Composition:
+
+```{r freq_train, fig.width=8, fig.height=4, echo=FALSE}
+f <- freq(data=df_train_1x, input = 'label')
+```
+
+#### Holdout
+The followings filters constitute the validation data set:
+
+* Version 68
+* $14$ covariates: 
+  + User engagement
+      - active_hours
+      - active_hours_max
+      - uri_count
+      - uri_count_max
+      - search_count
+      - search_count_max
+      - num_pages
+      - num_pages_max
+      - daily_max_tabs
+      - daily_max_tabs_max
+      - daily_unique_domains
+      - daily_unique_domains_max
+      - daily_tabs_opened
+      - daily_tabs_opened_max
+* Composition:
+
+```{r freq_valid, fig.width=8, fig.height=4, echo=FALSE}
+f <- freq(data=df_validate_1x, input = 'label')
+```
+
+## Feature (Covariate) Engineering {#feat_eng}
+
+In this step, we perform feature engineering on categorical data into dummy variables, in case some of them turn out to be determinant factors when imputing other variables. Specifically, we employ two widely used techniques: 
+
+* **Binning** is a common technique used to smooth noisy data by arranging numerical or categorical features into separate bins.
+* **One-hot encoding** is one of the most common encoding methods in machine learning, which spreads the values in a column to multiple flag columns and assigns 0 or 1 to them. 
+
+Through these techniques, we end up with larger training and validation data sets. The following reports show the differences between those data sets pre (`df_train_f`) and post (`df_train_encoder`) feature engineering.
+
+### Training (v67)
+
+```{r feat_eng_train, message=FALSE, warning=FALSE, echo=FALSE}
+summ <- summary(comparedf(df_train_f, df_train_encoder))
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, results = 'asis'}
+summ$frame.summary.table$version <- c('pre-engineering','post-engineering')
+colnames(summ$frame.summary.table) <- c(' ', 'data.frame', 'ncol', 'nrow')
+kable(summ$frame.summary.table) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  scroll_box(width = "100%")
+```
+
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, results = 'asis'}
+vars <- summ$vars.ns.table %>%
+  dplyr::select(-'version')
+kable(vars) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  scroll_box(width = "100%", height = "200px")
+```
+
+### Validation (v68)
+
+```{r feat_eng_valid, message=FALSE, warning=FALSE, echo=FALSE}
+summ <- summary(comparedf(df_validate_f, df_validate_encoder))
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, results = 'asis'}
+summ$frame.summary.table$version <- c('pre-engineering','post-engineering')
+colnames(summ$frame.summary.table) <- c(' ', 'data.frame', 'ncol', 'nrow')
+kable(summ$frame.summary.table) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+scroll_box(width = "100%")
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, results = 'asis'}
+vars <- summ$vars.ns.table %>%
+  dplyr::select(-'version')
+kable(vars) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  scroll_box(width = "100%", height = "200px")
+rm('summ')
+```
+
+## Feature (Covariate) Selection {#feat_sel}
+
+As statistical matching typically trains a machine learning (ML) model for calculation of propensity scores, variable selection should be employed. However, the literature suggests that typical ML techniques of limiting covariates to those that best predict the response are not helpful for statistical matching. Rather, covariates that are unrelated to the exposure (i.e., Beta or Release) but related to the outcome (i.e., user engagement metrics) should always be included in a propensity score model.
+
+Therefore, in this step, we apply the *Boruta* algorithm as an initial pre-filter to the covariates, to narrow the feature selection search space. The *Boruta* algorithm is a wrapper built around the random forest classification algorithm, which tries to capture all the important features you might have in your data set concerning an outcome variable. In short, we apply the *Boruta* algorithm for each user engagement metric as the model outcome. Thus, for each outcome, the algorithm verifies if a feature is important or not. Finally, we find the top 5 and top 10 rankings features per metric, and add to lists. We also perfom this same process to a class balanced data set. 
+
+Hence, in total, we builted four covariate sets, that we called as experiments:
+
+```{r include=FALSE}
+exp_1 <- c('daily_num_sessions_started', 'daily_num_sessions_started_max', 'FX_PAGE_LOAD_MS_2_PARENT', 'fxa_configured_True', 'memory_mb', 'num_active_days', 'num_addons', 'num_bookmarks', 'profile_age','session_length','session_length_max','TIME_TO_DOM_COMPLETE_MS','TIME_TO_DOM_CONTENT_LOADED_END_MS','TIME_TO_DOM_INTERACTIVE_MS','TIME_TO_LOAD_EVENT_END_MS','TIME_TO_NON_BLANK_PAINT_MS','timezone_cat_0_2')
+
+exp_2 <- c('country_US', 'daily_num_sessions_started', 'daily_num_sessions_started_max', 'default_search_engine_other_nonbundled', 'FX_PAGE_LOAD_MS_2_PARENT', 'fxa_configured_True', 'memory_mb', 'num_active_days', 'num_addons', 'num_bookmarks', 'profile_age', 'session_length','session_length_max', 'startup_ms', 'startup_ms_max', 'sync_configured_True', 'TIME_TO_DOM_COMPLETE_MS','TIME_TO_DOM_CONTENT_LOADED_END_MS','TIME_TO_DOM_INTERACTIVE_MS','TIME_TO_LOAD_EVENT_END_MS','TIME_TO_NON_BLANK_PAINT_MS','timezone_cat_0_2')
+
+exp_3 <- c('daily_num_sessions_started', 'daily_num_sessions_started_max', 'FX_PAGE_LOAD_MS_2_PARENT', 'memory_mb', 'num_active_days', 'num_addons', 'num_bookmarks', 'profile_age', 'session_length', 'session_length_max','TIME_TO_DOM_COMPLETE_MS','TIME_TO_DOM_CONTENT_LOADED_END_MS','TIME_TO_DOM_INTERACTIVE_MS','TIME_TO_LOAD_EVENT_END_MS','TIME_TO_NON_BLANK_PAINT_MS') 
+
+exp_4 <- c('cpu_speed_mhz', 'daily_num_sessions_started', 'daily_num_sessions_started_max', 'default_search_engine_other_nonbundled', 'FX_PAGE_LOAD_MS_2_PARENT', 'memory_mb', 'num_active_days', 'num_addons', 'num_bookmarks', 'profile_age','session_length','session_length_max','startup_ms','startup_ms_max','TIME_TO_DOM_COMPLETE_MS','TIME_TO_DOM_CONTENT_LOADED_END_MS','TIME_TO_DOM_INTERACTIVE_MS','TIME_TO_LOAD_EVENT_END_MS','TIME_TO_NON_BLANK_PAINT_MS')
+
+exps <- list('experient 1' = exp_1, 'experient 2' = exp_2, 'experient 3' = exp_3, 'experient 4' = exp_4)
+```
+
+* **experient 1**: 
+	+ _daily_num_sessions_started_
+	+ _daily_num_sessions_started_max_
+	+ _FX_PAGE_LOAD_MS_2_PARENT_
+	+ _fxa_configured_True_
+	+ _memory_mb_
+	+ _num_active_days_
+	+ _num_addons_
+	+ _num_bookmarks_
+	+ _profile_age_
+	+ _session_length_
+	+ _session_length_max_
+	+ _TIME_TO_DOM_COMPLETE_MS_
+	+ _TIME_TO_DOM_CONTENT_LOADED_END_MS_
+	+ _TIME_TO_DOM_INTERACTIVE_MS_
+	+ _TIME_TO_LOAD_EVENT_END_MS_
+	+ _TIME_TO_NON_BLANK_PAINT_MS_ 
+	+ _timezone_cat_0_2_
+* **experient 2**: 
+	+ _country_US_
+	+ _daily_num_sessions_started_
+	+ _daily_num_sessions_started_max_
+	+ _default_search_engine_other_nonbundled_
+	+ _FX_PAGE_LOAD_MS_2_PARENT_
+	+ _fxa_configured_True_
+	+ _memory_mb_
+	+ _num_active_days_
+	+ _num_addons_
+	+ _num_bookmarks_
+	+ _profile_age_
+	+ _session_length_
+	+ _session_length_max_
+	+ _startup_ms_
+	+ _startup_ms_max_
+	+ _sync_configured_True_
+	+ _TIME_TO_DOM_COMPLETE_MS_
+	+ _TIME_TO_DOM_CONTENT_LOADED_END_MS_
+	+ _TIME_TO_DOM_INTERACTIVE_MS_
+	+ _TIME_TO_LOAD_EVENT_END_MS_
+	+ _TIME_TO_NON_BLANK_PAINT_MS_
+	+ _timezone_cat_0_2_
+* **experient 3**: 
+	+ _daily_num_sessions_started_
+	+ _daily_num_sessions_started_max_
+	+ _FX_PAGE_LOAD_MS_2_PARENT_
+	+ _memory_mb_
+	+ _num_active_days_
+	+ _num_addons_
+	+ _num_bookmarks_
+	+ _profile_age_
+	+ _session_length_
+	+ _session_length_max_
+	+ _TIME_TO_DOM_COMPLETE_MS_
+	+ _TIME_TO_DOM_CONTENT_LOADED_END_MS_
+	+ _TIME_TO_DOM_INTERACTIVE_MS_
+	+ _TIME_TO_LOAD_EVENT_END_MS_
+	+ _TIME_TO_NON_BLANK_PAINT_MS_
+* **experient 4**: 
+	+ _cpu_speed_mhz_
+	+ _daily_num_sessions_started_
+	+ _daily_num_sessions_started_max_
+	+ _default_search_engine_other_nonbundled_
+	+ _FX_PAGE_LOAD_MS_2_PARENT_
+	+ _memory_mb_
+	+ _num_active_days_
+	+ _num_addons_
+	+ _num_bookmarks_
+	+ _profile_age_
+	+ _session_length_
+	+ _session_length_max_
+	+ _startup_ms_
+	+ _startup_ms_max_
+	+ _TIME_TO_DOM_COMPLETE_MS_
+	+ _TIME_TO_DOM_CONTENT_LOADED_END_MS_
+	+ _TIME_TO_DOM_INTERACTIVE_MS_
+	+ _TIME_TO_LOAD_EVENT_END_MS_
+	+ _TIME_TO_NON_BLANK_PAINT_MS_
+
+## Models {#model}
+
+For the last step of our methodology, we use [statistical matching](https://en.wikipedia.org/wiki/Matching_(statistics)) methods to search for a subset of Beta clients that are representative of Release. To do that, a range of statistical matching models were [reviewed](https://github.com/godelstheory/ff-beta-release-matching/blob/marianaossilva/poc/matchIt/modeling.Rmd), using the R library [Matchit](https://cran.r-project.org/web/packages/MatchIt/index.html):
+
+* **Coarsened Exact Matching (CEM).** In CEM, instead of matching based on a composite propensity to be in either treatment or control, one simply coarsens each variable to a reasonable degree of clustering for each variable and then performs an exact match on these coarsened variables.
+* **Nearest neighbor matching.** This method selects the $r$ (`default = 1`) best control matches for each individual in the treatment group, by using a distance measure specified by the distance option (`default = logit`). In short, at each matching step the method chooses the control unit that is not yet matched but is closest to the treated unit on the distance measure.
+* Nearest neighbor matching, with **Mahalanobis** distance measure
+* **Subclassification matching.** The goal of subclassification is to form subclasses, such that in each the distribution of covariates for the Beta and Release user groups are as similar as possible.
+
+Before propensity scores are calculated, we define six covariate sets (experiments) to be utilized in the model selection. The first four experiments were obtained under the conditions described [above](#cov_sel). One of the remaining experiments was included according to statistical tests. That is, we compute the estimation of a normalized difference, a traditional statistical approach, which calculates the difference between the control and treatment group for every variable included in the selection model. In this case, absolute scores higher than 25% are considered suspect, and may indicate an imbalance for that specific variable. Variables that create imbalance should be included in the selection model. For the last experiment, we considered all the variables present in the data set (except for user engagement).
+
+```{r include=FALSE}
+exp_5 <- c('timezone_cat_10_12','timezone_cat_m10_m8','cpu_l2_cache_kb_cat_l512','num_pages_max','num_pages','profile_age','uri_count','timezone_cat_12_14','active_hours','uri_count_max','search_count','cpu_vendor_Intel','active_hours_max','daily_unique_domains','default_search_engine_other_bundled','daily_unique_domains_max','timezone_cat_m4_m2','cpu_vendor_AMD','default_search_engine_Bing','search_count_max','timezone_cat_m12_m10','timezone_cat_8_10','cpu_l2_cache_kb_cat_l1024','install_year','is_default_browser_True','cpu_speed_mhz','cpu_l2_cache_kb_cat_g1024','cpu_vendor_Other','default_search_engine_DuckDuckGo','cpu_l2_cache_kb_cat_l256','memory_mb','cpu_l2_cache_kb','startup_ms_max','default_search_engine_Yahoo','startup_ms','num_bookmarks','timezone_cat_m2_0','num_active_days','distro_id_norm_Yahoo','cpu_cores','default_search_engine_Google','daily_tabs_opened_max','daily_tabs_opened','timezone_cat_m8_m6','daily_max_tabs_max','distro_id_norm_other','daily_max_tabs','default_search_engine_other_nonbundled','distro_id_norm_acer','sync_configured_True','fxa_configured_True','daily_num_sessions_started','timezone_cat_6_8','timezone_cat_2_4','session_length_max','daily_num_sessions_started_max','TIME_TO_DOM_CONTENT_LOADED_END_MS','TIME_TO_NON_BLANK_PAINT_MS','locale_enUS','locale_enGB','distro_id_norm_Mozilla','FX_PAGE_LOAD_MS_2_PARENT','session_length','timezone_cat_4_6','timezone_cat_0_2','TIME_TO_DOM_INTERACTIVE_MS','TIME_TO_DOM_COMPLETE_MS','timezone_cat_m6_m4','TIME_TO_LOAD_EVENT_END_MS','country_US','timezone_offset','is_wow64_True','num_addons')
+```
+
+* **experient 5**:
+	+ timezone_cat_10_12
+	+ timezone_cat_m10_m8
+	+ cpu_l2_cache_kb_cat_l512
+	+ num_pages_max
+	+ num_pages
+	+ profile_age
+	+ uri_count
+	+ timezone_cat_12_14
+	+ active_hours
+	+ uri_count_max
+	+ search_count
+	+ cpu_vendor_Intel
+	+ active_hours_max
+	+ daily_unique_domains
+	+ default_search_engine_other_bundled
+	+ daily_unique_domains_max
+	+ timezone_cat_m4_m2
+	+ cpu_vendor_AMD
+	+ default_search_engine_Bing
+	+ search_count_max
+	+ timezone_cat_m12_m10
+	+ timezone_cat_8_10
+	+ cpu_l2_cache_kb_cat_l1024
+	+ install_year
+	+ is_default_browser_True
+	+ cpu_speed_mhz
+	+ cpu_l2_cache_kb_cat_g1024
+	+ cpu_vendor_Other
+	+ default_search_engine_DuckDuckGo
+	+ cpu_l2_cache_kb_cat_l256
+	+ memory_mb
+	+ cpu_l2_cache_kb
+	+ startup_ms_max
+	+ default_search_engine_Yahoo
+	+ startup_ms
+	+ num_bookmarks
+	+ timezone_cat_m2_0
+	+ num_active_days
+	+ distro_id_norm_Yahoo
+	+ cpu_cores
+	+ default_search_engine_Google
+	+ daily_tabs_opened_max
+	+ daily_tabs_opened
+	+ timezone_cat_m8_m6
+	+ daily_max_tabs_max
+	+ distro_id_norm_other
+	+ daily_max_tabs
+	+ default_search_engine_other_nonbundled
+	+ distro_id_norm_acer
+	+ sync_configured_True
+	+ fxa_configured_True
+	+ daily_num_sessions_started
+	+ timezone_cat_6_8
+	+ timezone_cat_2_4
+	+ session_length_max
+	+ daily_num_sessions_started_max
+	+ TIME_TO_DOM_CONTENT_LOADED_END_MS
+	+ TIME_TO_NON_BLANK_PAINT_MS
+	+ locale_enUS
+	+ locale_enGB
+	+ distro_id_norm_Mozilla
+	+ FX_PAGE_LOAD_MS_2_PARENT
+	+ session_length
+	+ timezone_cat_4_6
+	+ timezone_cat_0_2
+	+ TIME_TO_DOM_INTERACTIVE_MS
+	+ TIME_TO_DOM_COMPLETE_MS
+	+ timezone_cat_m6_m4
+	+ TIME_TO_LOAD_EVENT_END_MS
+	+ country_US
+	+ timezone_offset
+	+ is_wow64_True
+	+ num_addons
+
+Finally, a range of Beta overrepresentations were tested. In the following, 2x means there were twice as many Beta samples as Release. 
+
+```{r include=FALSE}
+df_beta <- df_train_encoder %>% filter(label == 'beta')
+df_rel <- df_train_encoder %>% filter(label == 'release')
+n_beta <- nrow(df_beta)
+build_df <- function(multiple){
+  df <- df_rel %>%
+    sample_n(size = round(n_beta / multiple)) %>%
+    rbind(df_beta)
+}
+
+df_1x <- build_df(1)
+df_2x <- build_df(2)
+df_4x <- build_df(4)
+
+# downsampling
+df_1x_sm <- df_1x %>% sample_n(size = 70000)
+df_2x_sm <- df_2x %>% sample_n(size = 70000)
+df_4x_sm <- df_4x %>% sample_n(size = 70000)
+```
+
+> 1x Beta to Release (50% - 50%)
+
+```{r freq_1x, fig.width=8, fig.height=4, echo=FALSE}
+f <- freq(data=df_1x_sm, input = 'label')
+```
+
+> 2x Beta to Release (70% - 30%)
+
+```{r freq_2x, fig.width=8, fig.height=4, echo=FALSE}
+f <- freq(data=df_2x_sm, input = 'label')
+```
+
+> 4x Beta to Release (80% - 20%)
+
+```{r freq_4x, fig.width=8, fig.height=4, echo=FALSE}
+f <- freq(data=df_4x_sm, input = 'label')
+```
+
+# Results
+
+The [highest performant model](https://github.com/godelstheory/ff-beta-release-matching/blob/marianaossilva/poc/matchIt/model_selection.Rmd) was trained on the v67 data set and has the following properties:
+
+* Matching method: Nearest Neighbor
+* Beta oversampling: 1x Beta to Release
+* Covariates (Model Features): `experiment 3`
+
+```{r balancing, echo=FALSE, fig.height=5, fig.width=9, message=FALSE, warning=FALSE}
+love.plot(nn, binary = "std", threshold = .1, shapes = c("triangle filled", "circle filled"), colors = c("#111d5e", "#b21f66"), abs = F, position = "top", var.order = "unadjusted") + theme_bw()
+```
+
+## First Application - Training Set (V67) {#first}
+ 
+In this application, we need to balance the two groups (Beta and Release) considering the other covariates (e.g., environment and performance metrics) and then look at the difference in user engagement metrics between the balanced Beta and Release for that version (N). The utility of this application is to inform us on how Beta is different concerning Release in user engagement, with all the other covariates being equal.
+
+### Holdout Covariates
+
+* active_hours
+* active_hours_max
+* uri_count
+* uri_count_max
+* search_count
+* search_count_max
+* num_pages
+* num_pages_max
+* daily_max_tabs
+* daily_max_tabs_max
+* daily_unique_domains
+* daily_unique_domains_max
+* daily_tabs_opened
+* daily_tabs_opened_max
+
+#### Post-matching Beta-Release Difference
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, results = 'asis'}
+stats_post_mean <- calc_means(df_matched, engagement) %>%
+  dplyr::select(-label) %>%
+  set_rownames(c('beta (mean)', 'release (mean)'))
+
+stats_post_median <- calc_medians(df_matched, engagement) %>%
+  dplyr::select(-label) %>%
+  set_rownames(c('beta (median)', 'release (median)'))
+
+stats_post <- calc_delta(df_matched, engagement)
+
+stats_mean <- stats_post_mean %>%
+  rbind(stats_post[1, ]) %>%
+  set_rownames(c('beta (mean)', 'release (mean)', 'delta (mean)'))
+
+stats_median <- stats_post_median %>%
+  rbind(stats_post[2, ]) %>%
+  set_rownames(c('beta (median)', 'release (median)', 'delta (median)'))
+
+stats <- stats_mean %>%
+  rbind(stats_median)
+
+knitr::kable(stats) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  row_spec(c(3,6), bold = T, color = "white", background = "#4D5686") %>%
+  scroll_box(width = "100%")
+```
+
+```{r first_app, echo=FALSE, results = 'asis'}
+df_train_full <- df_matched %>%
+  dplyr::select(-weights, -distance) %>%
+  filter(label == 'beta') %>%
+  mutate(label = 'beta - matched') %>%
+  rbind(df_train_1x) %>% 
+  distinct()
+
+stats <- calc_stats(df_train_full, engagement) %>%
+  dplyr::select('metric','label', everything())
+
+knitr::kable(stats) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  row_spec(1:3, bold = T, color = "white", background = "#4D5686") %>%
+  row_spec(4:6, bold = T, color = "white", background = "#C5578C") %>%
+  scroll_box(width = "100%")
+```
+
+#### Wilcoxon test
+
+In short, we want to know if there is any significant difference between the average user engagement metrics in the Beta and Release groups, for the same version (v67). Here, we use the unpaired two-samples *Wilcoxon test*, which is a non-parametric alternative to the unpaired two-samples t-test used to compare two independent groups of samples. Our question is: *Is there any significant difference between Beta (v67) and Release (v67) user engagement metrics?*
+
+If the resultatns p-values are less than the significance level $alpha = 0.05$, we can conclude that Beta's user engagement metrics, in average, are significantly different from Release users.
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+set.seed(0)
+df <- df_matched %>%
+  dplyr::select(-weights, -distance) %>%
+  sample_n(size = 5000)
+
+# if the p-value is less than the significance level (0.05), 
+# we can conclude that there are significant differences between both groups
+df_tests <- data.frame(p_value = 0, diff = 0)
+for (covariate in engagement) {
+  wt <- wilcox.test(get(covariate) ~ label, data = df, exact = FALSE)
+  df_tests = rbind(df_tests, data.frame(p_value = wt$p.value, diff = wt$p.value < 0.05))
+}
+
+df_tests <- df_tests[-1,] %>%
+  set_rownames(engagement)
+
+df_tests$diff <- lapply(df_tests$diff, as.logical)
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, results = 'asis'}
+kable(df_tests) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  row_spec(c(1:4,7,8,11,12), bold = T, color = "white", background = "#4D5686") %>%
+  scroll_box(width = "100%", height = "400px")
+```
+
+#### Visual inspection 
+
+For a graphical comparison, we plot the holdout covariate distributions for the following subsets: 
+
+* Beta v67: pre-matching [<span style="color:#111d5e">blue</span>]
+* Beta v67: matched and subsetted [<span style="color:#b21f66">pink</span>]
+* Release v67 [<span style="color:#611e62">purple</span>]
+
+**NOTE**: Guiding lines have been added for the following:
+
+* <span style="color:black">black</span> solid: Release mean
+* <span style="color:black">black</span> dashed: Release median
+* <span style="color:#D62728B2">red</span> dashed line: subsetted Beta _mean_. 
+
+```{r include=FALSE}
+plots <- list()
+
+for (covariate in engagement) {
+  stats_rel <- stats %>% filter(label == 'release') %>% dplyr::select(covariate, metric)
+  means <- stats_rel[stats_rel$metric == 'mean', covariate]
+  medians <- stats_rel[stats_rel$metric == 'median', covariate]
+  ho_means <- stats %>% filter(label == 'beta' & metric == 'mean') %>% dplyr::select(covariate)
+  
+  plots[[covariate]] <- compare_log_cont(df_train_full, covariate, means, medians, as.numeric(ho_means), print=FALSE) 
+}
+```
+
+```{r violin_train, echo=FALSE, fig.height=50, fig.width=10, message=FALSE, warning=FALSE}
+plot_grid(plotlist = plots, ncol = 1)
+rm('plots')
+```
+
+### Training Covariates
+
+* daily_num_sessions_started
+* daily_num_sessions_started_max
+* FX_PAGE_LOAD_MS_2_PARENT
+* memory_mb
+* num_active_days
+* num_addons
+* num_bookmarks
+* profile_age
+* session_length
+* session_length_max
+* TIME_TO_DOM_COMPLETE_MS
+* TIME_TO_DOM_CONTENT_LOADED_END_MS
+* TIME_TO_DOM_INTERACTIVE_MS
+* TIME_TO_LOAD_EVENT_END_MS
+* TIME_TO_NON_BLANK_PAINT_MS
+
+#### Post-matching Beta-Release Difference
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, results = 'asis'}
+stats_post_mean <- calc_means(df_matched, exp_3) %>%
+  dplyr::select(-label) %>%
+  set_rownames(c('beta (mean)', 'release (mean)'))
+
+stats_post_median <- calc_medians(df_matched, exp_3) %>%
+  dplyr::select(-label) %>%
+  set_rownames(c('beta (median)', 'release (median)'))
+
+stats_post <- calc_delta(df_matched, exp_3)
+
+stats_mean <- stats_post_mean %>%
+  rbind(stats_post[1, ]) %>%
+  set_rownames(c('beta (mean)', 'release (mean)', 'delta (mean)'))
+
+stats_median <- stats_post_median %>%
+  rbind(stats_post[2, ]) %>%
+  set_rownames(c('beta (median)', 'release (median)', 'delta (median)'))
+
+stats <- stats_mean %>%
+  rbind(stats_median)
+
+knitr::kable(stats) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  row_spec(c(3,6), bold = T, color = "white", background = "#4D5686") %>%
+  scroll_box(width = "100%")
+```
+
+```{r first_app_2, echo=FALSE, results = 'asis'}
+df_train_full <- df_matched %>%
+  dplyr::select(-weights, -distance) %>%
+  filter(label == 'beta') %>%
+  mutate(label = 'beta - matched') %>%
+  rbind(df_train_1x) %>% 
+  distinct()
+
+stats <- calc_stats(df_train_full, exp_3) %>%
+  dplyr::select('metric','label', everything())
+
+knitr::kable(stats) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  row_spec(1:3, bold = T, color = "white", background = "#4D5686") %>%
+  row_spec(4:6, bold = T, color = "white", background = "#C5578C") %>%
+  scroll_box(width = "100%")
+```
+
+#### Wilcoxon test
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+set.seed(0)
+df <- df_matched %>%
+  dplyr::select(-weights, -distance) %>%
+  sample_n(size = 5000)
+
+# if the p-value is less than the significance level (0.05), 
+# we can conclude that there are significant differences between both groups
+df_tests <- data.frame(p_value = 0, diff = 0)
+for (covariate in exp_3) {
+  wt <- wilcox.test(get(covariate) ~ label, data = df, exact = FALSE)
+  df_tests = rbind(df_tests, data.frame(p_value = wt$p.value, diff = wt$p.value < 0.05))
+}
+
+df_tests <- df_tests[-1,] %>%
+  set_rownames(exp_3)
+
+df_tests$diff <- lapply(df_tests$diff, as.logical)
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, results = 'asis'}
+kable(df_tests) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  row_spec(c(1:3,6,7,9,11:15), bold = T, color = "white", background = "#4D5686") %>%
+  scroll_box(width = "100%", height = "400px")
+```
+
+#### Visual inspection 
+
+**NOTE**: Guiding lines have been added for the following:
+
+* <span style="color:black">black</span> solid: Release mean
+* <span style="color:black">black</span> dashed: Release median
+* <span style="color:#D62728B2">red</span> dashed line: subsetted Beta _mean_
+
+```{r include=FALSE}
+plots <- list()
+
+for (covariate in exp_3) {
+  stats_rel <- stats %>% filter(label == 'release') %>% dplyr::select(covariate, metric)
+  means <- stats_rel[stats_rel$metric == 'mean', covariate]
+  medians <- stats_rel[stats_rel$metric == 'median', covariate]
+  ho_means <- stats %>% filter(label == 'beta' & metric == 'mean') %>% dplyr::select(covariate)
+  
+  plots[[covariate]] <- compare_log_cont(df_train_full, covariate, means, medians, as.numeric(ho_means), print=FALSE) 
+}
+```
+
+```{r violin_train_cov, echo=FALSE, fig.height=50, fig.width=10, message=FALSE, warning=FALSE}
+plot_grid(plotlist = plots, ncol = 1)
+rm('plots')
+```
+
+### Discussion
+
+Our main objective was to inform how users Beta are different concerning Release in terms of user engagement, with all the other covariates being equal. From these prior analysis, we can see that there are significant differences between both groups (Beta and Release) concerning some user engagement metrics, listed as follows.
+
+* `num_pages`
+* `num_pages_max`
+* `active_hours`
+* `active_hours_max`
+* `uri_count`
+* `uri_count_max`
+* `daily_unique_domains`
+* `daily_unique_domains_max`
+
+In addition, by analyzing the distributions of the training covariates, we can see exactly which were the variables that presented the biggest discrepancies. That is, in which aspects the matching was not able to balance the datasets efficiently. The most different covariates are listed as follows.
+
+* `num_addons`
+* `daily_num_sessions_started_max`
+* `daily_num_sessions_started`
+
+## Second Application - Validation Set (V68) {#second}
+
+In this application, we need to balance the Beta and Release data sets to resemble each other across the covariates we are concerned with, that is, the user engagement metrics. Balancing, in this case, yields a set of `client_id` for Beta that resembles Release. This gives us an idea of how these users do indeed change in time. If we see changes that are larger than anticipated, then we know that something significant is happening in user engagement that we can "forecast" in the subsequent Release.
+
+The next step is to subset the _validation_ v68 set by these matched Beta profiles. This reduces the Beta sample size used in the subsequent analysis:
+
+* v67 Beta subset: `r df_matched %>% filter(label == 'beta') %>% count('label') %>% dplyr::select(freq)` distinct profiles
+* v68 Beta subset: `r df_validate_matched %>% filter(label == 'beta') %>% count('label') %>% dplyr::select(freq)` distinct profiles
+
+### Holdout Covariates
+
+* active_hours
+* active_hours_max
+* uri_count
+* uri_count_max
+* search_count
+* search_count_max
+* num_pages
+* num_pages_max
+* daily_max_tabs
+* daily_max_tabs_max
+* daily_unique_domains
+* daily_unique_domains_max
+* daily_tabs_opened
+* daily_tabs_opened_max
+
+#### Training and Validation Difference:
+
+```{r echo=FALSE, results = 'asis'}
+stats_pre <- calc_delta(df_validate_1x, engagement)
+stats_post <- calc_delta(df_validate_matched, engagement)
+
+stats_mean <- stats_pre[1, ] %>%
+  rbind(stats_post[1, ]) %>%
+  set_rownames(c('pre-matching', 'post-matching'))
+
+stats_median <- stats_pre[2, ] %>%
+  rbind(stats_post[2, ]) %>%
+  set_rownames(c('pre-matching', 'post-matching'))
+```
+
+> Mean
+
+```{r echo=FALSE, results = 'asis'}
+knitr::kable(stats_mean) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  scroll_box(width = "100%")
+```
+
+> Median
+
+```{r echo=FALSE, results = 'asis'}
+knitr::kable(stats_median) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  scroll_box(width = "100%")
+```
+
+```{r fig.width=10, fig.height=50, echo=FALSE, results = 'asis'}
+df_validate_full <- df_validate_matched %>%
+  filter(label == 'beta') %>%
+  mutate(label =  'beta - matched') %>%
+  rbind(df_validate_1x) %>% 
+  distinct()
+
+stats <- calc_stats(df_validate_full, engagement) %>%
+  dplyr::select('metric','label', everything())
+
+knitr::kable(stats) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  row_spec(1:3, bold = T, color = "white", background = "#4D5686") %>%
+  row_spec(4:6, bold = T, color = "white", background = "#C5578C") %>%
+  scroll_box(width = "100%")
+```
+
+#### Wilcoxon test
+
+Now, we want to know if there is any significant difference between the average user engagement metrics in the Beta and Release groups, over several versions (v67 and v68). Once again, we use the *Wilcoxon test* with the following question: *Is there any significant difference between Beta-matched (v68) and Release (v68) user engagement metrics?*
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+set.seed(0)
+df <- df_validate_full %>%
+  filter(label == 'beta - matched' | label == "release") %>%
+  sample_n(size = 5000)
+
+# if the p-value is less than the significance level (0.05), 
+# we can conclude that there are significant differences between both groups
+df_tests <- data.frame(p_value = 0, diff = 0)
+for (covariate in engagement) {
+  wt <- wilcox.test(get(covariate) ~ label, data = df, exact = FALSE)
+  df_tests = rbind(df_tests, data.frame(p_value = wt$p.value, diff = wt$p.value < 0.05))
+}
+
+df_tests <- df_tests[-1,] %>%
+  set_rownames(engagement)
+
+df_tests$diff <- lapply(df_tests$diff, as.logical)
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, results = 'asis'}
+kable(df_tests) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  row_spec(c(7:8), bold = T, color = "white", background = "#4D5686") %>%
+  scroll_box(width = "100%", height = "400px")
+```
+
+#### Visual inspection 
+
+For a graphical comparison, we plot the covariate distributions for the following subsets: 
+
+* Beta v68: pre-matching [<span style="color:#111d5e">blue</span>]
+* Beta v68: matched and subsetted [<span style="color:#b21f66">pink</span>]
+* Release v68 [<span style="color:#611e62">purple</span>]
+
+**NOTE**: Guiding lines have been added for the following:
+
+* <span style="color:black">black</span> solid: Release mean
+* <span style="color:black">black</span> dashed: Release median
+* <span style="color:#D62728B2">red</span> dashed line: subsetted Beta _mean_
+
+```{r message=FALSE, warning=FALSE}
+plots <- list()
+
+for (covariate in engagement) {
+  stats_rel <- stats %>% filter(label == 'release') %>% dplyr::select(covariate, metric)
+  means <- stats_rel[stats_rel$metric == 'mean', covariate]
+  medians <- stats_rel[stats_rel$metric == 'median', covariate]
+  ho_means <- stats %>% filter(label == 'beta' & metric == 'mean') %>% dplyr::select(covariate)
+  
+  plots[[covariate]] <- compare_log_cont(df_validate_full, covariate, means, medians, as.numeric(ho_means), print=FALSE) 
+}
+```
+
+```{r violin_valid, echo=FALSE, fig.height=50, fig.width=10, message=FALSE, warning=FALSE}
+plot_grid(plotlist = plots, ncol = 1)
+rm('plots')
+```
+
+### Training Covariates
+
+* daily_num_sessions_started
+* daily_num_sessions_started_max
+* FX_PAGE_LOAD_MS_2_PARENT
+* memory_mb
+* num_active_days
+* num_addons
+* num_bookmarks
+* profile_age
+* session_length
+* session_length_max
+* TIME_TO_DOM_COMPLETE_MS
+* TIME_TO_DOM_CONTENT_LOADED_END_MS
+* TIME_TO_DOM_INTERACTIVE_MS
+* TIME_TO_LOAD_EVENT_END_MS
+* TIME_TO_NON_BLANK_PAINT_MS
+
+#### Training and Validation Difference:
+
+```{r echo=FALSE, results = 'asis'}
+stats_pre <- calc_delta(df_validate_1x, exp_3)
+stats_post <- calc_delta(df_validate_matched, exp_3)
+
+stats_mean <- stats_pre[1, ] %>%
+  rbind(stats_post[1, ]) %>%
+  set_rownames(c('pre-matching', 'post-matching'))
+
+stats_median <- stats_pre[2, ] %>%
+  rbind(stats_post[2, ]) %>%
+  set_rownames(c('pre-matching', 'post-matching'))
+```
+
+> Mean
+
+```{r echo=FALSE, results = 'asis'}
+knitr::kable(stats_mean) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  scroll_box(width = "100%")
+```
+
+> Median
+
+```{r echo=FALSE, results = 'asis'}
+knitr::kable(stats_median) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  scroll_box(width = "100%")
+```
+
+```{r fig.width=10, fig.height=50, echo=FALSE, results = 'asis'}
+df_validate_full <- df_validate_matched %>%
+  filter(label == 'beta') %>%
+  mutate(label =  'beta - matched') %>%
+  rbind(df_validate_1x) %>% 
+  distinct()
+
+stats <- calc_stats(df_validate_full, exp_3) %>%
+  dplyr::select('metric','label', everything())
+
+knitr::kable(stats) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  row_spec(1:3, bold = T, color = "white", background = "#4D5686") %>%
+  row_spec(4:6, bold = T, color = "white", background = "#C5578C") %>%
+  scroll_box(width = "100%")
+```
+
+#### Wilcoxon test
+
+Now, we want to know if there is any significant difference between the average user engagement metrics in the Beta and Release groups, over several versions (v67 and v68). Once again, we use the *Wilcoxon test* with the following question: *Is there any significant difference between Beta-matched (v68) and Release (v68) user engagement metrics?*
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+set.seed(0)
+df <- df_validate_full %>%
+  filter(label == 'beta - matched' | label == "release") %>%
+  sample_n(size = 5000)
+
+# if the p-value is less than the significance level (0.05), 
+# we can conclude that there are significant differences between both groups
+df_tests <- data.frame(p_value = 0, diff = 0)
+for (covariate in exp_3) {
+  wt <- wilcox.test(get(covariate) ~ label, data = df, exact = FALSE)
+  df_tests = rbind(df_tests, data.frame(p_value = wt$p.value, diff = wt$p.value < 0.05))
+}
+
+df_tests <- df_tests[-1,] %>%
+  set_rownames(exp_3)
+
+df_tests$diff <- lapply(df_tests$diff, as.logical)
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, results = 'asis'}
+kable(df_tests) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  row_spec(c(5:8, 11, 12, 14), bold = T, color = "white", background = "#4D5686") %>%
+  scroll_box(width = "100%", height = "400px")
+```
+
+#### Visual inspection 
+
+For a graphical comparison, we plot the covariate distributions for the following subsets: 
+
+* Beta v68: pre-matching [<span style="color:#111d5e">blue</span>]
+* Beta v68: matched and subsetted [<span style="color:#b21f66">pink</span>]
+* Release v68 [<span style="color:#611e62">purple</span>]
+
+**NOTE**: Guiding lines have been added for the following:
+
+* <span style="color:black">black</span> solid: Release mean
+* <span style="color:black">black</span> dashed: Release median
+* <span style="color:#D62728B2">red</span> dashed line: subsetted Beta _mean_
+
+```{r message=FALSE, warning=FALSE}
+plots <- list()
+
+for (covariate in exp_3) {
+  stats_rel <- stats %>% filter(label == 'release') %>% dplyr::select(covariate, metric)
+  means <- stats_rel[stats_rel$metric == 'mean', covariate]
+  medians <- stats_rel[stats_rel$metric == 'median', covariate]
+  ho_means <- stats %>% filter(label == 'beta' & metric == 'mean') %>% dplyr::select(covariate)
+  
+  plots[[covariate]] <- compare_log_cont(df_validate_full, covariate, means, medians, as.numeric(ho_means), print=FALSE) 
+}
+```
+
+```{r violin_valid_cov, echo=FALSE, fig.height=50, fig.width=10, message=FALSE, warning=FALSE}
+plot_grid(plotlist = plots, ncol = 1)
+rm('plots')
+```
+
+### Discussion
+
+Our main objective was to determine if the user engagement metrics changed in the newest Beta version concerning the previous Release version. From these prior analysis, we can see that there are significant differences between both groups (Beta and Release) concerning only two user engagement metrics, listed as follows.
+
+* `num_pages`
+* `num_pages_max `
+
+In addition, by analyzing the distributions of the training covariates, the most different covariates are listed as follows.
+
+* `num_addons`
+* `profile_age`
+* `num_bookmarks`
+* `num_active_days`
+
+# Overall Considerations
+
+In this project, we employ [statistical matching](https://en.wikipedia.org/wiki/Matching_(statistics)) methods to find subsets of Beta users that can be used to inform how Release in the general user community will behave. Particularly, statistical matching is used to evaluate the effect of a treatment by comparing treated and untreated units in an observational study. The purpose of _matching_ is, for each treated unit, to find one (or more) untreated unit(s) with similar observable characteristics against which the effect of the treatment can be assessed. By matching treated samples to similar untreated ones, matching enables a comparison of outcomes among treated and untreated samples to evaluate the effect of the treatment.
+
+Here, we use statistical matching methods in a non-traditional way. In particular, our goal is to search for a subset of Beta representative clients of Release. In our application, we still have two cohorts, i.e., Beta and Release data sets for a given Firefox version (N). However, we do not have a single outcome, as we do not have a _treatment_. Rather, we are trying to equate (or _balance_) the Beta and Release data sets to resemble each other across the covariates we are concerned with. This is our outcome, so to speak.
+
+In this current work, we focus on **user engagement metrics** as the chosen use-case. Also to validate the resultant matching model, we follow two different strategies. First, we balance the data sets on a set of training covariates (i.e., environment, machine configuration, performance  and usage metrics), then look at the difference in the user engagement metrics between the balanced Beta and Release for a same Firefox version (v67). *This gives us an idea of how clients with similar environments and performance resemble Release in terms of usage*. In the second, we are more interested in balancing the data sets to resemble each other across the covariates we are concerned with, but now over several versions (v67 and v68). *This gives us an idea of how these users do indeed change in time*.
+
+For both strategies, we apply the same experimental setup. The only difference is in the considered Firefox version we were comparing. In the [first strategy](#first), our main objective was to inform how users Beta are different concerning Release in terms of user engagement, with all the other training covariates being equal. Our findings show the matching worked well, in general. However, for a subset of covariates, the difference between channels actually increased (e.g., `num_pages`, `num_pages_max`, `daily_unique_domains` and `daily_unique_domains_max`), or are relatevly different than Release before and after matching, namely `active_hours`, `active_hours_max`, `uri_count`, and `uri_count_max`. Besides, we observe that these Beta users are very similar to Release ones regarding search count and daily tabs opened.
+
+In the [second strategy](#second), our main objective was to determine if the user engagement metrics changed in the newest Beta version concerning the previous Release version. Overall, the matching yielded a subset that was similarly representative to v67 as to v68 for most of the covariates reviewed. However, for a subset of covariates, the difference between channels actually decreased (`num_pages`, `num_pages_max`, `daily_unique_domains` and `daily_max_tabs`).
+
+```{r eval=FALSE, include=FALSE}
+save.image(file = "final_report.RData", compress=TRUE)
+```
