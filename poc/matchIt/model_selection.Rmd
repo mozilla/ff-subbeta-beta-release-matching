@@ -1,0 +1,203 @@
+---
+title: "Beta to Release Matching: Model Selection"
+author: "Mariana de Oliveira Santos Silva"
+date: 'Last Updated: `r format(Sys.time(), "%B %d, %Y")`'
+output: 
+  html_document:
+    theme: "flatly"
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+    highlight: tango
+---
+
+```{r include=FALSE}
+generate_formula <- function(tr_cov, label){
+  # Focus on linear and no-interactions
+  return(as.formula(paste(label, '~', paste(tr_cov, collapse="+"))))
+}
+```
+
+# Introduction
+
+The main objective of this notebook is to perform several different matching methods in experiment 3 (which was the experiment that presented the best results in the previous work) to select the best model.
+
+# Loading the data
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+## Loading the needed libraries
+
+library(kableExtra)      # help you build common complex tables and manipulate table styles
+library(DataExplorer)    # automated data exploration
+library(tidyverse)       # for general data wrangling (includes readr and dplyr)
+library(ggplot2)         # to draw statistical plots 
+library(dplyr)           # for data frame manipulation
+library(MatchIt)
+library(optmatch)
+library(cem)
+library(RItools)
+library(magrittr)
+library(tidyr)
+library(tidyselect)
+library(grt)
+library(tableone)
+library(cobalt)
+
+label <- 'is_release'
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+## Loading the training dataset
+load('~/ff-beta-release-matching/poc/matchIt/modeling.RData')
+```
+
+# Model Selection
+
+In short, the prior results showed that the model using *Nearest Neighbor matching* with stratified sampling outperformed the other models. In particular, the `experiment 3` (regarding to the results of feature selection with stratified sampling, considering the top 5 features) presented the best results for most of the tested models. However, the results could be further improved. So, before move on to the last phase (the model validation), we can try using other matching strategies. Now that we have selected the best expirement. 
+
+## Match using Coarsened Exact Matching (CEM): Small Dataset
+
+```{r message=FALSE, warning=FALSE}
+cem <- matchit(formula = generate_formula(exp_3, label), df_1x_sm, 'cem')
+res <- match.data(cem)
+cem_models_1x <- cem
+cem_results_1x <- res
+print(summary(cem))
+```
+
+## Match using Coarsened Exact Matching (CEM): Full Dataset
+
+```{r message=FALSE, warning=FALSE}
+cem_full <- matchit(formula = generate_formula(exp_3, label), df_1x, 'cem')
+res_full <- match.data(cem_full)
+cem_full_models_1x <- cem_full
+cem_full_results_1x <- res_full
+print(summary(cem_full))
+```
+
+## Match using Nearest Neighbor matching: Small Dataset
+
+```{r message=FALSE, warning=FALSE}
+nn <- matchit(formula = generate_formula(exp_3, label), df_1x_sm, 'nearest', replace = TRUE)
+res <- match.data(nn)
+nn_models_1x <- nn
+nn_results_1x <- res
+print(summary(nn))
+```
+
+## Match using Nearest Neighbor matching: Full Dataset
+
+```{r message=FALSE, warning=FALSE}
+nn_full <- matchit(formula = generate_formula(exp_3, label), df_1x, 'nearest', replace = TRUE)
+res <- match.data(nn_full)
+nn_full_models_1x <- nn_full
+nn_full_results_1x <- res
+print(summary(nn_full))
+```
+
+## Match using Nearest Neighbor matching: Small Dataset - Mahalanobis
+
+```{r message=FALSE, warning=FALSE}
+nn.ma <- matchit(formula = generate_formula(exp_3, label), df_1x_sm, 'nearest', distance='mahalanobis')
+res <- match.data(nn.ma)
+nn.ma_models_1x <- nn.ma
+nn.ma_results_1x <- res
+print(summary(nn.ma))
+```
+
+## Match using Nearest Neighbor matching: Full Dataset - Mahalanobis
+
+```{r message=FALSE, warning=FALSE}
+nn.ma_full <- matchit(formula = generate_formula(exp_3, label), df_1x, 'nearest', distance='mahalanobis')
+res <- match.data(nn.ma_full)
+nn.ma_full_models_1x <- nn.ma_full
+nn.ma_full_results_1x <- res
+print(summary(nn.ma_full))
+```
+
+## Match using Subclassification matching: Small Dataset
+
+```{r message=FALSE, warning=FALSE}
+sub <- matchit(formula = generate_formula(exp_3, label), df_1x_sm, 'subclass')
+res <- match.data(sub)
+sub_models_1x <- sub
+sub_results_1x <- res
+print(summary(sub))
+```
+
+## Match using Subclassification matching: Full Dataset
+
+```{r message=FALSE, warning=FALSE}
+sub_full <- matchit(formula = generate_formula(exp_3, label), df_1x, 'subclass')
+res <- match.data(sub_full)
+sub_full_models_1x <- sub_full
+sub_full_results_1x <- res
+print(summary(sub_full))
+```
+
+---
+
+## Graphical Comparison
+
+```{r}
+small <- list(cem_models_1x = cem_models_1x, nn_models_1x = nn_models_1x, nn.ma_models_1x = nn.ma_models_1x, sub_models_1x = sub_models_1x)
+
+full <- list(cem_full_models_1x = cem_full_models_1x, nn_full_models_1x = nn_full_models_1x, nn.ma_full_models_1x = nn.ma_full_models_1x, sub_full_models_1x = sub_full_models_1x)
+```
+
+* Note that we want to see if the Matched Treated (beta) and Matched Control (release) distributions are roughly similar.
+
+### Small Dataset
+
+```{r fig.height=7, fig.width=14}
+for (model in names(small)){
+  print(paste(model))
+  if (model != "nn.ma_models_1x"){
+    plot(small[[model]], type = "hist", col = "#111d5e")
+    plot(small[[model]], type = "jitter", col = "#111d5e", interactive = F)
+  } else {
+    print(paste("Not appropriate for pure Mahalanobis matching. No plots generated."))
+  }
+}
+```
+
+### Full Dataset
+
+```{r fig.height=7, fig.width=14}
+for (model in names(full)){
+  print(paste(model))
+  if (model != "nn.ma_full_models_1x"){
+    plot(full[[model]], type = "hist", col = "#111d5e")
+    plot(full[[model]], type = "jitter", col = "#111d5e", interactive = F)
+  } else {
+    print(paste("Not appropriate for pure Mahalanobis matching. No plots generated."))
+  }
+}
+```
+
+---
+
+### Observations
+
+* Although it was not possible to graphically compare the results using the Nearest Neighbor matching with Mahalanobis distance, from the summary, we can see that those models outperformed the others. Analyzing each of the covariates, we have:
+
+#### Small Dataset
+
+```{r fig.height=7, fig.width=14}
+for (v in exp_3){
+  p <- bal.plot(nn.ma_models_1x, var.name = v, colors = c("#111d5e", "#611e62"))
+  print(p)
+}
+```
+
+#### Full Dataset
+
+```{r fig.height=7, fig.width=14}
+for (v in exp_3){
+  p <- bal.plot(nn.ma_full_models_1x, var.name = v, colors = c("#111d5e", "#611e62"))
+  print(p)
+}
+```
+
+* The figures show that the model containing the entire dataset was better than sampling. 
+* In addition, the main problem is displayed mainly in pageload metrics.

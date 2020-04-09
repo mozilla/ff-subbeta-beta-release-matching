@@ -1,0 +1,676 @@
+---
+title: "Beta to Release Matching: Modeling"
+author: "Mariana de Oliveira Santos Silva"
+date: 'Last Updated: `r format(Sys.time(), "%B %d, %Y")`'
+output: 
+  html_document:
+    theme: "flatly"
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+    highlight: tango
+---
+
+# Introduction
+
+The goal of this project is to utilize [statistical matching](https://en.wikipedia.org/wiki/Matching_(statistics)) methods to search for a subset of Beta clients that are representative of Release. The specific use-case of this proof-of-concept is utilizing performance, configuration, and environment covariates of the clients for matching. Validation of the matching is performed on a hold-out set of Firefox **user engagement** covariates.
+
+# Loading the data
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+## Loading the needed libraries
+
+library(kableExtra)      # help you build common complex tables and manipulate table styles
+library(DataExplorer)    # automated data exploration
+library(tidyverse)       # for general data wrangling (includes readr and dplyr)
+library(ggplot2)         # to draw statistical plots 
+library(dplyr)           # for data frame manipulation
+library(ggthemes)
+library(funModeling) 
+library(corrplot)
+library(MatchIt)
+library(optmatch)
+library(cem)
+library(RItools)
+library(magrittr)
+library(tidyr)
+library(tidyselect)
+library(grt)
+library(tableone)
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+## Loading the training dataset
+#load("~/GitHub/ff-beta-release-matching/poc/EDA/data_milestone2_df_train_validate_20191025.RData")
+load('~/ff-beta-release-matching/poc/matchIt/feature_selection.RData')
+```
+
+```{r include=FALSE}
+colnames(df_train_encoder)[which(names(df_train_encoder) == "cpu_l2_cache_kb_cat_< 1024")] <- "cpu_l2_cache_kb_cat_l1024"
+colnames(df_train_encoder)[which(names(df_train_encoder) == "cpu_l2_cache_kb_cat_< 256")] <- "cpu_l2_cache_kb_cat_l256"
+colnames(df_train_encoder)[which(names(df_train_encoder) == "cpu_l2_cache_kb_cat_< 512")] <- "cpu_l2_cache_kb_cat_l512"
+colnames(df_train_encoder)[which(names(df_train_encoder) == "cpu_l2_cache_kb_cat_> 1024")] <- "cpu_l2_cache_kb_cat_g1024"
+
+colnames(df_train_encoder)[which(names(df_train_encoder) == "default_search_engine_other (bundled)")] <- "default_search_engine_other_bundled"
+colnames(df_train_encoder)[which(names(df_train_encoder) == "default_search_engine_other (non-bundled)")] <- "default_search_engine_other_nonbundled"
+
+colnames(df_train_encoder)[which(names(df_train_encoder) == "locale_en-GB")] <- "locale_enGB"
+colnames(df_train_encoder)[which(names(df_train_encoder) == "locale_en-US")] <- "locale_enUS"
+
+colnames(df_train_encoder)[which(names(df_train_encoder) == "timezone_cat_[-12,-10]")] <- "timezone_cat_m12_m10"
+colnames(df_train_encoder)[which(names(df_train_encoder) == "timezone_cat_(-10,-8]")] <- "timezone_cat_m10_m8"
+colnames(df_train_encoder)[which(names(df_train_encoder) == "timezone_cat_(-8,-6]")] <- "timezone_cat_m8_m6"
+colnames(df_train_encoder)[which(names(df_train_encoder) == "timezone_cat_(-6,-4]")] <- "timezone_cat_m6_m4"
+colnames(df_train_encoder)[which(names(df_train_encoder) == "timezone_cat_(-4,-2]")] <- "timezone_cat_m4_m2"
+colnames(df_train_encoder)[which(names(df_train_encoder) == "timezone_cat_(-2,0]")] <- "timezone_cat_m2_0"
+colnames(df_train_encoder)[which(names(df_train_encoder) == "timezone_cat_(0,2]")] <- "timezone_cat_0_2"
+colnames(df_train_encoder)[which(names(df_train_encoder) == "timezone_cat_(2,4]")] <- "timezone_cat_2_4"
+colnames(df_train_encoder)[which(names(df_train_encoder) == "timezone_cat_(4,6]")] <- "timezone_cat_4_6"
+colnames(df_train_encoder)[which(names(df_train_encoder) == "timezone_cat_(6,8]")] <- "timezone_cat_6_8"
+colnames(df_train_encoder)[which(names(df_train_encoder) == "timezone_cat_(8,10]")] <- "timezone_cat_8_10"
+colnames(df_train_encoder)[which(names(df_train_encoder) == "timezone_cat_(10,12]")] <- "timezone_cat_10_12"
+colnames(df_train_encoder)[which(names(df_train_encoder) == "timezone_cat_(12,14]")] <- "timezone_cat_12_14"
+```
+
+```{r include=FALSE}
+generate_formula <- function(tr_cov, label){
+  # Focus on linear and no-interactions
+  return(as.formula(paste(label, '~', paste(tr_cov, collapse="+"))))
+}
+
+calc_means <- function(df.match, ho_cov, add_1 = FALSE){
+  # Validation
+  ## Means: holdout
+  ho_mean <- df.match %>% 
+    select(ho_cov, label) %>% 
+    mutate_all(function(x) if(is.numeric(x) && add_1) x+1 else x) %>%
+    group_by(label) %>% 
+    summarise_all(mean)
+  return(ho_mean)
+}
+
+calc_medians <- function(df.match, ho_cov, add_1 = FALSE){
+  # Validation
+  ## medians: holdout
+  ho_median <- df.match %>% 
+    select(ho_cov, label) %>% 
+    mutate_all(function(x) if(is.numeric(x) && add_1) x+1 else x) %>%
+    group_by(label) %>% 
+    summarise_all(median)
+  # print(ho_median)
+  # return(list(train = tr_median, ho = ho_median))
+  return(ho_median)
+}
+
+calc_delta <- function(df.match, ho_cov){
+  perc_diff <- function(x) abs(x[1]-x[2])/x[2]
+  means <- calc_means(df.match, ho_cov) %>%
+    select(-label) %>% 
+    summarise_all(perc_diff)
+  medians <- calc_medians(df.match, ho_cov) %>%
+    select(-label) %>% 
+    summarise_all(perc_diff)
+  # return(list(means = means, medians = medians))
+  df <- means %>% 
+    rbind(medians) %>% 
+    as.data.frame() %>%
+    set_rownames(c('means', 'medians'))
+  return(df)
+}
+```
+
+
+
+```{r echo=FALSE}
+# define response field
+label <- 'is_release'
+
+## Examine data briefly
+kable(introduce(df_train_encoder)) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
+```
+
+
+```{r}
+f <- freq(df_train_encoder$label_beta)
+```
+
+------
+
+## Observations
+
+* $302,819$ observations: $59,627$ beta ("treated") and $243,192$ release ("control")
+* $95$ covariants: 
+  + Environment
+      - cpu_cores
+      - cpu_cores_cat
+      - cpu_speed_mhz
+      - cpu_speed_cat
+      - cpu_vendor
+      - cpu_l2_cache_kb
+      - cpu_l2_cache_kb_cat
+      - memory_mb
+      - memory_cat
+      - os_version
+      - is_wow64
+      - distro_id_norm
+      - install_year
+  + Geo
+      - country
+      - timezone_offset
+      - timezone_cat
+      - locale
+  + Settings
+      - num_bookmarks
+      - num_addons
+      - sync_configured
+      - fxa_configured
+      - is_default_browser
+      - default_search_engine
+  + Page Load
+      - FX_PAGE_LOAD_MS_2_PARENT
+      - TIME_TO_DOM_COMPLETE_MS
+      - TIME_TO_DOM_CONTENT_LOADED_END_MS
+      - TIME_TO_LOAD_EVENT_END_MS
+      - TIME_TO_DOM_INTERACTIVE_MS
+      - TIME_TO_NON_BLANK_PAINT_MS
+  + Startup
+      - startup_ms
+      - startup_ms_max
+  + Stability
+      - content_crashes
+  + Browser engagement
+      - active_hours
+      - active_hours_max
+      - uri_count
+      - uri_count_max
+      - search_count
+      - search_count_max
+      - num_pages
+      - num_pages_max
+      - daily_max_tabs
+      - daily_max_tabs_max
+      - daily_unique_domains
+      - daily_unique_domains_max
+      - daily_tabs_opened
+      - daily_tabs_opened_max
+  + Frequency of Browser Usage
+      - num_active_days
+      - daily_num_sessions_started
+      - daily_num_sessions_started_max
+      - session_length
+      - session_length_max
+      - profile_age
+      - profile_age_cat
+
+```{r}
+df_beta <- df_train_encoder %>% filter(label_beta == 1)
+df_rel <- df_train_encoder %>% filter(label_beta == 0)
+```
+
+```{r}
+# sampling for beta overrepresentation
+n_beta <- nrow(df_beta)
+build_df <- function(multiple){
+  df <- df_rel %>%
+    sample_n(size = round(n_beta / multiple)) %>%
+    rbind(df_beta)
+}
+
+df_1x <- build_df(1)
+df_2x <- build_df(2)
+df_4x <- build_df(4)
+```
+
+```{r echo=TRUE}
+# downsampling
+df_1x_sm <- df_1x %>% sample_n(size = 70000)
+df_2x_sm <- df_2x %>% sample_n(size = 70000)
+df_4x_sm <- df_4x %>% sample_n(size = 70000)
+```
+
+```{r}
+f <- freq(as.factor(df_1x_sm$label_beta)) # ~ 50% - 50%
+print(paste('50% - 50%'))
+
+f <- freq(as.factor(df_2x_sm$label_beta)) # ~ 70% - 30%
+print(paste('70% - 30%'))
+
+f <- freq(as.factor(df_4x_sm$label_beta)) # ~ 80% - 20%
+print(paste('80% - 20%'))
+```
+
+# Covariates
+
+```{r echo=TRUE}
+engagement <- c('active_hours','active_hours_max','uri_count','uri_count_max','search_count','search_count_max','num_pages','num_pages_max','daily_max_tabs','daily_max_tabs_max','daily_unique_domains','daily_unique_domains_max','daily_tabs_opened','daily_tabs_opened_max')
+
+usage <- c('num_active_days','daily_num_sessions_started','daily_num_sessions_started_max','session_length','session_length_max','profile_age')
+
+environment <- c('cpu_cores','cpu_speed_mhz','cpu_vendor_AMD','cpu_vendor_Intel','cpu_vendor_Other','cpu_l2_cache_kb','cpu_l2_cache_kb_cat_l1024','cpu_l2_cache_kb_cat_l256','cpu_l2_cache_kb_cat_l512','cpu_l2_cache_kb_cat_g1024','memory_mb','is_wow64_True','distro_id_norm_acer','distro_id_norm_Mozilla','distro_id_norm_other','distro_id_norm_Yahoo','install_year')
+
+geo <- c('country_US','timezone_offset','timezone_cat_m12_m10','timezone_cat_m10_m8','timezone_cat_m8_m6','timezone_cat_m6_m4','timezone_cat_m4_m2','timezone_cat_m2_0','timezone_cat_0_2','timezone_cat_2_4','timezone_cat_4_6','timezone_cat_6_8','timezone_cat_8_10','timezone_cat_10_12','timezone_cat_12_14','locale_enGB','locale_enUS')
+
+settings <- c('num_bookmarks','num_addons','sync_configured_True','fxa_configured_True','is_default_browser_True','default_search_engine_Bing','default_search_engine_DuckDuckGo','default_search_engine_Google','default_search_engine_other_bundled','default_search_engine_other_nonbundled','default_search_engine_Yahoo')
+
+page_load <- c('FX_PAGE_LOAD_MS_2_PARENT','TIME_TO_DOM_COMPLETE_MS','TIME_TO_DOM_CONTENT_LOADED_END_MS','TIME_TO_LOAD_EVENT_END_MS','TIME_TO_DOM_INTERACTIVE_MS','TIME_TO_NON_BLANK_PAINT_MS')
+
+startup <- c('startup_ms','startup_ms_max')
+
+stability <- c('content_crashes')
+```
+
+## Variable Selection
+The Boruta method was performed.
+
+## Experiments
+Groups of models to train. 
+
+```{r echo=TRUE}
+exp_1 <- c('daily_num_sessions_started', 'daily_num_sessions_started_max', 'FX_PAGE_LOAD_MS_2_PARENT', 'fxa_configured_True', 'memory_mb', 'num_active_days', 'num_addons', 'num_bookmarks', 'profile_age','session_length','session_length_max','TIME_TO_DOM_COMPLETE_MS','TIME_TO_DOM_CONTENT_LOADED_END_MS','TIME_TO_DOM_INTERACTIVE_MS','TIME_TO_LOAD_EVENT_END_MS','TIME_TO_NON_BLANK_PAINT_MS','timezone_cat_0_2')
+
+exp_2 <- c('country_US', 'daily_num_sessions_started', 'daily_num_sessions_started_max', 'default_search_engine_other_nonbundled', 'FX_PAGE_LOAD_MS_2_PARENT', 'fxa_configured_True', 'memory_mb', 'num_active_days', 'num_addons', 'num_bookmarks', 'profile_age', 'session_length','session_length_max', 'startup_ms', 'startup_ms_max', 'sync_configured_True', 'TIME_TO_DOM_COMPLETE_MS','TIME_TO_DOM_CONTENT_LOADED_END_MS','TIME_TO_DOM_INTERACTIVE_MS','TIME_TO_LOAD_EVENT_END_MS','TIME_TO_NON_BLANK_PAINT_MS','timezone_cat_0_2')
+
+exp_3 <- c('daily_num_sessions_started', 'daily_num_sessions_started_max', 'FX_PAGE_LOAD_MS_2_PARENT', 'memory_mb', 'num_active_days', 'num_addons', 'num_bookmarks', 'profile_age', 'session_length', 'session_length_max','TIME_TO_DOM_COMPLETE_MS','TIME_TO_DOM_CONTENT_LOADED_END_MS','TIME_TO_DOM_INTERACTIVE_MS','TIME_TO_LOAD_EVENT_END_MS','TIME_TO_NON_BLANK_PAINT_MS') 
+
+exp_4 <- c('cpu_speed_mhz', 'daily_num_sessions_started', 'daily_num_sessions_started_max', 'default_search_engine_other_nonbundled', 'FX_PAGE_LOAD_MS_2_PARENT', 'memory_mb', 'num_active_days', 'num_addons', 'num_bookmarks', 'profile_age','session_length','session_length_max','startup_ms','startup_ms_max','TIME_TO_DOM_COMPLETE_MS','TIME_TO_DOM_CONTENT_LOADED_END_MS','TIME_TO_DOM_INTERACTIVE_MS','TIME_TO_LOAD_EVENT_END_MS','TIME_TO_NON_BLANK_PAINT_MS')
+```
+
+# Modeling
+
+Before propensity scores are calculated, it is a good practice to determine if the two groups are balanced. 
+
+## 1. Standardized difference
+
+The standardized difference can be used to compare the mean of continuous and binary variables between treatment groups. The standardized difference compares the difference in means in units of the pooled standard deviation and allows for the comparison of the relative balance of variables measured in different units. Although there is no universally agreed-upon criterion as to what threshold of the standardized difference can be used to indicate an important imbalance, a standard difference that is less than 10% (or $0.1$) has been taken to indicate a negligible difference in the mean or prevalence of a covariate between treatment groups.
+
+### 1x Oversampling
+```{r message=FALSE, warning=FALSE}
+cov <- df_1x_sm %>% dplyr::select(c(engagement, usage, environment, geo, settings, page_load, startup, stability))
+treated <- (df_1x_sm$label_beta == 1)
+std.diff <- apply(cov,2,function(x) 100*(mean(x[treated])- mean(x[!treated]))/(sqrt(0.5*(var(x[treated]) + var(x[!treated])))))
+cov_df_1x <- sort(abs(std.diff))
+cov_df_1x
+```
+
+### 2x Oversampling
+```{r}
+cov <- df_2x_sm %>% dplyr::select(c(engagement, usage, environment, geo, settings, page_load, startup, stability))
+treated <- (df_2x_sm$label_beta == 1)
+std.diff <- apply(cov,2,function(x) 100*(mean(x[treated])- mean(x[!treated]))/(sqrt(0.5*(var(x[treated]) + var(x[!treated])))))
+cov_df_2x <- sort(abs(std.diff))
+cov_df_2x
+```
+
+### 4x Oversampling
+```{r}
+cov <- df_4x_sm %>% dplyr::select(c(engagement, usage, environment, geo, settings, page_load, startup, stability))
+treated <- (df_4x_sm$label_beta == 1)
+std.diff <- apply(cov,2,function(x) 100*(mean(x[treated])- mean(x[!treated]))/(sqrt(0.5*(var(x[treated]) + var(x[!treated])))))
+cov_df_4x <- sort(abs(std.diff))
+cov_df_4x
+```
+
+------
+
+### Observations
+
+* As we can see, all standardized differences at the individual variable level were greater than *0.1* (except for the `timezone_cat_10_12`,`timezone_cat_m10_m8`,`cpu_l2_cache_kb_cat_l512` variables). These significant imbalances highlight the need for an effective matching strategy to create a release group that more closely resembles the beta group. Variables that create imbalance *should* be included in the selection model:
+
+```{r echo=TRUE}
+exp_5  <- c(setdiff(names(cov_df_1x[3:73]), engagement))
+exp_6  <- c(setdiff(names(cov_df_2x), engagement)) 
+exps <- list(exp_1 = exp_1, exp_2 = exp_2, exp_3 = exp_3, exp_4 = exp_4, exp_5 = exp_5, exp_6 = exp_6)
+```
+
+## 2. Propensity Score Estimation
+
+Packages such as MatchIt estimates propensity scores using logistic regression as the default option. However, when estimating propensity scores using the default option, the fit of the model cannot be assessed. Therefore, it is recommended that a logistic regression is run to determine the model fit. 
+
+### Calculates the propensity score
+
+#### 1x Oversampling
+
+```{r message=FALSE, warning=FALSE}
+ps_1x <- list()
+for (exp in names(exps)){
+  ps <- glm(generate_formula(exps[[exp]], label), data=df_1x_sm, family=binomial())
+  ps_1x[[exp]] <- ps
+  print(paste(exp))
+  print(summary(ps))
+}
+```
+
+Statistically significant estimates are identified by low (i.e., $< 0.05$) p-values. There are no clear suggestions as to whether to include in the final model all the variables (even non-significant). Some authors suggest that the final model should include not only statistically significant variables, but also variables known to be associated with selection.
+
+Once the propensity scores have been calculated, a graphical approach can be used to assess the distributional similarity between score distributions. This graphical approach uses back to back histograms such as those created through the package Hmisc. Back to back histograms cannot be used with Mahalanobis distance, because it is a multidimensional technique. 
+
+* Attach the predicted propensity score to the datafile
+
+```{r fig.height=7, fig.width=14}
+par(mfrow=c(2,3))
+for (ps in ps_1x){
+  df_1x_sm$psvalue <- predict(ps, type="response")
+  out <- histbackback(split(df_1x_sm$psvalue, df_1x_sm$label_release), main="Propensity score before matching", xlab=c("release", "beta"))
+  # just adding color
+  barplot(-out$left, col="#111d5e" , horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+  barplot(out$right, col="#b21f66", horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+}
+```
+
+#### 2x Oversampling
+
+```{r message=FALSE, warning=FALSE}
+ps_2x <- list()
+for (exp in names(exps)){
+  ps <- glm(generate_formula(exps[[exp]], label), data=df_2x_sm, family=binomial())
+  ps_2x[[exp]] <- ps
+  print(paste(exp))
+  print(summary(ps))
+}
+```
+
+* Attach the predicted propensity score to the datafile
+
+```{r fig.height=7, fig.width=14}
+par(mfrow=c(2,3))
+for (ps in ps_2x){
+  df_2x_sm$psvalue <- predict(ps, type="response")
+  out <- histbackback(split(df_2x_sm$psvalue, df_2x_sm$label_release), main="Propensity score before matching", xlab=c("release", "beta"))
+  # just adding color
+  barplot(-out$left, col="#111d5e" , horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+  barplot(out$right, col="#b21f66", horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+}
+```
+
+#### 4x Oversampling
+
+```{r message=FALSE, warning=FALSE}
+ps_4x <- list()
+for (exp in names(exps)){
+  ps <- glm(generate_formula(exps[[exp]], label), data=df_4x_sm, family=binomial())
+  ps_4x[[exp]] <- ps
+  print(paste(exp))
+  print(summary(ps))
+}
+```
+
+* Attach the predicted propensity score to the datafile
+
+```{r, fig.height=7, fig.width=14}
+par(mfrow=c(2,3))
+for (ps in ps_4x){
+  df_4x_sm$psvalue <- predict(ps, type="response")
+  out <- histbackback(split(df_4x_sm$psvalue, df_4x_sm$label_release), main="Propensity score before matching", xlab=c("release", "beta"))
+  # just adding color
+  barplot(-out$left, col="#111d5e" , horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+  barplot(out$right, col="#b21f66", horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+}
+```
+
+------
+
+#### Observations
+
+* Important parameters to determine the fit are not only the shape, but also degree of overlap between the two distributions (known as the common support region). By definition, matching only utilizes observations in the region of common support where we are able to obtain matched observations. That is, unmatched observations are excluded from the analysis. 
+* As can be seen from the figures above, an interval of propensity scores exists, containing both release and beta groups, so that further matching analysis is valid.
+
+## 3. Propensity Score Matching
+
+### Match using Coarsened Exact Matching (CEM): Small Dataset
+
+#### 1x Oversampling
+
+```{r message=FALSE, warning=FALSE}
+cem_results_1x <- list()
+cem_models_1x <- list()
+for (exp in names(exps)){
+  cem <- matchit(formula = generate_formula(exps[[exp]], label), df_1x_sm, 'cem')
+  res <- match.data(cem)
+  cem_models_1x[[exp]] <- cem
+  cem_results_1x[[exp]] <- res
+  #print(summary(cem))
+}
+```
+
+#### 2x Oversampling
+
+```{r message=FALSE, warning=FALSE}
+cem_results_2x <- list()
+cem_models_2x <- list()
+for (exp in names(exps)){
+  cem <- matchit(formula = generate_formula(exps[[exp]], label), df_2x_sm, 'cem')
+  res <- match.data(cem)
+  cem_models_2x[[exp]] <- cem
+  cem_results_2x[[exp]] <- res
+  #print(summary(cem))
+}
+```
+
+#### 4x Oversampling
+
+```{r message=FALSE, warning=FALSE}
+cem_results_4x <- list()
+cem_models_4x <- list()
+for (exp in names(exps)){
+  cem <- matchit(formula = generate_formula(exps[[exp]], label), df_4x_sm, 'cem')
+  res <- match.data(cem)
+  cem_models_4x[[exp]] <- cem
+  cem_results_4x[[exp]] <- res
+  #print(summary(cem))
+}
+```
+
+### Match using Nearest Neighbor matching: Small
+
+#### 1x Oversampling
+
+```{r message=FALSE, warning=FALSE}
+nn_results_1x <- list()
+nn_models_1x <- list()
+for (exp in names(exps)){
+  nn <- matchit(formula = generate_formula(exps[[exp]], label), df_1x_sm, 'nearest', replace = TRUE)
+  res <- match.data(nn)
+  nn_models_1x[[exp]] <- nn
+  nn_results_1x[[exp]] <- res
+  #print(summary(nn))
+}
+```
+
+#### 2x Oversampling
+
+```{r message=FALSE, warning=FALSE}
+nn_results_2x <- list()
+nn_models_2x <- list()
+for (exp in names(exps)){
+  nn <- matchit(formula = generate_formula(exps[[exp]], label), df_2x_sm, 'nearest', replace = TRUE)
+  res <- match.data(nn)
+  nn_models_2x[[exp]] <- nn
+  nn_results_2x[[exp]] <- res
+  #print(summary(nn))
+}
+```
+
+#### 4x Oversampling
+
+```{r message=FALSE, warning=FALSE}
+nn_results_4x <- list()
+nn_models_4x <- list()
+for (exp in names(exps)){
+  nn <- matchit(formula = generate_formula(exps[[exp]], label), df_4x_sm, 'nearest', replace = TRUE)
+  res <- match.data(nn)
+  nn_models_4x[[exp]] <- nn
+  nn_results_4x[[exp]] <- res
+  #print(summary(nn))
+}
+```
+
+---
+
+#### Graphical Comparison
+
+* Note that we want to see if the Matched Treated (beta) and Matched Control (release) distributions are roughly similar.
+
+##### (CEM): Small Dataset
+
+###### 1x Oversampling
+
+```{r fig.height=7, fig.width=14}
+counter <- 0
+par(mfrow=c(2,2))
+for (m.cem in cem_models_1x){
+  counter <- counter + 1 
+  print(paste("Experiment ", counter))
+  plot(m.cem, type = "hist", col = "#111d5e")
+}
+```
+
+###### 2x Oversampling
+
+```{r fig.height=7, fig.width=14}
+par(mfrow=c(2,3))
+for (m.cem in cem_models_2x){
+  plot(m.cem, type = "hist", col = "#611e62")
+}
+```
+
+###### 4x Oversampling
+
+```{r fig.height=7, fig.width=14}
+par(mfrow=c(2,3))
+for (m.cem in cem_models_4x){
+  plot(m.cem, type = "hist", col = "#b21f66")
+}
+```
+
+##### Nearest Neighbor matching: Small Dataset
+
+###### 1x Oversampling
+
+```{r fig.height=7, fig.width=14}
+par(mfrow=c(2,3))
+for (m.nn in nn_models_1x){
+  plot(m.nn, type = "hist", col = "#111d5e")
+}
+```
+
+###### 2x Oversampling
+
+```{r fig.height=7, fig.width=14}
+par(mfrow=c(2,3))
+for (m.nn in nn_models_2x){
+  plot(m.nn, type = "hist", col = "#611e62")
+}
+```
+
+###### 4x Oversampling
+
+```{r fig.height=7, fig.width=14}
+par(mfrow=c(2,3))
+for (m.nn in nn_models_4x){
+  plot(m.nn, type = "hist", col = "#b21f66")
+}
+```
+
+---
+
+##### Observations
+
+* From the results above, we can see that the model using *Nearest Neighbor matching* with balanced sampling outperforms the other models.
+
+* Furthermore, experiments $3$ and $4$ (referring to the results of the feature selection with the stratified sampling, considering the top 5 and top 10, respectly) were the ones that presented the best results, for most of the tested models.
+
+## 4. Computing indices of covariate imbalance after matching
+
+### Experiment 3
+
+```{r message=FALSE, warning=FALSE}
+### 1. Standardized difference
+match.data_3 = match.data(nn_models_1x$exp_3)
+treated1 <- (match.data_3$label_beta==1)
+cov1 <- match.data_3 %>% dplyr::select(exp_3)
+std.diff1 <- apply(cov1,2,function(x) 100*(mean(x[treated1])- mean(x[!treated1]))/(sqrt(0.5*(var(x[treated1]) + var(x[!treated1])))))
+sort(abs(std.diff1))
+```
+
+
+```{r fig.height=5, fig.width=10}
+par(mfrow=c(1,2))
+
+# before matching
+df_1x_sm$psvalue <- predict(ps_1x$exp_3, type="response")
+out <- histbackback(split(df_1x_sm$psvalue, df_1x_sm$label_release), main="Propensity score before matching", xlab=c("release", "beta"))
+# just adding color
+barplot(-out$left, col="#111d5e" , horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+barplot(out$right, col="#b21f66", horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+
+# after matching
+out <- histbackback(split(match.data_3$psvalue, match.data_3$label_release), main="Propensity score after matching (NN)", xlab=c("release", "beta"))
+# just adding color
+barplot(-out$left, col="#111d5e" , horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+barplot(out$right, col="#b21f66", horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+```
+
+### Experiment 4
+
+```{r message=FALSE, warning=FALSE}
+### 1. Standardized difference
+match.data_4 = match.data(nn_models_1x$exp_4)
+treated1 <- (match.data_4$label_beta==1)
+cov1 <- match.data_4 %>% dplyr::select(exp_4)
+std.diff1 <- apply(cov1,2,function(x) 100*(mean(x[treated1])- mean(x[!treated1]))/(sqrt(0.5*(var(x[treated1]) + var(x[!treated1])))))
+sort(abs(std.diff1))
+```
+
+```{r fig.height=5, fig.width=10}
+par(mfrow=c(1,2))
+
+# before matching
+df_1x_sm$psvalue <- predict(ps_1x$exp_4, type="response")
+out <- histbackback(split(df_1x_sm$psvalue, df_1x_sm$label_release), main="Propensity score before matching", xlab=c("release", "beta"))
+# just adding color
+barplot(-out$left, col="#111d5e" , horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+barplot(out$right, col="#b21f66", horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+
+# after matching
+out <- histbackback(split(match.data_4$psvalue, match.data_4$label_release), main="Propensity score after matching (NN)", xlab=c("release", "beta"))
+# just adding color
+barplot(-out$left, col="#111d5e" , horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+barplot(out$right, col="#b21f66", horiz=TRUE, space=0, add=TRUE, axes=FALSE)
+```
+
+--- 
+
+### Observations
+
+* As can be seen from the figures above, there is a notable improvement in the match between the two distributions of propensity scores after the match (compared to the results before to match). This match suggests the two groups (beta and release) are much more similar in terms of their propensity scores and, therefore, the selection bias has been reduced substantially.
+
+* Comparing the two experiments, we can see that *Experiment 3* showed better results. We confirm this below:
+
+```{r out.width=c('50%', '50%')}
+# Experiment 3
+table_match_3 <- CreateTableOne(vars = exp_3, strata = "label_beta", data = match.data_3, test = FALSE, smd = TRUE)
+
+kable(print(table_match_3, smd = TRUE)) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
+
+# Experiment 4
+table_match <- CreateTableOne(vars = exp_4, strata = "label_beta", data = match.data_4, test = FALSE, smd = TRUE)
+
+kable(print(table_match, smd = TRUE)) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
+```
+
+
+```{r}
+summary(nn_models_1x$exp_3)
+```
+
+# Saving
+
+```{r}
+save(list=c("df_1x","df_1x_sm","exp_3","exp_4"), file="modeling.RData")
+```

@@ -1,0 +1,799 @@
+---
+title: "Mozilla Data Science Project - 2019"
+author: "Mariana de Oliveira Santos Silva"
+date: "December 05, 2019"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    highlight: tango
+    df_print: kable
+    code_folding: "hide"
+    theme: "flatly"
+---
+
+# Introduction
+
+The goal of this project is to utilize [statistical matching](https://en.wikipedia.org/wiki/Matching_(statistics)) techniques to search for a subset of the prerelease user population that is most representative of Release.
+
+In this first report, we will perform an exploratory analysis of the data, focusing on investigating the differences between Beta and Release users.
+
+# Loading the data
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+## Loading the needed libraries
+
+library(kableExtra)      # help you build common complex tables and manipulate table styles
+library(tidyverse)       # for general data wrangling (includes readr and dplyr)
+library(ggplot2)         # to draw statistical plots 
+library(plotly)          # to construct interactive 3d plots
+library(DataExplorer)    # automated data exploration
+library(corrplot)        # to plot nice correlation matrix
+library(caret)           # includes several functions to pre-process
+library(scales)          # to determining breaks and labels for axes and legends
+library(skimr)
+library(funModeling) 
+library(Hmisc)
+library(grid)
+library(hrbrthemes)
+library(tidyr)
+library(viridis)
+library(ggpubr)
+library(ggthemes)
+library(GGally)
+library(nortest)
+library(emdist)
+library(ggridges)
+library(cowplot)
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+## Loading the training dataset
+
+load("~/GitHub/ff-beta-release-matching/poc/EDA/data_milestone2_df_train_validate_20191025.RData")
+```
+
+## Training
+
+* App Version 67
+
+```{r message=FALSE, warning=FALSE}
+## View train dataframe 
+
+kable(head(df_train_f)) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
+```
+
+## Validation
+
+* App Version 68
+
+```{r message=FALSE, warning=FALSE}
+## View train dataframe 
+
+kable(head(df_validate_f)) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
+```
+
+# Data Inspection
+
+## Training
+
+To get introduced to our training dataset, let's have a look on the basic information of the dataset.
+
+```{r echo=FALSE}
+kable(introduce(df_train_f)) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
+```
+
+## Validation
+
+To get introduced to our validation dataset, let's have a look on the basic information of the dataset.
+
+```{r echo=FALSE}
+kable(introduce(df_validate_f)) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
+```
+
+------
+
+## Observations
+
+```{r echo=FALSE, fig.height=10, fig.width=10}
+par(mfrow = c(2, 2))  ## Set up a 2 x 2 plotting space
+
+plot_intro(df_train_f, ggtheme = theme_minimal(), title = "Training")
+plot_intro(df_validate_f, ggtheme = theme_minimal(), title = "Validation")
+```
+
+* In both datasets, most variables are continuous
+* No NAs value (were handled in preprocessing)
+
+# Data Structure
+
+## Training
+
+Let's use `glimpse` function to display a vertical preview of the training dataset. So we can easily preview data type and sample data.
+
+```{r}
+glimpse(df_train_f)
+```
+
+If we want to get some metrics about data types, zeros, infinite numbers, and missing values, we can use the `df_status` function.
+
+```{r}
+kable(df_status(df_train_f, FALSE)) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
+```
+
+* `q_zeros`: quantity of zeros (`p_zeros`: in percent)
+* `q_inf`: quantity of infinite values (`p_inf`: in percent)
+* `q_na`: quantity of NA (`p_na`: in percent)
+* `type`: factor, ordered-factor, numeric, integer or character
+* `unique`: quantity of unique values
+
+## Validation
+
+Let's use `glimpse` function to display a vertical preview of the validation dataset. 
+
+```{r}
+glimpse(df_validate_f)
+```
+
+```{r}
+kable(df_status(df_train_f, FALSE)) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
+```
+
+------
+
+## Observations
+
+> Are all the variables in the correct data type?
+
+None. It seems that this has already been dealt with in preprocessing. 
+
+> Any variables with lots of zeros? 
+
+Yes. Variables with lots of zeros may not be useful for modeling and, in some cases, they may dramatically bias the model. For example, the `content_crashes` is 100% equal to zero.  
+
+> Any variables with lots of NAs? 
+
+None. Good news.
+
+> Any high cardinality variable?
+
+Factor/categorical variables with a high number of different values (~30) tend to do overfitting if the categories have low cardinality.
+
+# Beta vs Release
+
+```{r}
+## Training
+df_release <- df_train_f[which(df_train_f$label == 'release'), ]
+df_beta <- df_train_f[which(df_train_f$label == 'beta'), ]
+
+## Validation
+df_v_release <- df_validate_f[which(df_validate_f$label == 'release'), ]
+df_v_beta <- df_validate_f[which(df_validate_f$label == 'beta'), ]
+```
+
+## Training
+
+* Composition:
+
+```{r}
+f <- freq(df_train_f$label)
+```
+
+## Validation
+
+* Composition:
+
+```{r}
+f <- freq(df_validate_f$label)
+```
+
+# Analyzing Discrete Variables
+
+## Training
+
+```{r, fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
+## Frequency distribution release dataframe
+plot_bar(df_release, ggtheme = theme_minimal(base_size = 15), title = 'Release')
+```
+
+```{r, fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
+## Frequency distribution beta dataframe
+plot_bar(df_beta, ggtheme = theme_minimal(base_size = 15), title = 'Beta')
+```
+
+## Validation
+
+```{r, fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
+## Frequency distribution release dataframe
+plot_bar(df_v_release, ggtheme = theme_minimal(base_size = 15), title = 'Release')
+```
+
+```{r, fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
+## Frequency distribution beta dataframe
+plot_bar(df_v_beta, ggtheme = theme_minimal(base_size = 15), title = 'Beta')
+```
+
+# Analyzing Continuos Variables
+
+## Training
+
+```{r, fig.width = 15, fig.height = 15}
+## View histogram of release dataset
+plot_histogram(df_release, ggtheme = theme_minimal(base_size = 15), title = 'Release')
+```
+
+```{r, fig.width = 15, fig.height = 15}
+## View histogram of beta dataset
+plot_histogram(df_beta, ggtheme = theme_minimal(base_size = 15), title = 'Beta')
+```
+
+## Validation
+
+```{r, fig.width = 15, fig.height = 15}
+## View histogram of release dataset
+plot_histogram(df_release, ggtheme = theme_minimal(base_size = 15), title = 'Release')
+```
+
+
+```{r, fig.width = 15, fig.height = 15}
+## View histogram of beta dataset
+plot_histogram(df_beta, ggtheme = theme_minimal(base_size = 15), title = 'Beta')
+```
+
+------
+
+## Observations
+
+* My first impression is that **user engagement** metrics might be a good path to follow
+
+## Ploting Density Curves
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+require(cowplot)
+```
+
+```{r, fig.width = 20, fig.height = 5, message=FALSE, warning=FALSE}
+## Training
+t <- ggplot(data=df_train_f, aes(x=uri_count, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6) + xlim(0, 1000) +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    labs(x="URI Count", y = "Density") +
+    theme_ipsum()
+
+## Validation
+v <- ggplot(data=df_validate_f, aes(x=uri_count, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6) + xlim(0, 1000) +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    labs(x="URI Count", y = "Density") +
+    theme_ipsum()
+
+plot_grid(t, v, ncol=2, labels = c("Train", "Validate")) ## Set up a 2 x 2 plotting space
+```
+
+```{r, fig.width = 20, fig.height = 5, message=FALSE, warning=FALSE}
+## Training
+t <- ggplot(data=df_train_f, aes(x=active_hours, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6) +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    labs(x="Active Hours", y = "Density") +
+    theme_ipsum()
+
+## Validation
+v <- ggplot(data=df_validate_f, aes(x=active_hours, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6) +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    labs(x="Active Hours", y = "Density") +
+    theme_ipsum()
+
+plot_grid(t, v, ncol=2, labels = c("Train", "Validate")) ## Set up a 2 x 2 plotting space
+```
+
+```{r, fig.width = 20, fig.height = 5, message=FALSE, warning=FALSE}
+## Training
+t <- ggplot(data=df_train_f, aes(x=num_pages, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6) + xlim(0, 50000) +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    labs(x="Num Pages", y = "Density") +
+    theme_ipsum()
+
+## Validation
+v <- ggplot(data=df_validate_f, aes(x=num_pages, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6) + xlim(0, 50000) +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    labs(x="Num Pages", y = "Density") +
+    theme_ipsum()
+
+plot_grid(t, v, ncol=2, labels = c("Train", "Validate")) ## Set up a 2 x 2 plotting space
+```
+
+```{r, fig.width = 20, fig.height = 5, message=FALSE, warning=FALSE}
+## Training
+t <- ggplot(data=df_train_f, aes(x=session_length, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6) + xlim(0, 75) +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    labs(x="Session Length", y = "Density") +
+    theme_ipsum()
+
+## Validation
+v <- ggplot(data=df_validate_f, aes(x=session_length, group=label, fill=label)) +
+    geom_density(adjust=1.5, alpha=0.6) + xlim(0, 75) +
+    scale_fill_viridis(discrete=TRUE) +
+    scale_color_viridis(discrete=TRUE) +
+    labs(x="Session Length", y = "Density") +
+    theme_ipsum()
+
+plot_grid(t, v, ncol=2, labels = c("Train", "Validate")) ## Set up a 2 x 2 plotting space
+```
+
+# User Engagement Metrics
+
+## Continuous Variables
+
+This section will focus only on user engagement continuous metrics. So, we are going to analyze the following metrics:
+
+* `num_active_days`
+* `active_hours`
+* `active_hours_max`
+* `uri_count`
+* `uri_count_max`
+* `session_length`
+* `session_length_max`
+* `search_count`
+* `search_count_max`
+* `num_bookmarks`
+* `num_pages`
+* `num_pages_max`
+* `num_addons`
+* `daily_unique_domains`
+* `daily_unique_domains_max`
+* `daily_max_tabs`
+* `daily_max_tabs_max`
+* `daily_tabs_opened`
+* `daily_tabs_opened_max`
+* `daily_num_sessions_started`
+* `daily_num_sessions_started_max`
+* `startup_ms`
+* `install_year`
+* `profile_age`
+* `timezone_offset`
+* `memory_mb`
+* `cpu_cores`
+* `cpu_speed_mhz`
+* `cpu_l2_cache_kb`
+
+```{r include=FALSE}
+user_eng <- c("num_active_days","active_hours","active_hours_max","uri_count","uri_count_max","session_length","session_length_max","search_count","search_count_max","num_bookmarks","num_pages","num_pages_max","num_addons","daily_unique_domains","daily_unique_domains_max","daily_max_tabs","daily_max_tabs_max","daily_tabs_opened","daily_tabs_opened_max","daily_num_sessions_started","daily_num_sessions_started_max","startup_ms","install_year","profile_age","timezone_offset","memory_mb","cpu_cores","cpu_speed_mhz","cpu_l2_cache_kb")
+```
+
+```{r include=FALSE}
+df_beta_ue <- df_beta %>% select(user_eng)
+df_release_ue <- df_release %>% select(user_eng)
+df_train_ue <- df_train_f %>% select(c(user_eng, "label"))
+
+df_beta_v_ue <- df_v_beta %>% select(user_eng)
+df_release_v_ue <- df_v_release %>% select(user_eng)
+df_validate_ue <- df_validate_f %>% select(c(user_eng, "label"))
+```
+
+```{r include=FALSE}
+text_tbl <- data.frame(
+beta_num_active_days = c(summary(df_beta_ue$num_active_days)), release_num_active_days = c(summary(df_release_ue$num_active_days)), 
+beta_active_hours = c(summary(df_beta_ue$active_hours)), release_active_hours = c(summary(df_release_ue$active_hours)), 
+beta_active_hours_max = c(summary(df_beta_ue$active_hours_max)), release_active_hours_max = c(summary(df_release_ue$active_hours_max)), 
+beta_uri_count = c(summary(df_beta_ue$uri_count)), release_uri_count = c(summary(df_release_ue$uri_count)), 
+beta_uri_count_max = c(summary(df_beta_ue$uri_count_max)), release_uri_count_max = c(summary(df_release_ue$uri_count_max)), 
+beta_session_length = c(summary(df_beta_ue$session_length)), release_session_length = c(summary(df_release_ue$session_length)), 
+beta_session_length_max = c(summary(df_beta_ue$session_length_max)), release_session_length_max = c(summary(df_release_ue$session_length_max)), 
+beta_search_count = c(summary(df_beta_ue$search_count)), release_search_count = c(summary(df_release_ue$search_count)), 
+beta_search_count_max = c(summary(df_beta_ue$search_count_max)), release_search_count_max = c(summary(df_release_ue$search_count_max)), 
+beta_num_bookmarks = c(summary(df_beta_ue$num_bookmarks)), release_num_bookmarks = c(summary(df_release_ue$num_bookmarks)), 
+beta_num_pages = c(summary(df_beta_ue$num_pages)), release_num_pages = c(summary(df_release_ue$num_pages)), 
+beta_num_pages_max = c(summary(df_beta_ue$num_pages_max)), release_num_pages_max = c(summary(df_release_ue$num_pages_max)), 
+beta_daily_unique_domains = c(summary(df_beta_ue$daily_unique_domains)), release_daily_unique_domains = c(summary(df_release_ue$daily_unique_domains)), 
+beta_daily_max_tabs = c(summary(df_beta_ue$daily_max_tabs)), release_daily_max_tabs = c(summary(df_release_ue$daily_max_tabs)), 
+beta_daily_tabs_opened = c(summary(df_beta_ue$daily_tabs_opened)), release_daily_tabs_opened = c(summary(df_release_ue$daily_tabs_opened)), 
+beta_daily_num_sessions_started = c(summary(df_beta_ue$daily_num_sessions_started)), release_daily_num_sessions_started = c(summary(df_release_ue$daily_num_sessions_started)), 
+beta_daily_unique_domains_max = c(summary(df_beta_ue$daily_unique_domains_max)), release_daily_unique_domains_max = c(summary(df_release_ue$daily_unique_domains_max)), 
+beta_daily_max_tabs_max = c(summary(df_beta_ue$daily_max_tabs_max)), release_daily_max_tabs_max = c(summary(df_release_ue$daily_max_tabs_max)), 
+beta_daily_tabs_opened_max = c(summary(df_beta_ue$daily_tabs_opened_max)), release_daily_tabs_opened_max = c(summary(df_release_ue$daily_tabs_opened_max)), 
+beta_daily_num_sessions_started_max = c(summary(df_beta_ue$daily_num_sessions_started_max)), release_daily_num_sessions_started_max = c(summary(df_release_ue$daily_num_sessions_started_max)), 
+beta_startup_ms = c(summary(df_beta_ue$startup_ms)), release_startup_ms = c(summary(df_release_ue$startup_ms)), 
+beta_install_year = c(summary(df_beta_ue$install_year)), release_install_year = c(summary(df_release_ue$install_year)), 
+beta_profile_age = c(summary(df_beta_ue$profile_age)), release_profile_age = c(summary(df_release_ue$profile_age)), 
+beta_timezone_offset = c(summary(df_beta_ue$timezone_offset)), release_timezone_offset = c(summary(df_release_ue$timezone_offset)), 
+beta_memory_mb = c(summary(df_beta_ue$memory_mb)), release_memory_mb = c(summary(df_release_ue$memory_mb)), 
+beta_cpu_cores = c(summary(df_beta_ue$cpu_cores)), release_cpu_cores = c(summary(df_release_ue$cpu_cores)), 
+beta_cpu_speed_mhz = c(summary(df_beta_ue$cpu_speed_mhz)), release_cpu_speed_mhz = c(summary(df_release_ue$cpu_speed_mhz)), 
+beta_cpu_l2_cache_kb = c(summary(df_beta_ue$cpu_l2_cache_kb)), release_cpu_l2_cache_kb = c(summary(df_release_ue$cpu_l2_cache_kb))
+)
+```
+
+```{r include=FALSE}
+text_tbl_v <- data.frame(
+beta_num_active_days = c(summary(df_beta_v_ue$num_active_days)), release_num_active_days = c(summary(df_release_v_ue$num_active_days)), 
+beta_active_hours = c(summary(df_beta_v_ue$active_hours)), release_active_hours = c(summary(df_release_v_ue$active_hours)), 
+beta_active_hours_max = c(summary(df_beta_v_ue$active_hours_max)), release_active_hours_max = c(summary(df_release_v_ue$active_hours_max)), 
+beta_uri_count = c(summary(df_beta_v_ue$uri_count)), release_uri_count = c(summary(df_release_v_ue$uri_count)), 
+beta_uri_count_max = c(summary(df_beta_v_ue$uri_count_max)), release_uri_count_max = c(summary(df_release_v_ue$uri_count_max)), 
+beta_session_length = c(summary(df_beta_v_ue$session_length)), release_session_length = c(summary(df_release_v_ue$session_length)), 
+beta_session_length_max = c(summary(df_beta_v_ue$session_length_max)), release_session_length_max = c(summary(df_release_v_ue$session_length_max)), 
+beta_search_count = c(summary(df_beta_v_ue$search_count)), release_search_count = c(summary(df_release_v_ue$search_count)), 
+beta_search_count_max = c(summary(df_beta_v_ue$search_count_max)), release_search_count_max = c(summary(df_release_v_ue$search_count_max)), 
+beta_num_bookmarks = c(summary(df_beta_v_ue$num_bookmarks)), release_num_bookmarks = c(summary(df_release_v_ue$num_bookmarks)), 
+beta_num_pages = c(summary(df_beta_v_ue$num_pages)), release_num_pages = c(summary(df_release_v_ue$num_pages)), 
+beta_num_pages_max = c(summary(df_beta_v_ue$num_pages_max)), release_num_pages_max = c(summary(df_release_v_ue$num_pages_max)), 
+beta_daily_unique_domains = c(summary(df_beta_v_ue$daily_unique_domains)), release_daily_unique_domains = c(summary(df_release_v_ue$daily_unique_domains)), 
+beta_daily_max_tabs = c(summary(df_beta_v_ue$daily_max_tabs)), release_daily_max_tabs = c(summary(df_release_v_ue$daily_max_tabs)), 
+beta_daily_tabs_opened = c(summary(df_beta_v_ue$daily_tabs_opened)), release_daily_tabs_opened = c(summary(df_release_v_ue$daily_tabs_opened)), 
+beta_daily_num_sessions_started = c(summary(df_beta_v_ue$daily_num_sessions_started)), release_daily_num_sessions_started = c(summary(df_release_v_ue$daily_num_sessions_started)), 
+beta_daily_unique_domains_max = c(summary(df_beta_v_ue$daily_unique_domains_max)), release_daily_unique_domains_max = c(summary(df_release_v_ue$daily_unique_domains_max)), 
+beta_daily_max_tabs_max = c(summary(df_beta_v_ue$daily_max_tabs_max)), release_daily_max_tabs_max = c(summary(df_release_v_ue$daily_max_tabs_max)), 
+beta_daily_tabs_opened_max = c(summary(df_beta_v_ue$daily_tabs_opened_max)), release_daily_tabs_opened_max = c(summary(df_release_v_ue$daily_tabs_opened_max)), 
+beta_daily_num_sessions_started_max = c(summary(df_beta_v_ue$daily_num_sessions_started_max)), release_daily_num_sessions_started_max = c(summary(df_release_v_ue$daily_num_sessions_started_max)), 
+beta_startup_ms = c(summary(df_beta_v_ue$startup_ms)), release_startup_ms = c(summary(df_release_v_ue$startup_ms)), 
+beta_install_year = c(summary(df_beta_v_ue$install_year)), release_install_year = c(summary(df_release_v_ue$install_year)), 
+beta_profile_age = c(summary(df_beta_v_ue$profile_age)), release_profile_age = c(summary(df_release_v_ue$profile_age)), 
+beta_timezone_offset = c(summary(df_beta_v_ue$timezone_offset)), release_timezone_offset = c(summary(df_release_v_ue$timezone_offset)), 
+beta_memory_mb = c(summary(df_beta_v_ue$memory_mb)), release_memory_mb = c(summary(df_release_v_ue$memory_mb)), 
+beta_cpu_cores = c(summary(df_beta_v_ue$cpu_cores)), release_cpu_cores = c(summary(df_release_v_ue$cpu_cores)), 
+beta_cpu_speed_mhz = c(summary(df_beta_v_ue$cpu_speed_mhz)), release_cpu_speed_mhz = c(summary(df_release_v_ue$cpu_speed_mhz)), 
+beta_cpu_l2_cache_kb = c(summary(df_beta_v_ue$cpu_l2_cache_kb)), release_cpu_l2_cache_kb = c(summary(df_release_v_ue$cpu_l2_cache_kb))
+)
+```
+
+### Training
+
+#### Beta-Release Difference
+
+```{r}
+kable(text_tbl) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
+```
+
+### Validation
+
+#### Beta-Release Difference
+
+```{r}
+kable(text_tbl_v) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+scroll_box(width = "100%")
+```
+
+### QQ-Plots
+
+
+```{r fig.height=9, fig.width=9, message=FALSE, warning=FALSE}
+par(mfrow = c(4, 2))  ## Set up a 2 x 3 plotting space
+
+## QQ plot in R to compare two data samples
+for (i in user_eng) {
+  
+  # Training
+  x_t <- df_beta_ue[,i]
+  y_t <- df_release_ue[,i]
+  
+  rg_t <- range(x_t, y_t, na.rm=T)
+  
+  test_t <- ks.test(x_t, y_t)$statistic
+  test_t <- paste("KS Test = ", round(test_t, 3))
+  
+  # Validation
+  
+  x_v <- df_beta_v_ue[,i]
+  y_v <- df_release_v_ue[,i]
+  
+  rg_v <- range(x_v, y_v, na.rm=T)
+  
+  test_v <- ks.test(x_v, y_v)$statistic
+  test_v <- paste("KS Test = ", round(test_v, 3))
+  
+  ########
+  
+  title_t <- paste('V67', i, sep='\n')
+  qqplot(x_t, y_t, main=title_t, xlim=rg_t, ylim=rg_t, xlab = "Beta", ylab = "Release", pch = 1)
+  # mtext(test, side=3)
+  text(min(x_t), (if(max(x_t) > max(y_t)) max(x_t) else max(y_t)), test_t, adj=c(0,1))
+  abline(0,1, col="#fe346e", lty=2) 
+  
+  title_v <- paste('V68', i, sep='\n')
+  qqplot(x_v, y_v, main=title_v, xlim=rg_v, ylim=rg_v, xlab = "Beta", ylab = "Release", pch = 1)
+  # mtext(test, side=3)
+  text(min(x_v), (if(max(x_v) > max(y_v)) max(x_v) else max(y_v)), test_v, adj=c(0,1))
+  abline(0,1, col="#fe346e", lty=2)  
+}
+```
+
+### Observations
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+tbl_ks <- data.frame(
+training = c(0.071,0.045,0.044,0.047,0.054,0.099,0.073,0.014,0.019,0.026,0.055,0.054,0.601,0.029,0.033,0.094,0.080,0.035,0.032,0.119,0.116,0.129,0.018,0.042,0.208,0.075,0.064,0.046,0.025), 
+validation = c(0.166,0.058,0.077,0.071,0.095,0.076,0.040,0.045,0.059,0.042,0.082,0.082,0.292,0.040,0.054,0.075,0.051,0.036,0.053,0.098,0.117,0.130,0.017,0.035,0.235,0.109,0.087,0.062,0.035)
+)
+
+row.names(tbl_ks) <- c('num_active_days','active_hours','active_hours_max','uri_count','uri_count_max','session_length','session_length_max','search_count','search_count_max','num_bookmarks','num_pages','num_pages_max','num_addons','daily_unique_domains','daily_unique_domains_max','daily_max_tabs','daily_max_tabs_max','daily_tabs_opened','daily_tabs_opened_max','daily_num_sessions_started','daily_num_sessions_started_max','startup_ms','install_year','profile_age','timezone_offset','memory_mb','cpu_cores','cpu_speed_mhz','cpu_l2_cache_kb')
+```
+
+```{r}
+kable(tbl_ks) %>%
+add_header_above(c("KS Distance" = 3)) %>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F) %>%
+row_spec(c(2,18,21:26), bold = T, color = "white", background = "#c3f584")
+```
+
+* Analyzing at the plots of each dataset separately, in general, Beta-Release distributions are very similar to each other
+* For instance, metrics related to **active hours** and **number of active days**, **search count**, **number of pages**, **daily unique domains** and **daily number of sessions started**
+* Comparing only the training and validation plots, we can observe large differences between the variables. Only a few showed similar distances (marked in green)
+
+### Violin Plots
+
+The following violin plots depicts distributions for the beta and release subsets, for both versions v67 and v68. Violin plot is a powerful data visualization technique since it allows to compare both the **ranking** of several groups and their **distribution**.
+
+**NOTE:** Guiding lines have been added for the following:
+
+* <span style="color:red">red</span> dashed: Release mean
+* <span style="color:blue">blue</span> dashed: Beta mean
+* <span style="color:red">red</span> solid: Release median
+* <span style="color:blue">blue</span> solid: Beta median
+
+```{r fig.height=10, fig.width=15, message=FALSE, warning=FALSE}
+
+## Violin plots
+for (i in user_eng) {
+  df_validate_means <- df_validate_ue %>%
+  group_by(label) %>%
+  summarise(value = mean(eval(as.name(i))))
+
+  df_validate_medians <- df_validate_ue %>%
+  group_by(label) %>%
+  summarise(value = median(eval(as.name(i))))
+  
+  df_train_means <- df_train_ue %>%
+  group_by(label) %>%
+  summarise(value = mean(eval(as.name(i))))
+
+  df_train_medians <- df_train_ue %>%
+  group_by(label) %>%
+  summarise(value = median(eval(as.name(i))))
+  
+  ###########
+  
+  violin_train <- ggplot(df_train_ue, aes(x=label, y=eval(as.name(i)), fill=label)) + 
+  geom_violin(trim=FALSE) +
+  labs(title=i,x="Channel", y = "Measure") + 
+  scale_fill_manual(values=c("#111d5e", "#b21f66")) +
+  geom_hline(
+    data = df_train_means,
+    aes(yintercept = value, colour = label),
+    linetype = "dashed",
+    size = 1
+  ) +
+  geom_hline(
+    data = df_train_medians,
+    aes(yintercept = value, colour = label),
+    linetype = "solid",
+    size = 1
+  ) + scale_colour_manual(values=c("blue", "red")) +
+  geom_boxplot(width=0.1, fill="white", alpha=0.5) + 
+  theme_minimal() + theme(legend.position="none") + coord_flip()
+  
+  violin_valid <- ggplot(df_validate_ue, aes(x=label, y=eval(as.name(i)), fill=label)) + 
+  geom_violin(trim=FALSE) +
+  labs(title=i,x="Channel", y = "Measure") + 
+  scale_fill_manual(values=c("#111d5e", "#b21f66")) +
+  geom_hline(
+    data = df_validate_means,
+    aes(yintercept = value, colour = label),
+    linetype = "dashed",
+    size = 1
+  ) +
+  geom_hline(
+    data = df_validate_medians,
+    aes(yintercept = value, colour = label),
+    linetype = "solid",
+    size = 1
+  ) + scale_colour_manual(values=c("blue", "red")) +
+  geom_boxplot(width=0.1, fill="white", alpha=0.5) + 
+  theme_minimal() + theme(legend.position="none") + coord_flip()
+
+  print(plot_grid(violin_train, violin_valid, ncol = 1,labels = c('V67','V68')))
+}
+```
+
+### Observations
+
+The violin plots above show the relationship of channel type to user engagement metrics. Overall, the results were quite similar comparing the two versions (v67 and v68). Only the following metrics yielded different results:
+
+* `active_hours_max`
+* `daily_unique_domains_max`
+
+Now, let's take a closer look at the similar comparative results:
+
+> Which variables presented **similar/equal** means and medians for beta and release users?
+
+* `uri_count`
+* `uri_count_max`
+* `session_length_max`
+* `search_count`
+* `search_count_max`
+* `daily_unique_domains`
+* `daily_tabs_opened_max`
+* `install_year`
+* `profile_age`
+* `memory_mb`
+* `cpu_speed_mhz`
+
+> Which variables presented **higher** release users means and/or medians than betas?
+
+* `num_active_days`
+* `active_hours`
+* `num_pages`
+* `num_pages_max`
+* `daily_num_sessions_started`
+* `daily_num_sessions_started_max`
+* `cpu_cores`
+
+> Which variables presented **lower** release users means and/or medians than betas?
+
+* `session_length`
+* `num_addons`
+* `daily_tabs_opened`
+* `timezone_offset`
+* `cpu_l2_cache_kb`
+
+Four variables became difficult to visualize through the violin plot. So we will plot ridgeline charts.
+
+```{r fig.height=10, fig.width=15, message=FALSE, warning=FALSE}
+vlist <- c('num_bookmarks','daily_max_tabs','daily_max_tabs_max','startup_ms')
+
+## Ridgeline  plots
+for (i in vlist) {
+  ridge_train <- ggplot(df_train_ue, aes(x = eval(as.name(i)), y = label, fill = label)) +
+  geom_density_ridges(alpha=0.6, stat="binline", bins=20) +
+  labs(title=i,x="Channel", y = "Measure") + 
+  theme_ridges() + 
+  scale_fill_manual(values=c("#111d5e", "#b21f66")) +
+  theme(legend.position = "none")
+  
+  ridge_valid <- ggplot(df_validate_ue, aes(x = eval(as.name(i)), y = label, fill = label)) +
+  geom_density_ridges(alpha=0.6, stat="binline", bins=20) +
+  labs(title=i,x="Channel", y = "Measure") + 
+  theme_ridges() + 
+  scale_fill_manual(values=c("#111d5e", "#b21f66")) +
+  theme(legend.position = "none")
+
+  print(plot_grid(ridge_train, ridge_valid, ncol = 1,labels = c('V67','V68')))
+}
+```
+
+
+## Discrete Variables
+
+This section will focus only on user engagement discrete metrics. So, we are going to analyze the following metrics:
+
+* `default_search_engine`
+* `is_default_browser`
+* `profile_age_cat`
+* `distro_id_norm`
+* `memory_cat`
+* `cpu_speed_cat`
+* `cpu_cores_cat`
+* `cpu_l2_cache_kb_cat`
+* `cpu_vendor`
+* `os_version`
+* `is_wow64`
+* `fxa_configured`
+* `sync_configured`
+* `locale`
+* `country`
+* `timezone_cat`
+* `label`
+* `normalized_channel`
+* `is_release`
+
+```{r include=FALSE}
+user_eng_dis <- c("default_search_engine","is_default_browser","profile_age_cat","distro_id_norm","memory_cat","cpu_speed_cat","cpu_cores_cat","cpu_l2_cache_kb_cat","cpu_vendor","os_version","is_wow64","fxa_configured","sync_configured","locale","country","timezone_cat","label","normalized_channel","is_release")
+```
+
+```{r include=FALSE}
+df_beta_ue_dis <- df_beta %>% select(user_eng_dis)
+df_release_ue_dis <- df_release %>% select(user_eng_dis)
+df_train_ue_dis <- df_train_f %>% select(c(user_eng_dis, "label"))
+
+df_beta_v_ue_dis <- df_v_beta %>% select(user_eng_dis)
+df_release_v_ue_dis <- df_v_release %>% select(user_eng_dis)
+df_validate_ue_dis <- df_validate_f %>% select(c(user_eng_dis, "label"))
+```
+
+### Training
+
+```{r fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
+par(mfrow = c(2, 2))  ## Set up a 2 x 2 plotting space
+
+## QQ plot in R to compare two data samples
+for (i in user_eng_dis) {
+  x <- df_beta_ue_dis[,i]
+  y <- df_release_ue_dis[,i]
+  
+  rel_beta <- table(x)/nrow(df_beta_ue_dis) #divide the frequency counts by the total
+  beta_bar <- barplot(rel_beta,
+        main = "Beta", #Give your chart a title
+        ylim=c(0,1), border=F, col = "#111d5e",
+        xlab = i, #Label the x axis
+        ylab = "Relative Frequency" #Label the y axis
+  ) 
+  # Add the text 
+  text(beta_bar, rel_beta+0.025, paste(round(rel_beta*100), "%", sep="") ,cex=1) 
+  
+  rel_release <- table(y)/nrow(df_release_ue_dis) #divide the frequency counts by the total
+  release_bar <- barplot(rel_release,
+        main = "Release", #Give your chart a title
+        ylim=c(0,1), border=F, col = "#b21f66",
+        xlab = i, #Label the x axis
+        ylab = "Relative Frequency" #Label the y axis
+  )
+  
+  # Add the text 
+  text(release_bar, rel_release+0.025, paste(round(rel_release*100), "%", sep="") ,cex=1) 
+}
+```
+
+### Validation
+
+```{r fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
+par(mfrow = c(2, 2))  ## Set up a 2 x 2 plotting space
+
+## QQ plot in R to compare two data samples
+for (i in user_eng_dis) {
+  x <- df_beta_v_ue_dis[,i]
+  y <- df_release_v_ue_dis[,i]
+  
+  rel_beta <- table(x)/nrow(df_beta_v_ue_dis) #divide the frequency counts by the total
+  beta_bar <- barplot(rel_beta,
+        main = "Beta", #Give your chart a title
+        ylim=c(0,1), border=F, col = "#111d5e",
+        xlab = i, #Label the x axis
+        ylab = "Relative Frequency" #Label the y axis
+  ) 
+  # Add the text 
+  text(beta_bar, rel_beta+0.025, paste(round(rel_beta*100), "%", sep="") ,cex=1) 
+  
+  rel_release <- table(y)/nrow(df_release_v_ue_dis) #divide the frequency counts by the total
+  release_bar <- barplot(rel_release,
+        main = "Release", #Give your chart a title
+        ylim=c(0,1), border=F, col = "#b21f66",
+        xlab = i, #Label the x axis
+        ylab = "Relative Frequency" #Label the y axis
+  )
+  
+  # Add the text 
+  text(release_bar, rel_release+0.025, paste(round(rel_release*100), "%", sep="") ,cex=1) 
+}
+```
+
+------
+
+### Observations
+
+* In general, the distributions are very similar to each other for both versions
