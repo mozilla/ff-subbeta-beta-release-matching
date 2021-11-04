@@ -1,0 +1,307 @@
+---
+title: "Milestone 2: Feature Selection - Nearest Neighbors, Mahalanobis"
+author: "Corey Dow-Hygelund, Mozilla Data Science"
+date: 'Last Updated: `r format(Sys.time(), "%B %d, %Y")`'
+output: 
+  html_notebook:
+    theme: cosmo
+    toc: true
+    toc_float: true
+---
+
+# tl;dr
+
+This analysis determines the relevant [covariates (features)](https://docs.google.com/document/d/1SfuanvmYmvmEFAdQ7Z5djDeLezdNB1TESqVmj93O8to/edit#heading=h.nwwrif453n80) to utilize for computationally intensive statistical matching algorithms proposed in the modeling approach for this [PRD](https://docs.google.com/document/d/1Ygz6MkudYHZjnDnD9Z97kUyFrvV3KGWsjXyPjddhHq0/edit#heading=h.lvb9l8gw2nee). 
+
+**Matching Algorithm Tested**: Nearest-neighbors with Mahalanobis distance metric
+
+```{r setup, include=FALSE, echo=FALSE}
+require("knitr")
+knitr::opts_knit$set(root.dir = dirname(getwd()))
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+source('../lib/supporting_funcs.R')
+source('../lib/scoring.R')
+library(MatchIt)
+```
+
+```{r data_load, echo=FALSE}
+file_name = 'df_train_validate_20191025.RData'
+image_file_path = file.path('data', file_name)
+
+# Pull from GCP if necessary
+# library(googleCloudStorageR)
+# Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
+#            "GCS_AUTH_FILE" = "moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json")
+# gcs_get_object(file.path('data', 'milestone2', file_name), saveToDisk = image_file_path, overwrite = TRUE)
+
+load(image_file_path)
+```
+
+```{r bts, echo=FALSE}
+bts = list(
+  bts_1x = bts.1x,
+  bts_4x = bts.4x,
+  bts_8x = bts.8x,
+  bts_16x = bts.16x
+)
+
+perf_metrics <- names(get_m2_metric_map())
+
+covs <- df_train_f %>%
+  select(-perf_metrics) %>%
+  select(-content_crashes) %>%
+  select(-client_id) %>%
+  select(-label) %>%
+  select(-is_release) %>%
+  select(-app_version) %>%
+  select_if(is.numeric) %>% # Mahalanobis constraint
+  names()
+  
+
+results_file_name <- 'feature_selection_nn_mahalanobis.RData' 
+results_file_path <- file.path('data', results_file_name)
+```
+
+# Features
+**NOTE**: Mahalanobis distance measure requires continuous covariates. 
+
+Feature sets: 
+
+1. Only performance metrics.
+2. Performance metrics and the highest found by Boruta with original dataset.
+3. Performance metrics and the highest found by Boruta with equal labels dataset.
+4. Performance metrics and all covariates.
+5. Only the highest covariates found by Boruta (excluding performance).
+6. Only the highest covariates found by Boruta (equal labels, excluding performance).
+7. Utilize all covariates (excluding performance). 
+
+Retrieve Boruta features:
+
+```{r boruta_import, echo=FALSE}
+file_name = 'feature_selection_boruta_initial_20191023.RData'
+image_file_path = file.path('data', file_name)
+
+# Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
+#            "GCS_AUTH_FILE" = "moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json")
+# library(googleCloudStorageR)
+# gcs_get_object(file.path('data', 'milestone2', file_name), saveToDisk = image_file_path, overwrite = TRUE)
+
+load(image_file_path)
+```
+
+```{r boruta_fs}
+extract_boruta_fs <- function(boruta_res, num=5){
+  features <- NULL
+  for(metric in names(boruta_results)){
+    features <- c(names(sort(apply(boruta_res[[metric]]$ImpHistory, 2, median), decreasing = TRUE)[1:num]), features)
+  }
+  return(sort(unique(features)))
+}
+
+features_top10 <- extract_boruta_fs(boruta_results, num=10)
+features_top10_eq <- extract_boruta_fs(boruta_results_eq, num=10)
+
+# filter out categorical
+features_top10 <- df_train_f %>% select(features_top10) %>% select_if(is.numeric) %>% names()
+features_top10_eq <- df_train_f %>% select(features_top10_eq) %>% select_if(is.numeric) %>% names()
+```
+
+```{r feature_sets}
+fs1 <- perf_metrics
+fs2 <- c(names(fs1), features_top10)
+fs3 <- c(names(fs1), features_top10_eq)
+fs4 <- c(names(fs1), covs)
+fs5 <- features_top10
+fs6 <- features_top10_eq
+fs7 <- covs
+```
+
+# FS 1
+Feature selection on only performance metrics 
+
+```{r fs1, error=TRUE}
+res_fs1 <- list()
+for (bt in names(bts)){
+  res_fs1[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs1, size=NULL, replace=TRUE, workers = 10, distance = "mahalanobis")
+}
+save.image(results_file_path)
+print(res_fs1)
+```
+
+```{r fs1_noreplace, error=TRUE}
+res_fs1_noreplace <- list()
+for (bt in names(bts)){
+  res_fs1_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs1, size=NULL, replace=FALSE, workers = 10, distance = "mahalanobis")
+}
+save.image(results_file_path)
+print(res_fs1_noreplace)
+```
+
+# FS 2
+
+Performance metrics and the highest found by Boruta with original dataset.
+
+```{r fs2, error=TRUE}
+res_fs2 <- list()
+for (bt in names(bts)){
+  res_fs2[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs2, size=NULL, replace=TRUE, workers = 10, distance = "mahalanobis")
+}
+save.image(results_file_path)
+print(res_fs2)
+```
+
+```{r fs2_noreplace, error=TRUE}
+res_fs2_noreplace <- list()
+for (bt in names(bts)){
+  res_fs2_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs2, size=NULL, replace=FALSE, workers = 10, distance = "mahalanobis")
+}
+save.image(results_file_path)
+print(res_fs2_noreplace)
+```
+
+# FS 3
+
+Performance metrics and the highest found by Boruta with equal labels dataset.
+
+```{r fs3, error=TRUE}
+res_fs3 <- list()
+for (bt in names(bts)){
+  res_fs3[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs3, size=NULL, replace=TRUE, workers = 10, distance = "mahalanobis")
+}
+save.image(results_file_path)
+print(res_fs3)
+```
+
+```{r fs3_noreplace, error=TRUE}
+res_fs3_noreplace <- list()
+for (bt in names(bts)){
+  res_fs3_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs3, size=NULL, replace=FALSE, workers = 10, distance = "mahalanobis")
+}
+save.image(results_file_path)
+print(res_fs3_noreplace)
+```
+
+# FS 4
+
+Performance metrics and all covariates.
+
+```{r fs4, error=TRUE}
+res_fs4 <- list()
+for (bt in names(bts)){
+  res_fs4[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs4, size=NULL, replace=TRUE, workers = 10, distance = "mahalanobis")
+}
+save.image(results_file_path)
+print(res_fs4)
+```
+
+```{r fs4_noreplace, error=TRUE}
+res_fs4_noreplace <- list()
+for (bt in names(bts)){
+  res_fs4_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs4, size=NULL, replace=FALSE, workers = 10, distance = "mahalanobis")
+}
+save.image(results_file_path)
+print(res_fs4_noreplace)
+```
+
+# FS 5
+
+Only the highest covariates found by Boruta (excluding performance).
+
+```{r fs5, error=TRUE}
+res_fs5 <- list()
+for (bt in names(bts)){
+  res_fs5[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs5, size=NULL, replace=TRUE, workers = 10, distance = "mahalanobis")
+}
+save.image(results_file_path)
+print(res_fs5)
+```
+
+```{r fs5_noreplace, error=TRUE}
+res_fs5_noreplace <- list()
+for (bt in names(bts)){
+  res_fs5_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs5, size=NULL, replace=FALSE, workers = 10, distance = "mahalanobis")
+}
+save.image(results_file_path)
+print(res_fs5_noreplace)
+```
+
+# FS 6
+
+Only the highest covariates found by Boruta (equal labels, excluding performance).
+
+```{r fs6, error=TRUE}
+res_fs6 <- list()
+for (bt in names(bts)){
+  res_fs6[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs6, size=NULL, replace=TRUE, workers = 10, distance = "mahalanobis")
+}
+save.image(results_file_path)
+print(res_fs6)
+```
+
+```{r fs6_noreplace, error=TRUE}
+res_fs6_noreplace <- list()
+for (bt in names(bts)){
+  res_fs6_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs6, size=NULL, replace=FALSE, workers = 10, distance = "mahalanobis")
+}
+save.image(results_file_path)
+print(res_fs6_noreplace)
+```
+
+# FS 7
+
+Utilize all covariates (excluding performance). 
+
+```{r fs7, error=TRUE}
+res_fs7 <- list()
+for (bt in names(bts)){
+  res_fs7[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs7, size=NULL, replace=TRUE, workers = 10, distance = "mahalanobis")
+}
+save.image(results_file_path)
+print(res_fs7)
+```
+
+```{r fs7_noreplace, error=TRUE}
+res_fs7_noreplace <- list()
+for (bt in names(bts)){
+  res_fs7_noreplace[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs7, size=NULL, replace=FALSE, workers = 10, distance = "mahalanobis")
+}
+save.image(results_file_path)
+print(res_fs7_noreplace)
+```
+
+# FS 1 Interactions
+
+Feature selection on only performance metrics, but including interaction terms. 
+
+```{r fs1_int, error=TRUE}
+res_fs1_int <- list()
+for (bt in names(bts)){
+  res_fs1_int[[bt]] <- perform_matchit_fs(df_train_f, bts[[bt]], fs1, size=NULL, workers = 10, add_interactions=TRUE,
+                                      replace=TRUE, distance = 'mahalanobis')
+}
+save.image(results_file_path)
+print(res_fs1_int)
+```
+
+# Serialize and Push to GCP
+Save the resultant dataset and bootstrap samples to an R image. 
+
+```{r serialize_dataset}
+save(list = ls(pattern = 'res_fs'), file = results_file_path)
+```
+
+```{r gcp_storage_push, warning=FALSE}
+gcs_file_path <- file.path('data', 'milestone2', results_file_name)
+
+Sys.setenv("GCS_DEFAULT_BUCKET" = "moz-fx-dev-subbeta",
+           "GCS_AUTH_FILE" = "moz-fx-dev-cdowhyglund-subBeta-788f8f0d4627.json")
+
+library(googleCloudStorageR)
+
+upload_try <- gcs_upload(results_file_path, name = gcs_file_path)
+upload_try
+```
+
+

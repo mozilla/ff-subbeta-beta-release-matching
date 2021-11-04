@@ -1,0 +1,140 @@
+---
+title: 'Milestone 2: Scoring Algorithms Test'
+output:
+  html_notebook:
+    theme: cosmo
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+date: 'Last Updated: `r format(Sys.time(), "%B %d, %Y")`'
+---
+
+# tl;dr 
+This analysis determines the feasibility of the various [scoring algorithms](https://docs.google.com/document/d/1SfuanvmYmvmEFAdQ7Z5djDeLezdNB1TESqVmj93O8to/edit#heading=h.w3huje1nj766) proposed in the modeling approach for this [PRD](https://docs.google.com/document/d/1Ygz6MkudYHZjnDnD9Z97kUyFrvV3KGWsjXyPjddhHq0/edit#heading=h.lvb9l8gw2nee). Cramér-von Mises appears to satisfy the requirements.  
+
+```{r imports, echo=FALSE, warning=FALSE, message=FALSE}
+library(dplyr)
+library(transport)
+library(profmem)
+```
+
+# Method
+
+
+* Utilize previous saved image from proof-of-concept validation
+* Compare performance metrics of Beta to Release, without any matching. 
+* Compare performance metrics of Beta to Release, without matching.
+    - Observe reduction
+* Benchmark computation time, and memory usage
+
+```{r data_load, echo=FALSE}
+load('../data/milestone2/analysis_10022019_corr.RData')
+```
+
+# transport
+1st, try out the `transport` library, to determine if Wasserstein distance will work with out dataset. 
+
+## Wasserstein
+The relevant `transport` class appears to be a `pp`, or "discrete measures with some fixed mass at any of finitely many locations". Basically each instance corresponds to a mass = 1, and the corresponding metric values are coordinates to where that point is located.  
+
+1st, normalize each performance distributions to unit length. This puts them all on the same scale, so that the "cost" of transport is equal between the dimensions. 
+
+```{r}
+perf_metrics <- c("TIME_TO_DOM_CONTENT_LOADED_END_MS","TIME_TO_DOM_COMPLETE_MS", "FX_PAGE_LOAD_MS_2_PARENT", "TIME_TO_LOAD_EVENT_END_MS")
+
+norm <- function(x) return(x/sum(x))
+
+df_norm <- df_train %>%
+  select(perf_metrics, label) %>%
+  na.omit() %>%
+  mutate_at(vars(perf_metrics), norm)
+
+beta <- df_norm %>% 
+  filter(label == 'beta') %>%
+  select(perf_metrics)
+  # na.omit() #  %>%
+  # mutate_all(norm)
+
+release <- df_norm %>% 
+  filter(label == 'release') %>% 
+  select(perf_metrics)
+  # na.omit() # %>%
+  # mutate_all(norm)
+```
+
+Calculate the Wasserstein distance. It appears that the same number of instances must be in both distributions.
+**NOTE**: Received `Error in gen_cost(x, y, 1) : std::bad_alloc` when using 85K records. Downsample to 30K. 
+
+```{r wassertstein, error=TRUE}
+wd <- wasserstein(pp(beta %>% sample_n(30000)), pp(release %>% sample_n(30000)))
+```
+
+Okay this isn't going to work. Reduce down to single dimension for the earth mover's distance. Use `FX_PAGE_LOAD_MS_2`. Utilize the original dataset values. Benchmark the time. 
+
+## EMD
+
+### Pre-Matching
+```{r emd}
+beta <- df_train %>% 
+  filter(label == 'beta') %>%
+  select(perf_metrics) %>%
+  na.omit()
+
+release <- df_train %>% 
+  filter(label == 'release') %>%
+  select(perf_metrics) %>%
+  na.omit()
+
+system.time(emd <- wasserstein1d(beta$FX_PAGE_LOAD_MS_2_PARENT, release$FX_PAGE_LOAD_MS_2_PARENT))
+print(emd)
+```
+
+That is reasonable for the use-case: ~10s for full dataset and all metrics. See memory usage:
+
+```{r emd_mem}
+emd_mem <- profmem(emd <- wasserstein1d(beta$FX_PAGE_LOAD_MS_2_PARENT, release$FX_PAGE_LOAD_MS_2_PARENT, p=2))
+total(emd_mem)/(1024^2)
+```
+
+### Post-matching
+
+```{r emd_matched}
+beta_m <- df_matched %>% 
+  filter(label == 'beta') %>%
+  select(perf_metrics) %>%
+  na.omit()
+
+release_m <- df_matched %>% 
+  filter(label == 'release') %>%
+  select(perf_metrics) %>%
+  na.omit()
+
+system.time(emd <- wasserstein1d(beta_m$FX_PAGE_LOAD_MS_2_PARENT, release_m$FX_PAGE_LOAD_MS_2_PARENT))
+print(emd)
+```
+
+
+## Cramér-von Mises
+Try a Cramér-von Mises (`p=2`).
+
+```{r cms}
+system.time(cmd <- wasserstein1d(beta$FX_PAGE_LOAD_MS_2_PARENT, release$FX_PAGE_LOAD_MS_2_PARENT, p=2))
+print(cmd)
+```
+
+This works also! Onto memory profiling. 
+
+```{r cms_mem}
+cms_mem <- profmem(cmd <- wasserstein1d(beta$FX_PAGE_LOAD_MS_2_PARENT, release$FX_PAGE_LOAD_MS_2_PARENT, p=2))
+total(cms_mem)/(1024^2)
+```
+
+### Post-matching
+
+```{r cmd_matched}
+system.time(cmd <- wasserstein1d(beta_m$FX_PAGE_LOAD_MS_2_PARENT, release_m$FX_PAGE_LOAD_MS_2_PARENT, p=2))
+print(cmd)
+```
+
+
